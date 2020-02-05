@@ -1,0 +1,276 @@
+import time
+
+import torch
+from mpi4py import MPI
+from torch import nn
+from torch.autograd import Variable
+
+import numpy as np
+
+from compress_gradient import compress
+from model_ops.fc import Full_Connected
+from nn_ops import NN_Trainer
+
+STEP_START_ = 1
+
+
+class DistributedWorker(NN_Trainer):
+    def __init__(self, comm, **kwargs):
+        self.comm = comm
+        self.world_size = comm.Get_size()
+        self.rank = comm.Get_rank()
+        self.cur_step = 0
+        self.next_step = 0
+
+        self.batch_size = kwargs['batch_size']
+        self.max_epochs = kwargs['max_epochs']
+        self.momentum = kwargs['momentum']
+        self.lr = kwargs['learning_rate']
+        self.network_config = kwargs['network']
+        self.comm_type = kwargs['comm_method']
+        self._adversary = kwargs['adversary']
+        self._err_mode = kwargs['err_mode']
+        self._compress_grad = kwargs['compress_grad']
+        self._eval_freq = kwargs['eval_freq']
+        self._train_dir = kwargs['train_dir']
+        self._checkpoint_step = kwargs['checkpoint_step']
+        self._max_steps = kwargs['max_steps']
+
+        self._layer_cur_step = []
+        self._fail_workers = kwargs['adversaries']
+
+    def build_model(self):
+        if self.network_config == 'FC':
+            self.network = Full_Connected()
+
+        if self._checkpoint_step != 0:
+            file_path = '../checkpoints/model_step_' + str(self._checkpoint_step)
+            self._load_model(file_path)
+
+        self.optimizer = torch.optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
+        self.criterion = nn.CrossEntropyLoss()
+
+        self.init_recv_buf()
+
+    def train(self, train_loader, test_loader):
+        global STEP_START_
+
+        self.sync_fetch_step()
+        assert (self.update_step())
+        if self._checkpoint_step == 0:
+            assert (self.cur_step == STEP_START_)
+        else:
+            assert (self.cur_step == int(self._checkpoint_step) + 1)
+
+        num_batch_per_epoch = len(train_loader.dataset) / self.batch_size
+        batch_idx = -1
+        epoch_idx = 0
+        epoch_avg_loss = 0
+        iteration_last_step = 0
+        iter_start_time = 0
+        first = True
+
+        print("Worker {}: starting training".format(self.rank))
+
+        for num_epoch in range(self.max_epochs):
+            for batch_idx, (train_input_batch, train_label_batch) in enumerate(train_loader):
+                if self.cur_step == self._max_steps:
+                    break
+
+                X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
+                while True:
+                    self.async_fetch_step()
+
+                    updated = self.update_step()
+
+                    if (not updated) and (not first):
+                        continue
+
+                    iteration_last_step = time.time() - iter_start_time
+                    iter_start_time = time.time()
+                    first = False
+                    print('Rank of this node: {}, Current step: {}'.format(self.rank, self.cur_step))
+
+                    fetch_weight_start_time = time.time()
+                    if self.comm_type == 'Bcast':
+                        self.async_fetch_weight_bcast()
+                    elif self.comm_type == 'Async':
+                        self.async_fetch_weight_async()
+                    fetch_weight_duration = time.time() - fetch_weight_start_time
+
+                    self.network.train()
+                    self.optimizer.zero_grad()
+
+                    forward_start_time = time.time()
+                    logits = self.network(X_batch)
+                    if "FC" in self.network_config:
+                        #print("loss calculation", X_batch.shape, logits.shape, y_batch.shape)
+                        loss = self.criterion(logits, y_batch)
+                        #print(loss)
+                    else:
+                        print("wrong network config")
+                        assert (False)
+                    epoch_avg_loss += loss.item()
+                    forward_duration = time.time() - forward_start_time
+
+                    if "FC" in self.network_config:
+                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+
+                    prec1, prec5 = accuracy(logits.data, train_label_batch.long(), topk=(1, 5))
+                    print(
+                        'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.4f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@5: {}'.format(
+                            self.rank,
+                            self.cur_step, num_epoch, batch_idx * self.batch_size, len(train_loader.dataset),
+                            (100. * (batch_idx * self.batch_size) / len(train_loader.dataset)), loss.item(),
+                                                      time.time() - iter_start_time, computation_time,
+                                                      c_duration + fetch_weight_duration,
+                            prec1.numpy()[0], prec5.numpy()[0]))
+
+                    if self.cur_step % self._eval_freq == 0 and self.rank == 1:
+                        # save snapshots
+                        if "FC" in self.network_config:
+                            pass
+                    break
+
+    def init_recv_buf(self):
+        self.model_recv_buf = ModelBuffer(self.network)
+
+    def sync_fetch_step(self):
+        self.next_step = self.comm.recv(source=0, tag=10)
+        print('Worker {}: Worker {} just received next step syncly: step={}'.format(self.rank, self.rank, self.next_step))
+
+    def async_fetch_step(self):
+        req = self.comm.irecv(source=0, tag=10)
+        self.next_step = req.wait()
+        print('Worker {}: Worker {} just received next step: step={}'.format(self.rank, self.rank, self.next_step))
+
+    def async_fetch_weight_async(self):
+        request_layers = []
+        layers_to_update = []
+        for layer_idx, layer in enumerate(self.model_recv_buf.recv_buf):
+            if self.model_recv_buf.layer_cur_step[layer_idx] < self.cur_step:
+                layers_to_update.append(layer_idx)
+                req = self.comm.Irecv([self.model_recv_buf.recv_buf[layer_idx], MPI.DOUBLE], source=0, tag=11+layer_idx)
+                request_layers.append(req)
+
+        assert (len(layers_to_update) == len(request_layers))
+        weights_to_update = []
+        for req_idx, req_l in enumerate(request_layers):
+            req_l.wait()
+            weights = self.model_recv_buf.recv_buf[req_idx]
+            weights_to_update.append(weights)
+            self.model_recv_buf.layer_cur_step[req_idx] = self.cur_step
+        self.model_update(weights_to_update)
+
+    def async_fetch_weight_bcast(self):
+        layers_to_update = []
+        for layer_idx, layer in enumerate(self.model_recv_buf.recv_buf):
+            if self.model_recv_buf.layer_cur_step[layer_idx] < self.cur_step:
+                layers_to_update.append(layer_idx)
+                self.comm.Bcast([self.model_recv_buf.recv_buf[layer_idx], MPI.DOUBLE], root=0)
+        weights_to_update = []
+        for req_idx, layer_idx in enumerate(layers_to_update):
+            weights = self.model_recv_buf.recv_buf[req_idx]
+            weights_to_update.append(weights)
+            self.model_recv_buf.layer_cur_step[req_idx] = self.cur_step
+        self.model_update(weights_to_update)
+
+    def update_step(self):
+        changed = (self.cur_step != self.next_step)
+        self.cur_step = self.next_step
+        return changed
+
+    def model_update(self, weights_to_update):
+        new_state_dict = {}
+        model_counter_ = 0
+        for param_idx, (key_name, param) in enumerate(self.network.state_dict().items()):
+            if 'running_mean' in key_name or 'running_var' in key_name:
+                tmp_dict={key_name: param}
+            else:
+                assert param.size() == weights_to_update[model_counter_].shape
+                tmp_dict = {key_name: torch.from_numpy(weights_to_update[model_counter_])}
+                model_counter_ += 1
+            new_state_dict.update(tmp_dict)
+        self.network.load_state_dict(new_state_dict)
+
+    def _backward(self, loss, logits_1=None, computation_time=None):
+        b_start = time.time()
+        loss.backward()
+        b_duration = time.time()-b_start
+        if "FC" in self.network_config:
+            computation_time += b_duration
+            c_start = time.time()
+            self._send_grads()
+            c_duration = time.time() - c_start
+            return computation_time, c_duration
+
+    def _send_grads(self):
+        req_send_check = []
+        for param_idx, param in enumerate(self.network.parameters()):
+            grad = param.grad.data.numpy().astype(np.float64)
+            if len(req_send_check) != 0:
+                req_send_check[-1].wait()
+            if self.rank in self._fail_workers[self.cur_step]:
+                simulated_grad = err_simulation(grad, self._err_mode)
+                if self._compress_grad == 'compress':
+                    _compressed_grad = compress(simulated_grad)
+                    req_isend = self.comm.isend(_compressed_grad, dest=0, tag=88+param_idx)
+                    req_send_check.append(req_isend)
+                else:
+                    req_isend = self.comm.Isend([simulated_grad, MPI.DOUBLE], dest=0, tag=88+param_idx)
+                    req_send_check.append(req_isend)
+            else:
+                if self._compress_grad == 'compress':
+                    _compressed_grad = compress(grad)
+                    #print(self.rank," is sending gradients to master on step ",self.cur_step," for parameter ",param_idx," in length ",len(_compressed_grad))
+                    req_isend = self.comm.isend(_compressed_grad, dest=0, tag=88+param_idx)
+                    req_send_check.append(req_isend)
+                else:
+                    #with open("worker{}log.txt".format(self.rank),"a+") as f:
+                    #    f.write(str(self.rank)+" is sending grads to master on step "+str(self.cur_step)+" for parameter "+str(param_idx)+" in shape "+str(grad.shape)+"which has the value\n"+str(grad)+"\n")
+                    req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+param_idx)
+                    req_send_check.append(req_isend)
+        req_send_check[-1].wait()
+
+
+def accuracy(output, target, topk=(1,)):
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = []
+    for k in topk:
+        correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+        res.append(correct_k.mul_(100.0 / batch_size))
+    return res
+
+
+class ModelBuffer(object):
+    def __init__(self, network):
+        self.recv_buf = []
+        self.layer_cur_step = []
+        for param_idx, param in enumerate(network.parameters()):
+            self.recv_buf.append(np.zeros(param.size()))
+            self.layer_cur_step.append(0)
+
+
+def err_simulation(grad, mode, cyclic=False):
+    ADVERSARY_ = -100
+    CONST_ = -100
+    if mode == 'rev_grad':
+        if cyclic:
+            adv = ADVERSARY_ * grad
+            assert adv.shape == grad.shape
+            return np.add(adv, grad)
+        else:
+            return ADVERSARY_ * grad
+    elif mode == 'constant':
+        if cyclic:
+            adv = np.ones(grad.shape, dtype=np.float64)*CONST_
+            assert adv.shape == grad.shape
+            return np.add(adv,grad)
+        else:
+            return np.ones(grad.shape, dtype=np.float64)*CONST_
