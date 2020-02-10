@@ -98,6 +98,10 @@ def load_data(dataset, seed, args):
         train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
         return train_loader, training_set, test_loader
+
+    elif dataset == "CIFAR10":
+        print("cifar10 dataset")
+
     print("here2")
     return None, None, None
 
