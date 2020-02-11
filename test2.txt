@@ -1,0 +1,729 @@
+here
+dataset: MNIST
+here
+dataset: MNIST
+<torch.utils.data.dataloader.DataLoader object at 0x7f79299d7f50> Dataset MNIST
+    Number of datapoints: 60000
+    Root location: ./mnist_data
+    Split: Train
+    StandardTransform
+Transform: Compose(
+               ToTensor()
+               Normalize(mean=(0.1307,), std=(0.3081,))
+           ) None
+<torch.utils.data.dataloader.DataLoader object at 0x7f3043263390> Dataset MNIST
+    Number of datapoints: 60000
+    Root location: ./mnist_data
+    Split: Train
+    StandardTransform
+Transform: Compose(
+               ToTensor()
+               Normalize(mean=(0.1307,), std=(0.3081,))
+           ) None
+Worker node: 1 in all 2, next step: 0
+Master node: the world size is 2, cur step: 1
+Master: Broadcasting current step to workers: step=1
+Master node is entering step: 1
+Master: Broadcasting current step to workers: step=1
+Worker 1: Worker 1 just received next step syncly: step=1
+Worker 1: starting training
+Worker 1: Worker 1 just received next step: step=1
+Rank of this node: 1, Current step: 1
+Master Step: 1 Krum Cost: 0.0001
+Worker: 1, Step: 1, Epoch: 0 [0/60000 (0%)], Loss: 2.3070, Time Cost: 0.0692, Comp: 0.0326, Comm: 0.0356, Prec@1: 3.90625, Prec@5: 45.3125
+Master Step: 1, Method Time Cost: 0.00013113021850585938, Update Time Cost: 0.00408482551574707
+Master node is entering step: 2
+Master: Broadcasting current step to workers: step=2
+Worker 1: Worker 1 just received next step: step=2
+Rank of this node: 1, Current step: 2
+Master Step: 2 Krum Cost: 0.0001
+Worker: 1, Step: 2, Epoch: 0 [128/60000 (0%)], Loss: 2.3054, Time Cost: 0.0428, Comp: 0.0110, Comm: 0.0306, Prec@1: 6.25, Prec@5: 47.65625
+Master Step: 2, Method Time Cost: 0.00011038780212402344, Update Time Cost: 0.002499103546142578
+Master node is entering step: 3
+Master: Broadcasting current step to workers: step=3
+Worker 1: Worker 1 just received next step: step=3
+Rank of this node: 1, Current step: 3
+Master Step: 3 Krum Cost: 0.0001
+Worker: 1, Step: 3, Epoch: 0 [256/60000 (0%)], Loss: 2.3005, Time Cost: 0.0414, Comp: 0.0100, Comm: 0.0302, Prec@1: 10.9375, Prec@5: 54.6875
+Master Step: 3, Method Time Cost: 0.00010943412780761719, Update Time Cost: 0.002489328384399414
+Master node is entering step: 4
+Master: Broadcasting current step to workers: step=4
+Worker 1: Worker 1 just received next step: step=4
+Rank of this node: 1, Current step: 4
+Master Step: 4 Krum Cost: 0.0001
+Worker: 1, Step: 4, Epoch: 0 [384/60000 (1%)], Loss: 2.2979, Time Cost: 0.0397, Comp: 0.0088, Comm: 0.0297, Prec@1: 10.15625, Prec@5: 60.9375
+Master Step: 4, Method Time Cost: 0.00010752677917480469, Update Time Cost: 0.002527952194213867
+Master node is entering step: 5
+Master: Broadcasting current step to workers: step=5
+Worker 1: Worker 1 just received next step: step=5
+Rank of this node: 1, Current step: 5
+Master Step: 5 Krum Cost: 0.0001
+Worker: 1, Step: 5, Epoch: 0 [512/60000 (1%)], Loss: 2.3006, Time Cost: 0.0415, Comp: 0.0088, Comm: 0.0316, Prec@1: 9.375, Prec@5: 57.03125
+Master Step: 5, Method Time Cost: 0.00010919570922851562, Update Time Cost: 0.002509593963623047
+Master node is entering step: 6
+Master: Broadcasting current step to workers: step=6
+Worker 1: Worker 1 just received next step: step=6
+Rank of this node: 1, Current step: 6
+Master Step: 6 Krum Cost: 0.0001
+Worker: 1, Step: 6, Epoch: 0 [640/60000 (1%)], Loss: 2.3029, Time Cost: 0.0414, Comp: 0.0089, Comm: 0.0314, Prec@1: 2.34375, Prec@5: 57.03125
+Master Step: 6, Method Time Cost: 0.00010919570922851562, Update Time Cost: 0.0025234222412109375
+Master node is entering step: 7
+Master: Broadcasting current step to workers: step=7
+Worker 1: Worker 1 just received next step: step=7
+Rank of this node: 1, Current step: 7
+Master Step: 7 Krum Cost: 0.0001
+Worker: 1, Step: 7, Epoch: 0 [768/60000 (1%)], Loss: 2.3014, Time Cost: 0.0393, Comp: 0.0089, Comm: 0.0293, Prec@1: 9.375, Prec@5: 57.03125
+Master Step: 7, Method Time Cost: 0.00011348724365234375, Update Time Cost: 0.002511262893676758
+Master node is entering step: 8
+Master: Broadcasting current step to workers: step=8
+Worker 1: Worker 1 just received next step: step=8
+Rank of this node: 1, Current step: 8
+Master Step: 8 Krum Cost: 0.0001
+Worker: 1, Step: 8, Epoch: 0 [896/60000 (1%)], Loss: 2.3002, Time Cost: 0.0418, Comp: 0.0089, Comm: 0.0319, Prec@1: 7.03125, Prec@5: 53.125
+Master Step: 8, Method Time Cost: 0.00011539459228515625, Update Time Cost: 0.002524852752685547
+Master node is entering step: 9
+Master: Broadcasting current step to workers: step=9
+Worker 1: Worker 1 just received next step: step=9
+Rank of this node: 1, Current step: 9
+Master Step: 9 Krum Cost: 0.0001
+Worker: 1, Step: 9, Epoch: 0 [1024/60000 (2%)], Loss: 2.3019, Time Cost: 0.0387, Comp: 0.0088, Comm: 0.0287, Prec@1: 3.90625, Prec@5: 58.59375
+Master Step: 9, Method Time Cost: 0.00010991096496582031, Update Time Cost: 0.002518892288208008
+Master node is entering step: 10
+Master: Broadcasting current step to workers: step=10
+Worker 1: Worker 1 just received next step: step=10
+Rank of this node: 1, Current step: 10
+Master Step: 10 Krum Cost: 0.0001
+Worker: 1, Step: 10, Epoch: 0 [1152/60000 (2%)], Loss: 2.2940, Time Cost: 0.0393, Comp: 0.0088, Comm: 0.0294, Prec@1: 12.5, Prec@5: 62.5
+Master Step: 10, Method Time Cost: 0.0001163482666015625, Update Time Cost: 0.0024847984313964844
+Master node is entering step: 11
+Master: Broadcasting current step to workers: step=11
+Worker 1: Worker 1 just received next step: step=11
+Rank of this node: 1, Current step: 11
+Master Step: 11 Krum Cost: 0.0001
+Worker: 1, Step: 11, Epoch: 0 [1280/60000 (2%)], Loss: 2.2977, Time Cost: 0.0398, Comp: 0.0088, Comm: 0.0298, Prec@1: 4.6875, Prec@5: 60.15625
+Master Step: 11, Method Time Cost: 0.00011420249938964844, Update Time Cost: 0.002546072006225586
+Master node is entering step: 12
+Master: Broadcasting current step to workers: step=12
+Worker 1: Worker 1 just received next step: step=12
+Rank of this node: 1, Current step: 12
+Master Step: 12 Krum Cost: 0.0001
+Worker: 1, Step: 12, Epoch: 0 [1408/60000 (2%)], Loss: 2.2957, Time Cost: 0.0432, Comp: 0.0088, Comm: 0.0333, Prec@1: 17.1875, Prec@5: 58.59375
+Master Step: 12, Method Time Cost: 0.000110626220703125, Update Time Cost: 0.002519369125366211
+Master node is entering step: 13
+Master: Broadcasting current step to workers: step=13
+Worker 1: Worker 1 just received next step: step=13
+Rank of this node: 1, Current step: 13
+Master Step: 13 Krum Cost: 0.0001
+Worker: 1, Step: 13, Epoch: 0 [1536/60000 (3%)], Loss: 2.2936, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0290, Prec@1: 11.71875, Prec@5: 66.40625
+Master Step: 13, Method Time Cost: 0.00011754035949707031, Update Time Cost: 0.0025374889373779297
+Master node is entering step: 14
+Master: Broadcasting current step to workers: step=14
+Worker 1: Worker 1 just received next step: step=14
+Rank of this node: 1, Current step: 14
+Master Step: 14 Krum Cost: 0.0001
+Worker: 1, Step: 14, Epoch: 0 [1664/60000 (3%)], Loss: 2.3012, Time Cost: 0.0396, Comp: 0.0088, Comm: 0.0297, Prec@1: 11.71875, Prec@5: 57.03125
+Master Step: 14, Method Time Cost: 0.00010704994201660156, Update Time Cost: 0.002529621124267578
+Master node is entering step: 15
+Master: Broadcasting current step to workers: step=15
+Worker 1: Worker 1 just received next step: step=15
+Rank of this node: 1, Current step: 15
+Master Step: 15 Krum Cost: 0.0001
+Worker: 1, Step: 15, Epoch: 0 [1792/60000 (3%)], Loss: 2.2941, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0289, Prec@1: 12.5, Prec@5: 58.59375
+Master Step: 15, Method Time Cost: 0.0001270771026611328, Update Time Cost: 0.002496004104614258
+Master node is entering step: 16
+Master: Broadcasting current step to workers: step=16
+Worker 1: Worker 1 just received next step: step=16
+Rank of this node: 1, Current step: 16
+Master Step: 16 Krum Cost: 0.0001
+Worker: 1, Step: 16, Epoch: 0 [1920/60000 (3%)], Loss: 2.3004, Time Cost: 0.0384, Comp: 0.0088, Comm: 0.0284, Prec@1: 13.28125, Prec@5: 56.25
+Master Step: 16, Method Time Cost: 0.00010991096496582031, Update Time Cost: 0.002493143081665039
+Master node is entering step: 17
+Master: Broadcasting current step to workers: step=17
+Worker 1: Worker 1 just received next step: step=17
+Rank of this node: 1, Current step: 17
+Master Step: 17 Krum Cost: 0.0001
+Worker: 1, Step: 17, Epoch: 0 [2048/60000 (3%)], Loss: 2.2997, Time Cost: 0.0421, Comp: 0.0088, Comm: 0.0322, Prec@1: 9.375, Prec@5: 54.6875
+Master Step: 17, Method Time Cost: 0.00011181831359863281, Update Time Cost: 0.0024929046630859375
+Master node is entering step: 18
+Master: Broadcasting current step to workers: step=18
+Worker 1: Worker 1 just received next step: step=18
+Rank of this node: 1, Current step: 18
+Master Step: 18 Krum Cost: 0.0001
+Worker: 1, Step: 18, Epoch: 0 [2176/60000 (4%)], Loss: 2.3002, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0288, Prec@1: 14.0625, Prec@5: 53.125
+Master Step: 18, Method Time Cost: 0.0001087188720703125, Update Time Cost: 0.002517223358154297
+Master node is entering step: 19
+Master: Broadcasting current step to workers: step=19
+Worker 1: Worker 1 just received next step: step=19
+Rank of this node: 1, Current step: 19
+Master Step: 19 Krum Cost: 0.0001
+Worker: 1, Step: 19, Epoch: 0 [2304/60000 (4%)], Loss: 2.2929, Time Cost: 0.0415, Comp: 0.0088, Comm: 0.0316, Prec@1: 11.71875, Prec@5: 66.40625
+Master Step: 19, Method Time Cost: 0.00011014938354492188, Update Time Cost: 0.0025091171264648438
+Master node is entering step: 20
+Master: Broadcasting current step to workers: step=20
+Worker 1: Worker 1 just received next step: step=20
+Rank of this node: 1, Current step: 20
+Master Step: 20 Krum Cost: 0.0001
+Worker: 1, Step: 20, Epoch: 0 [2432/60000 (4%)], Loss: 2.2966, Time Cost: 0.0423, Comp: 0.0087, Comm: 0.0326, Prec@1: 16.40625, Prec@5: 55.46875
+Master Step: 20, Method Time Cost: 0.00011301040649414062, Update Time Cost: 0.0025238990783691406
+Master node is entering step: 21
+Master: Broadcasting current step to workers: step=21
+Worker 1: Worker 1 just received next step: step=21
+Rank of this node: 1, Current step: 21
+Master Step: 21 Krum Cost: 0.0001
+Worker: 1, Step: 21, Epoch: 0 [2560/60000 (4%)], Loss: 2.2927, Time Cost: 0.0419, Comp: 0.0088, Comm: 0.0319, Prec@1: 16.40625, Prec@5: 64.0625
+Master Step: 21, Method Time Cost: 0.00011205673217773438, Update Time Cost: 0.00251007080078125
+Master node is entering step: 22
+Master: Broadcasting current step to workers: step=22
+Worker 1: Worker 1 just received next step: step=22
+Rank of this node: 1, Current step: 22
+Master Step: 22 Krum Cost: 0.0001
+Worker: 1, Step: 22, Epoch: 0 [2688/60000 (4%)], Loss: 2.2945, Time Cost: 0.0415, Comp: 0.0088, Comm: 0.0315, Prec@1: 19.53125, Prec@5: 62.5
+Master Step: 22, Method Time Cost: 0.00011086463928222656, Update Time Cost: 0.002512693405151367
+Master node is entering step: 23
+Master: Broadcasting current step to workers: step=23
+Worker 1: Worker 1 just received next step: step=23
+Rank of this node: 1, Current step: 23
+Master Step: 23 Krum Cost: 0.0001
+Worker: 1, Step: 23, Epoch: 0 [2816/60000 (5%)], Loss: 2.2918, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0288, Prec@1: 17.96875, Prec@5: 67.1875
+Master Step: 23, Method Time Cost: 0.00010967254638671875, Update Time Cost: 0.0025229454040527344
+Master node is entering step: 24
+Master: Broadcasting current step to workers: step=24
+Worker 1: Worker 1 just received next step: step=24
+Rank of this node: 1, Current step: 24
+Master Step: 24 Krum Cost: 0.0001
+Worker: 1, Step: 24, Epoch: 0 [2944/60000 (5%)], Loss: 2.2899, Time Cost: 0.0400, Comp: 0.0088, Comm: 0.0301, Prec@1: 20.3125, Prec@5: 59.375
+Master Step: 24, Method Time Cost: 0.00011229515075683594, Update Time Cost: 0.0025207996368408203
+Master node is entering step: 25
+Master: Broadcasting current step to workers: step=25
+Worker 1: Worker 1 just received next step: step=25
+Rank of this node: 1, Current step: 25
+Master Step: 25 Krum Cost: 0.0001
+Worker: 1, Step: 25, Epoch: 0 [3072/60000 (5%)], Loss: 2.2890, Time Cost: 0.0398, Comp: 0.0088, Comm: 0.0298, Prec@1: 20.3125, Prec@5: 65.625
+Master Step: 25, Method Time Cost: 0.00011205673217773438, Update Time Cost: 0.0024831295013427734
+Master node is entering step: 26
+Master: Broadcasting current step to workers: step=26
+Worker 1: Worker 1 just received next step: step=26
+Rank of this node: 1, Current step: 26
+Master Step: 26 Krum Cost: 0.0001
+Worker: 1, Step: 26, Epoch: 0 [3200/60000 (5%)], Loss: 2.2904, Time Cost: 0.0432, Comp: 0.0087, Comm: 0.0333, Prec@1: 21.875, Prec@5: 65.625
+Master Step: 26, Method Time Cost: 0.00011086463928222656, Update Time Cost: 0.002505779266357422
+Master node is entering step: 27
+Master: Broadcasting current step to workers: step=27
+Worker 1: Worker 1 just received next step: step=27
+Rank of this node: 1, Current step: 27
+Master Step: 27 Krum Cost: 0.0001
+Worker: 1, Step: 27, Epoch: 0 [3328/60000 (6%)], Loss: 2.2839, Time Cost: 0.0392, Comp: 0.0088, Comm: 0.0293, Prec@1: 27.34375, Prec@5: 73.4375
+Master Step: 27, Method Time Cost: 0.00011539459228515625, Update Time Cost: 0.0025196075439453125
+Master node is entering step: 28
+Master: Broadcasting current step to workers: step=28
+Worker 1: Worker 1 just received next step: step=28
+Rank of this node: 1, Current step: 28
+Master Step: 28 Krum Cost: 0.0001
+Worker: 1, Step: 28, Epoch: 0 [3456/60000 (6%)], Loss: 2.2896, Time Cost: 0.0402, Comp: 0.0088, Comm: 0.0302, Prec@1: 21.875, Prec@5: 67.1875
+Master Step: 28, Method Time Cost: 0.000110626220703125, Update Time Cost: 0.0025191307067871094
+Master node is entering step: 29
+Master: Broadcasting current step to workers: step=29
+Worker 1: Worker 1 just received next step: step=29
+Rank of this node: 1, Current step: 29
+Master Step: 29 Krum Cost: 0.0001
+Worker: 1, Step: 29, Epoch: 0 [3584/60000 (6%)], Loss: 2.2879, Time Cost: 0.0417, Comp: 0.0088, Comm: 0.0318, Prec@1: 21.09375, Prec@5: 70.3125
+Master Step: 29, Method Time Cost: 0.00010776519775390625, Update Time Cost: 0.002532482147216797
+Master node is entering step: 30
+Master: Broadcasting current step to workers: step=30
+Worker 1: Worker 1 just received next step: step=30
+Rank of this node: 1, Current step: 30
+Master Step: 30 Krum Cost: 0.0001
+Worker: 1, Step: 30, Epoch: 0 [3712/60000 (6%)], Loss: 2.2872, Time Cost: 0.0386, Comp: 0.0088, Comm: 0.0286, Prec@1: 20.3125, Prec@5: 71.09375
+Master Step: 30, Method Time Cost: 0.00011324882507324219, Update Time Cost: 0.002502918243408203
+Master node is entering step: 31
+Master: Broadcasting current step to workers: step=31
+Worker 1: Worker 1 just received next step: step=31
+Rank of this node: 1, Current step: 31
+Master Step: 31 Krum Cost: 0.0001
+Worker: 1, Step: 31, Epoch: 0 [3840/60000 (6%)], Loss: 2.2840, Time Cost: 0.0420, Comp: 0.0088, Comm: 0.0321, Prec@1: 21.875, Prec@5: 75.0
+Master Step: 31, Method Time Cost: 0.00011086463928222656, Update Time Cost: 0.0025320053100585938
+Master node is entering step: 32
+Master: Broadcasting current step to workers: step=32
+Worker 1: Worker 1 just received next step: step=32
+Rank of this node: 1, Current step: 32
+Master Step: 32 Krum Cost: 0.0001
+Worker: 1, Step: 32, Epoch: 0 [3968/60000 (7%)], Loss: 2.2837, Time Cost: 0.0422, Comp: 0.0088, Comm: 0.0323, Prec@1: 26.5625, Prec@5: 68.75
+Master Step: 32, Method Time Cost: 0.00011420249938964844, Update Time Cost: 0.002495288848876953
+Master node is entering step: 33
+Master: Broadcasting current step to workers: step=33
+Worker 1: Worker 1 just received next step: step=33
+Rank of this node: 1, Current step: 33
+Master Step: 33 Krum Cost: 0.0001
+Worker: 1, Step: 33, Epoch: 0 [4096/60000 (7%)], Loss: 2.2869, Time Cost: 0.0416, Comp: 0.0088, Comm: 0.0317, Prec@1: 26.5625, Prec@5: 64.0625
+Master Step: 33, Method Time Cost: 0.00011157989501953125, Update Time Cost: 0.0025331974029541016
+Master node is entering step: 34
+Master: Broadcasting current step to workers: step=34
+Worker 1: Worker 1 just received next step: step=34
+Rank of this node: 1, Current step: 34
+Master Step: 34 Krum Cost: 0.0001
+Worker: 1, Step: 34, Epoch: 0 [4224/60000 (7%)], Loss: 2.2786, Time Cost: 0.0415, Comp: 0.0088, Comm: 0.0316, Prec@1: 36.71875, Prec@5: 71.09375
+Master Step: 34, Method Time Cost: 0.00010752677917480469, Update Time Cost: 0.002505064010620117
+Master node is entering step: 35
+Master: Broadcasting current step to workers: step=35
+Worker 1: Worker 1 just received next step: step=35
+Rank of this node: 1, Current step: 35
+Master Step: 35 Krum Cost: 0.0001
+Worker: 1, Step: 35, Epoch: 0 [4352/60000 (7%)], Loss: 2.2810, Time Cost: 0.0384, Comp: 0.0088, Comm: 0.0284, Prec@1: 37.5, Prec@5: 71.09375
+Master Step: 35, Method Time Cost: 0.00010848045349121094, Update Time Cost: 0.0024995803833007812
+Master node is entering step: 36
+Master: Broadcasting current step to workers: step=36
+Worker 1: Worker 1 just received next step: step=36
+Rank of this node: 1, Current step: 36
+Master Step: 36 Krum Cost: 0.0001
+Worker: 1, Step: 36, Epoch: 0 [4480/60000 (7%)], Loss: 2.2824, Time Cost: 0.0424, Comp: 0.0088, Comm: 0.0326, Prec@1: 29.6875, Prec@5: 68.75
+Master Step: 36, Method Time Cost: 0.00011134147644042969, Update Time Cost: 0.002518892288208008
+Master node is entering step: 37
+Master: Broadcasting current step to workers: step=37
+Worker 1: Worker 1 just received next step: step=37
+Rank of this node: 1, Current step: 37
+Master Step: 37 Krum Cost: 0.0001
+Worker: 1, Step: 37, Epoch: 0 [4608/60000 (8%)], Loss: 2.2827, Time Cost: 0.0395, Comp: 0.0088, Comm: 0.0296, Prec@1: 28.125, Prec@5: 66.40625
+Master Step: 37, Method Time Cost: 0.00011396408081054688, Update Time Cost: 0.0025322437286376953
+Master node is entering step: 38
+Master: Broadcasting current step to workers: step=38
+Worker 1: Worker 1 just received next step: step=38
+Rank of this node: 1, Current step: 38
+Master Step: 38 Krum Cost: 0.0001
+Worker: 1, Step: 38, Epoch: 0 [4736/60000 (8%)], Loss: 2.2839, Time Cost: 0.0390, Comp: 0.0088, Comm: 0.0290, Prec@1: 28.125, Prec@5: 67.1875
+Master Step: 38, Method Time Cost: 0.00011205673217773438, Update Time Cost: 0.0025124549865722656
+Master node is entering step: 39
+Master: Broadcasting current step to workers: step=39
+Worker 1: Worker 1 just received next step: step=39
+Rank of this node: 1, Current step: 39
+Master Step: 39 Krum Cost: 0.0001
+Worker: 1, Step: 39, Epoch: 0 [4864/60000 (8%)], Loss: 2.2854, Time Cost: 0.0428, Comp: 0.0088, Comm: 0.0329, Prec@1: 28.125, Prec@5: 67.96875
+Master Step: 39, Method Time Cost: 0.00011038780212402344, Update Time Cost: 0.002529144287109375
+Master node is entering step: 40
+Master: Broadcasting current step to workers: step=40
+Worker 1: Worker 1 just received next step: step=40
+Rank of this node: 1, Current step: 40
+Master Step: 40 Krum Cost: 0.0001
+Worker: 1, Step: 40, Epoch: 0 [4992/60000 (8%)], Loss: 2.2831, Time Cost: 0.0404, Comp: 0.0087, Comm: 0.0306, Prec@1: 28.125, Prec@5: 69.53125
+Master Step: 40, Method Time Cost: 0.00011324882507324219, Update Time Cost: 0.0024971961975097656
+Master node is entering step: 41
+Master: Broadcasting current step to workers: step=41
+Worker 1: Worker 1 just received next step: step=41
+Rank of this node: 1, Current step: 41
+Master Step: 41 Krum Cost: 0.0001
+Worker: 1, Step: 41, Epoch: 0 [5120/60000 (9%)], Loss: 2.2801, Time Cost: 0.0409, Comp: 0.0088, Comm: 0.0309, Prec@1: 32.8125, Prec@5: 71.09375
+Master Step: 41, Method Time Cost: 0.00011038780212402344, Update Time Cost: 0.002517223358154297
+Master node is entering step: 42
+Master: Broadcasting current step to workers: step=42
+Worker 1: Worker 1 just received next step: step=42
+Rank of this node: 1, Current step: 42
+Master Step: 42 Krum Cost: 0.0001
+Worker: 1, Step: 42, Epoch: 0 [5248/60000 (9%)], Loss: 2.2780, Time Cost: 0.0393, Comp: 0.0088, Comm: 0.0294, Prec@1: 29.6875, Prec@5: 75.0
+Master Step: 42, Method Time Cost: 0.00011491775512695312, Update Time Cost: 0.002509593963623047
+Master node is entering step: 43
+Master: Broadcasting current step to workers: step=43
+Worker 1: Worker 1 just received next step: step=43
+Rank of this node: 1, Current step: 43
+Master Step: 43 Krum Cost: 0.0001
+Worker: 1, Step: 43, Epoch: 0 [5376/60000 (9%)], Loss: 2.2847, Time Cost: 0.0402, Comp: 0.0088, Comm: 0.0302, Prec@1: 35.15625, Prec@5: 63.28125
+Master Step: 43, Method Time Cost: 0.0001087188720703125, Update Time Cost: 0.0025153160095214844
+Master node is entering step: 44
+Master: Broadcasting current step to workers: step=44
+Worker 1: Worker 1 just received next step: step=44
+Rank of this node: 1, Current step: 44
+Master Step: 44 Krum Cost: 0.0001
+Worker: 1, Step: 44, Epoch: 0 [5504/60000 (9%)], Loss: 2.2725, Time Cost: 0.0423, Comp: 0.0088, Comm: 0.0325, Prec@1: 39.0625, Prec@5: 76.5625
+Master Step: 44, Method Time Cost: 0.00011229515075683594, Update Time Cost: 0.0025053024291992188
+Master node is entering step: 45
+Master: Broadcasting current step to workers: step=45
+Worker 1: Worker 1 just received next step: step=45
+Rank of this node: 1, Current step: 45
+Master Step: 45 Krum Cost: 0.0001
+Worker: 1, Step: 45, Epoch: 0 [5632/60000 (9%)], Loss: 2.2781, Time Cost: 0.0406, Comp: 0.0088, Comm: 0.0306, Prec@1: 34.375, Prec@5: 70.3125
+Master Step: 45, Method Time Cost: 0.00013256072998046875, Update Time Cost: 0.002512216567993164
+Master node is entering step: 46
+Master: Broadcasting current step to workers: step=46
+Worker 1: Worker 1 just received next step: step=46
+Rank of this node: 1, Current step: 46
+Master Step: 46 Krum Cost: 0.0001
+Worker: 1, Step: 46, Epoch: 0 [5760/60000 (10%)], Loss: 2.2701, Time Cost: 0.0389, Comp: 0.0088, Comm: 0.0290, Prec@1: 41.40625, Prec@5: 78.90625
+Master Step: 46, Method Time Cost: 0.00011467933654785156, Update Time Cost: 0.0025055408477783203
+Master node is entering step: 47
+Master: Broadcasting current step to workers: step=47
+Worker 1: Worker 1 just received next step: step=47
+Rank of this node: 1, Current step: 47
+Master Step: 47 Krum Cost: 0.0001
+Worker: 1, Step: 47, Epoch: 0 [5888/60000 (10%)], Loss: 2.2777, Time Cost: 0.0412, Comp: 0.0088, Comm: 0.0313, Prec@1: 37.5, Prec@5: 68.75
+Master Step: 47, Method Time Cost: 0.00011658668518066406, Update Time Cost: 0.002537250518798828
+Master node is entering step: 48
+Master: Broadcasting current step to workers: step=48
+Worker 1: Worker 1 just received next step: step=48
+Rank of this node: 1, Current step: 48
+Master Step: 48 Krum Cost: 0.0001
+Worker: 1, Step: 48, Epoch: 0 [6016/60000 (10%)], Loss: 2.2686, Time Cost: 0.0424, Comp: 0.0088, Comm: 0.0325, Prec@1: 43.75, Prec@5: 76.5625
+Master Step: 48, Method Time Cost: 0.00010824203491210938, Update Time Cost: 0.002533435821533203
+Master node is entering step: 49
+Master: Broadcasting current step to workers: step=49
+Worker 1: Worker 1 just received next step: step=49
+Rank of this node: 1, Current step: 49
+Master Step: 49 Krum Cost: 0.0001
+Worker: 1, Step: 49, Epoch: 0 [6144/60000 (10%)], Loss: 2.2720, Time Cost: 0.0394, Comp: 0.0089, Comm: 0.0295, Prec@1: 39.84375, Prec@5: 71.875
+Master Step: 49, Method Time Cost: 0.00011301040649414062, Update Time Cost: 0.0025174617767333984
+Master node is entering step: 50
+Master: Broadcasting current step to workers: step=50
+Worker 1: Worker 1 just received next step: step=50
+Rank of this node: 1, Current step: 50
+Master Step: 50 Krum Cost: 0.0001
+Worker: 1, Step: 50, Epoch: 0 [6272/60000 (10%)], Loss: 2.2744, Time Cost: 0.0435, Comp: 0.0088, Comm: 0.0335, Prec@1: 34.375, Prec@5: 75.78125
+Master Step: 50, Method Time Cost: 0.00011229515075683594, Update Time Cost: 0.002549886703491211
+Master node is entering step: 51
+Master: Broadcasting current step to workers: step=51
+Worker 1: Worker 1 just received next step: step=51
+Rank of this node: 1, Current step: 51
+Master Step: 51 Krum Cost: 0.0001
+Worker: 1, Step: 51, Epoch: 0 [6400/60000 (11%)], Loss: 2.2759, Time Cost: 0.0432, Comp: 0.0088, Comm: 0.0332, Prec@1: 37.5, Prec@5: 75.0
+Master Step: 51, Method Time Cost: 0.00010800361633300781, Update Time Cost: 0.0025305747985839844
+Master node is entering step: 52
+Master: Broadcasting current step to workers: step=52
+Worker 1: Worker 1 just received next step: step=52
+Rank of this node: 1, Current step: 52
+Master Step: 52 Krum Cost: 0.0001
+Worker: 1, Step: 52, Epoch: 0 [6528/60000 (11%)], Loss: 2.2723, Time Cost: 0.0425, Comp: 0.0087, Comm: 0.0327, Prec@1: 36.71875, Prec@5: 77.34375
+Master Step: 52, Method Time Cost: 0.00011038780212402344, Update Time Cost: 0.002513408660888672
+Master node is entering step: 53
+Master: Broadcasting current step to workers: step=53
+Worker 1: Worker 1 just received next step: step=53
+Rank of this node: 1, Current step: 53
+Master Step: 53 Krum Cost: 0.0001
+Worker: 1, Step: 53, Epoch: 0 [6656/60000 (11%)], Loss: 2.2700, Time Cost: 0.0415, Comp: 0.0088, Comm: 0.0316, Prec@1: 39.84375, Prec@5: 75.78125
+Master Step: 53, Method Time Cost: 0.00010991096496582031, Update Time Cost: 0.002536296844482422
+Master node is entering step: 54
+Master: Broadcasting current step to workers: step=54
+Worker 1: Worker 1 just received next step: step=54
+Rank of this node: 1, Current step: 54
+Master Step: 54 Krum Cost: 0.0001
+Worker: 1, Step: 54, Epoch: 0 [6784/60000 (11%)], Loss: 2.2674, Time Cost: 0.0395, Comp: 0.0088, Comm: 0.0295, Prec@1: 40.625, Prec@5: 76.5625
+Master Step: 54, Method Time Cost: 0.00010824203491210938, Update Time Cost: 0.0025167465209960938
+Master node is entering step: 55
+Master: Broadcasting current step to workers: step=55
+Worker 1: Worker 1 just received next step: step=55
+Rank of this node: 1, Current step: 55
+Master Step: 55 Krum Cost: 0.0001
+Worker: 1, Step: 55, Epoch: 0 [6912/60000 (12%)], Loss: 2.2653, Time Cost: 0.0389, Comp: 0.0088, Comm: 0.0289, Prec@1: 46.09375, Prec@5: 78.90625
+Master Step: 55, Method Time Cost: 0.00010776519775390625, Update Time Cost: 0.0025200843811035156
+Master node is entering step: 56
+Master: Broadcasting current step to workers: step=56
+Worker 1: Worker 1 just received next step: step=56
+Rank of this node: 1, Current step: 56
+Master Step: 56 Krum Cost: 0.0001
+Worker: 1, Step: 56, Epoch: 0 [7040/60000 (12%)], Loss: 2.2626, Time Cost: 0.0392, Comp: 0.0088, Comm: 0.0293, Prec@1: 42.96875, Prec@5: 82.03125
+Master Step: 56, Method Time Cost: 0.00010967254638671875, Update Time Cost: 0.0025281906127929688
+Master node is entering step: 57
+Master: Broadcasting current step to workers: step=57
+Worker 1: Worker 1 just received next step: step=57
+Rank of this node: 1, Current step: 57
+Master Step: 57 Krum Cost: 0.0001
+Worker: 1, Step: 57, Epoch: 0 [7168/60000 (12%)], Loss: 2.2673, Time Cost: 0.0395, Comp: 0.0088, Comm: 0.0295, Prec@1: 46.09375, Prec@5: 76.5625
+Master Step: 57, Method Time Cost: 0.00011205673217773438, Update Time Cost: 0.0025255680084228516
+Master node is entering step: 58
+Master: Broadcasting current step to workers: step=58
+Worker 1: Worker 1 just received next step: step=58
+Rank of this node: 1, Current step: 58
+Master Step: 58 Krum Cost: 0.0001
+Worker: 1, Step: 58, Epoch: 0 [7296/60000 (12%)], Loss: 2.2714, Time Cost: 0.0388, Comp: 0.0087, Comm: 0.0289, Prec@1: 39.84375, Prec@5: 78.125
+Master Step: 58, Method Time Cost: 0.00011277198791503906, Update Time Cost: 0.002508878707885742
+Master node is entering step: 59
+Master: Broadcasting current step to workers: step=59
+Worker 1: Worker 1 just received next step: step=59
+Rank of this node: 1, Current step: 59
+Master Step: 59 Krum Cost: 0.0001
+Worker: 1, Step: 59, Epoch: 0 [7424/60000 (12%)], Loss: 2.2617, Time Cost: 0.0399, Comp: 0.0088, Comm: 0.0299, Prec@1: 40.625, Prec@5: 77.34375
+Master Step: 59, Method Time Cost: 0.00010776519775390625, Update Time Cost: 0.002510547637939453
+Master node is entering step: 60
+Master: Broadcasting current step to workers: step=60
+Worker 1: Worker 1 just received next step: step=60
+Rank of this node: 1, Current step: 60
+Master Step: 60 Krum Cost: 0.0001
+Worker: 1, Step: 60, Epoch: 0 [7552/60000 (13%)], Loss: 2.2652, Time Cost: 0.0397, Comp: 0.0088, Comm: 0.0297, Prec@1: 36.71875, Prec@5: 76.5625
+Master Step: 60, Method Time Cost: 0.00011181831359863281, Update Time Cost: 0.0025098323822021484
+Master node is entering step: 61
+Master: Broadcasting current step to workers: step=61
+Worker 1: Worker 1 just received next step: step=61
+Rank of this node: 1, Current step: 61
+Master Step: 61 Krum Cost: 0.0001
+Worker: 1, Step: 61, Epoch: 0 [7680/60000 (13%)], Loss: 2.2635, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0288, Prec@1: 47.65625, Prec@5: 74.21875
+Master Step: 61, Method Time Cost: 0.00010991096496582031, Update Time Cost: 0.002505064010620117
+Master node is entering step: 62
+Master: Broadcasting current step to workers: step=62
+Worker 1: Worker 1 just received next step: step=62
+Rank of this node: 1, Current step: 62
+Master Step: 62 Krum Cost: 0.0001
+Worker: 1, Step: 62, Epoch: 0 [7808/60000 (13%)], Loss: 2.2637, Time Cost: 0.0410, Comp: 0.0088, Comm: 0.0310, Prec@1: 41.40625, Prec@5: 77.34375
+Master Step: 62, Method Time Cost: 0.00010991096496582031, Update Time Cost: 0.0025315284729003906
+Master node is entering step: 63
+Master: Broadcasting current step to workers: step=63
+Worker 1: Worker 1 just received next step: step=63
+Rank of this node: 1, Current step: 63
+Master Step: 63 Krum Cost: 0.0001
+Worker: 1, Step: 63, Epoch: 0 [7936/60000 (13%)], Loss: 2.2642, Time Cost: 0.0397, Comp: 0.0088, Comm: 0.0298, Prec@1: 45.3125, Prec@5: 78.90625
+Master Step: 63, Method Time Cost: 0.00011515617370605469, Update Time Cost: 0.00250244140625
+Master node is entering step: 64
+Master: Broadcasting current step to workers: step=64
+Worker 1: Worker 1 just received next step: step=64
+Rank of this node: 1, Current step: 64
+Master Step: 64 Krum Cost: 0.0001
+Worker: 1, Step: 64, Epoch: 0 [8064/60000 (13%)], Loss: 2.2681, Time Cost: 0.0387, Comp: 0.0088, Comm: 0.0287, Prec@1: 38.28125, Prec@5: 77.34375
+Master Step: 64, Method Time Cost: 0.00011229515075683594, Update Time Cost: 0.0025212764739990234
+Master node is entering step: 65
+Master: Broadcasting current step to workers: step=65
+Worker 1: Worker 1 just received next step: step=65
+Rank of this node: 1, Current step: 65
+Master Step: 65 Krum Cost: 0.0001
+Worker: 1, Step: 65, Epoch: 0 [8192/60000 (14%)], Loss: 2.2632, Time Cost: 0.0384, Comp: 0.0088, Comm: 0.0285, Prec@1: 45.3125, Prec@5: 78.125
+Master Step: 65, Method Time Cost: 0.00010991096496582031, Update Time Cost: 0.0024826526641845703
+Master node is entering step: 66
+Master: Broadcasting current step to workers: step=66
+Worker 1: Worker 1 just received next step: step=66
+Rank of this node: 1, Current step: 66
+Master Step: 66 Krum Cost: 0.0001
+Worker: 1, Step: 66, Epoch: 0 [8320/60000 (14%)], Loss: 2.2654, Time Cost: 0.0396, Comp: 0.0088, Comm: 0.0296, Prec@1: 40.625, Prec@5: 80.46875
+Master Step: 66, Method Time Cost: 0.000110626220703125, Update Time Cost: 0.002529144287109375
+Master node is entering step: 67
+Master: Broadcasting current step to workers: step=67
+Worker 1: Worker 1 just received next step: step=67
+Rank of this node: 1, Current step: 67
+Master Step: 67 Krum Cost: 0.0001
+Worker: 1, Step: 67, Epoch: 0 [8448/60000 (14%)], Loss: 2.2670, Time Cost: 0.0390, Comp: 0.0088, Comm: 0.0290, Prec@1: 42.96875, Prec@5: 76.5625
+Master Step: 67, Method Time Cost: 0.00011110305786132812, Update Time Cost: 0.002531290054321289
+Master node is entering step: 68
+Master: Broadcasting current step to workers: step=68
+Worker 1: Worker 1 just received next step: step=68
+Rank of this node: 1, Current step: 68
+Master Step: 68 Krum Cost: 0.0001
+Worker: 1, Step: 68, Epoch: 0 [8576/60000 (14%)], Loss: 2.2575, Time Cost: 0.0396, Comp: 0.0088, Comm: 0.0297, Prec@1: 46.875, Prec@5: 83.59375
+Master Step: 68, Method Time Cost: 0.00011086463928222656, Update Time Cost: 0.0025069713592529297
+Master node is entering step: 69
+Master: Broadcasting current step to workers: step=69
+Worker 1: Worker 1 just received next step: step=69
+Rank of this node: 1, Current step: 69
+Master Step: 69 Krum Cost: 0.0001
+Worker: 1, Step: 69, Epoch: 0 [8704/60000 (15%)], Loss: 2.2581, Time Cost: 0.0400, Comp: 0.0088, Comm: 0.0300, Prec@1: 48.4375, Prec@5: 78.125
+Master Step: 69, Method Time Cost: 0.00010991096496582031, Update Time Cost: 0.0025327205657958984
+Master node is entering step: 70
+Master: Broadcasting current step to workers: step=70
+Worker 1: Worker 1 just received next step: step=70
+Rank of this node: 1, Current step: 70
+Master Step: 70 Krum Cost: 0.0001
+Worker: 1, Step: 70, Epoch: 0 [8832/60000 (15%)], Loss: 2.2591, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0288, Prec@1: 44.53125, Prec@5: 78.125
+Master Step: 70, Method Time Cost: 0.00011038780212402344, Update Time Cost: 0.0025243759155273438
+Master node is entering step: 71
+Master: Broadcasting current step to workers: step=71
+Worker 1: Worker 1 just received next step: step=71
+Rank of this node: 1, Current step: 71
+Master Step: 71 Krum Cost: 0.0001
+Worker: 1, Step: 71, Epoch: 0 [8960/60000 (15%)], Loss: 2.2601, Time Cost: 0.0391, Comp: 0.0088, Comm: 0.0291, Prec@1: 39.84375, Prec@5: 78.90625
+Master Step: 71, Method Time Cost: 0.00010824203491210938, Update Time Cost: 0.002506732940673828
+Master node is entering step: 72
+Master: Broadcasting current step to workers: step=72
+Worker 1: Worker 1 just received next step: step=72
+Rank of this node: 1, Current step: 72
+Master Step: 72 Krum Cost: 0.0001
+Worker: 1, Step: 72, Epoch: 0 [9088/60000 (15%)], Loss: 2.2587, Time Cost: 0.0398, Comp: 0.0088, Comm: 0.0298, Prec@1: 45.3125, Prec@5: 85.15625
+Master Step: 72, Method Time Cost: 0.00011086463928222656, Update Time Cost: 0.002506732940673828
+Master node is entering step: 73
+Master: Broadcasting current step to workers: step=73
+Worker 1: Worker 1 just received next step: step=73
+Rank of this node: 1, Current step: 73
+Master Step: 73 Krum Cost: 0.0001
+Worker: 1, Step: 73, Epoch: 0 [9216/60000 (15%)], Loss: 2.2610, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0288, Prec@1: 39.84375, Prec@5: 79.6875
+Master Step: 73, Method Time Cost: 0.00010848045349121094, Update Time Cost: 0.0025336742401123047
+Master node is entering step: 74
+Master: Broadcasting current step to workers: step=74
+Worker 1: Worker 1 just received next step: step=74
+Rank of this node: 1, Current step: 74
+Master Step: 74 Krum Cost: 0.0001
+Worker: 1, Step: 74, Epoch: 0 [9344/60000 (16%)], Loss: 2.2528, Time Cost: 0.0395, Comp: 0.0088, Comm: 0.0296, Prec@1: 57.8125, Prec@5: 80.46875
+Master Step: 74, Method Time Cost: 0.00011110305786132812, Update Time Cost: 0.0024950504302978516
+Master node is entering step: 75
+Master: Broadcasting current step to workers: step=75
+Worker 1: Worker 1 just received next step: step=75
+Rank of this node: 1, Current step: 75
+Master Step: 75 Krum Cost: 0.0001
+Worker: 1, Step: 75, Epoch: 0 [9472/60000 (16%)], Loss: 2.2603, Time Cost: 0.0416, Comp: 0.0088, Comm: 0.0317, Prec@1: 43.75, Prec@5: 79.6875
+Master Step: 75, Method Time Cost: 0.00011301040649414062, Update Time Cost: 0.0025238990783691406
+Master node is entering step: 76
+Master: Broadcasting current step to workers: step=76
+Worker 1: Worker 1 just received next step: step=76
+Rank of this node: 1, Current step: 76
+Master Step: 76 Krum Cost: 0.0001
+Worker: 1, Step: 76, Epoch: 0 [9600/60000 (16%)], Loss: 2.2546, Time Cost: 0.0390, Comp: 0.0088, Comm: 0.0290, Prec@1: 48.4375, Prec@5: 82.8125
+Master Step: 76, Method Time Cost: 0.00010824203491210938, Update Time Cost: 0.002537965774536133
+Master node is entering step: 77
+Master: Broadcasting current step to workers: step=77
+Worker 1: Worker 1 just received next step: step=77
+Rank of this node: 1, Current step: 77
+Master Step: 77 Krum Cost: 0.0001
+Worker: 1, Step: 77, Epoch: 0 [9728/60000 (16%)], Loss: 2.2537, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0289, Prec@1: 46.09375, Prec@5: 84.375
+Master Step: 77, Method Time Cost: 0.00010824203491210938, Update Time Cost: 0.0025298595428466797
+Master node is entering step: 78
+Master: Broadcasting current step to workers: step=78
+Worker 1: Worker 1 just received next step: step=78
+Rank of this node: 1, Current step: 78
+Master Step: 78 Krum Cost: 0.0001
+Worker: 1, Step: 78, Epoch: 0 [9856/60000 (16%)], Loss: 2.2480, Time Cost: 0.0396, Comp: 0.0087, Comm: 0.0298, Prec@1: 52.34375, Prec@5: 85.9375
+Master Step: 78, Method Time Cost: 0.00011324882507324219, Update Time Cost: 0.0025107860565185547
+Master node is entering step: 79
+Master: Broadcasting current step to workers: step=79
+Worker 1: Worker 1 just received next step: step=79
+Rank of this node: 1, Current step: 79
+Master Step: 79 Krum Cost: 0.0001
+Worker: 1, Step: 79, Epoch: 0 [9984/60000 (17%)], Loss: 2.2504, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0288, Prec@1: 48.4375, Prec@5: 83.59375
+Master Step: 79, Method Time Cost: 0.00011086463928222656, Update Time Cost: 0.002498626708984375
+Master node is entering step: 80
+Master: Broadcasting current step to workers: step=80
+Worker 1: Worker 1 just received next step: step=80
+Rank of this node: 1, Current step: 80
+Master Step: 80 Krum Cost: 0.0001
+Worker: 1, Step: 80, Epoch: 0 [10112/60000 (17%)], Loss: 2.2532, Time Cost: 0.0396, Comp: 0.0088, Comm: 0.0297, Prec@1: 48.4375, Prec@5: 79.6875
+Master Step: 80, Method Time Cost: 0.0001087188720703125, Update Time Cost: 0.0025129318237304688
+Master node is entering step: 81
+Master: Broadcasting current step to workers: step=81
+Worker 1: Worker 1 just received next step: step=81
+Rank of this node: 1, Current step: 81
+Master Step: 81 Krum Cost: 0.0001
+Worker: 1, Step: 81, Epoch: 0 [10240/60000 (17%)], Loss: 2.2522, Time Cost: 0.0401, Comp: 0.0088, Comm: 0.0301, Prec@1: 47.65625, Prec@5: 77.34375
+Master Step: 81, Method Time Cost: 0.00010919570922851562, Update Time Cost: 0.002542734146118164
+Master node is entering step: 82
+Master: Broadcasting current step to workers: step=82
+Worker 1: Worker 1 just received next step: step=82
+Rank of this node: 1, Current step: 82
+Master Step: 82 Krum Cost: 0.0001
+Worker: 1, Step: 82, Epoch: 0 [10368/60000 (17%)], Loss: 2.2487, Time Cost: 0.0391, Comp: 0.0088, Comm: 0.0291, Prec@1: 51.5625, Prec@5: 83.59375
+Master Step: 82, Method Time Cost: 0.00011014938354492188, Update Time Cost: 0.0025222301483154297
+Master node is entering step: 83
+Master: Broadcasting current step to workers: step=83
+Worker 1: Worker 1 just received next step: step=83
+Rank of this node: 1, Current step: 83
+Master Step: 83 Krum Cost: 0.0001
+Worker: 1, Step: 83, Epoch: 0 [10496/60000 (17%)], Loss: 2.2449, Time Cost: 0.0386, Comp: 0.0088, Comm: 0.0287, Prec@1: 53.90625, Prec@5: 85.15625
+Master Step: 83, Method Time Cost: 0.00011563301086425781, Update Time Cost: 0.0025277137756347656
+Master node is entering step: 84
+Master: Broadcasting current step to workers: step=84
+Worker 1: Worker 1 just received next step: step=84
+Rank of this node: 1, Current step: 84
+Master Step: 84 Krum Cost: 0.0001
+Worker: 1, Step: 84, Epoch: 0 [10624/60000 (18%)], Loss: 2.2485, Time Cost: 0.0401, Comp: 0.0088, Comm: 0.0301, Prec@1: 55.46875, Prec@5: 81.25
+Master Step: 84, Method Time Cost: 0.00010824203491210938, Update Time Cost: 0.002501964569091797
+Master node is entering step: 85
+Master: Broadcasting current step to workers: step=85
+Worker 1: Worker 1 just received next step: step=85
+Rank of this node: 1, Current step: 85
+Master Step: 85 Krum Cost: 0.0001
+Worker: 1, Step: 85, Epoch: 0 [10752/60000 (18%)], Loss: 2.2463, Time Cost: 0.0391, Comp: 0.0088, Comm: 0.0291, Prec@1: 46.09375, Prec@5: 82.8125
+Master Step: 85, Method Time Cost: 0.00010752677917480469, Update Time Cost: 0.0025148391723632812
+Master node is entering step: 86
+Master: Broadcasting current step to workers: step=86
+Worker 1: Worker 1 just received next step: step=86
+Rank of this node: 1, Current step: 86
+Master Step: 86 Krum Cost: 0.0001
+Worker: 1, Step: 86, Epoch: 0 [10880/60000 (18%)], Loss: 2.2328, Time Cost: 0.0381, Comp: 0.0088, Comm: 0.0282, Prec@1: 63.28125, Prec@5: 90.625
+Master Step: 86, Method Time Cost: 0.00011563301086425781, Update Time Cost: 0.0025081634521484375
+Master node is entering step: 87
+Master: Broadcasting current step to workers: step=87
+Worker 1: Worker 1 just received next step: step=87
+Rank of this node: 1, Current step: 87
+Master Step: 87 Krum Cost: 0.0001
+Worker: 1, Step: 87, Epoch: 0 [11008/60000 (18%)], Loss: 2.2398, Time Cost: 0.0391, Comp: 0.0088, Comm: 0.0291, Prec@1: 51.5625, Prec@5: 87.5
+Master Step: 87, Method Time Cost: 0.00010895729064941406, Update Time Cost: 0.0025246143341064453
+Master node is entering step: 88
+Master: Broadcasting current step to workers: step=88
+Worker 1: Worker 1 just received next step: step=88
+Rank of this node: 1, Current step: 88
+Master Step: 88 Krum Cost: 0.0001
+Worker: 1, Step: 88, Epoch: 0 [11136/60000 (19%)], Loss: 2.2491, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0288, Prec@1: 46.875, Prec@5: 83.59375
+Master Step: 88, Method Time Cost: 0.00011205673217773438, Update Time Cost: 0.0025267601013183594
+Master node is entering step: 89
+Master: Broadcasting current step to workers: step=89
+Worker 1: Worker 1 just received next step: step=89
+Rank of this node: 1, Current step: 89
+Master Step: 89 Krum Cost: 0.0001
+Worker: 1, Step: 89, Epoch: 0 [11264/60000 (19%)], Loss: 2.2393, Time Cost: 0.0398, Comp: 0.0088, Comm: 0.0299, Prec@1: 61.71875, Prec@5: 86.71875
+Master Step: 89, Method Time Cost: 0.00010752677917480469, Update Time Cost: 0.002537250518798828
+Master node is entering step: 90
+Master: Broadcasting current step to workers: step=90
+Worker 1: Worker 1 just received next step: step=90
+Rank of this node: 1, Current step: 90
+Master Step: 90 Krum Cost: 0.0001
+Worker: 1, Step: 90, Epoch: 0 [11392/60000 (19%)], Loss: 2.2469, Time Cost: 0.0399, Comp: 0.0088, Comm: 0.0299, Prec@1: 51.5625, Prec@5: 83.59375
+Master Step: 90, Method Time Cost: 0.00010919570922851562, Update Time Cost: 0.0025157928466796875
+Master node is entering step: 91
+Master: Broadcasting current step to workers: step=91
+Worker 1: Worker 1 just received next step: step=91
+Rank of this node: 1, Current step: 91
+Master Step: 91 Krum Cost: 0.0001
+Worker: 1, Step: 91, Epoch: 0 [11520/60000 (19%)], Loss: 2.2447, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0288, Prec@1: 50.0, Prec@5: 84.375
+Master Step: 91, Method Time Cost: 0.00010919570922851562, Update Time Cost: 0.002505064010620117
+Master node is entering step: 92
+Master: Broadcasting current step to workers: step=92
+Worker 1: Worker 1 just received next step: step=92
+Rank of this node: 1, Current step: 92
+Master Step: 92 Krum Cost: 0.0001
+Worker: 1, Step: 92, Epoch: 0 [11648/60000 (19%)], Loss: 2.2518, Time Cost: 0.0383, Comp: 0.0088, Comm: 0.0284, Prec@1: 45.3125, Prec@5: 80.46875
+Master Step: 92, Method Time Cost: 0.00011038780212402344, Update Time Cost: 0.002501964569091797
+Master node is entering step: 93
+Master: Broadcasting current step to workers: step=93
+Worker 1: Worker 1 just received next step: step=93
+Rank of this node: 1, Current step: 93
+Master Step: 93 Krum Cost: 0.0001
+Worker: 1, Step: 93, Epoch: 0 [11776/60000 (20%)], Loss: 2.2467, Time Cost: 0.0419, Comp: 0.0088, Comm: 0.0321, Prec@1: 52.34375, Prec@5: 78.125
+Master Step: 93, Method Time Cost: 0.00010967254638671875, Update Time Cost: 0.002500295639038086
+Master node is entering step: 94
+Master: Broadcasting current step to workers: step=94
+Worker 1: Worker 1 just received next step: step=94
+Rank of this node: 1, Current step: 94
+Master Step: 94 Krum Cost: 0.0001
+Worker: 1, Step: 94, Epoch: 0 [11904/60000 (20%)], Loss: 2.2402, Time Cost: 0.0385, Comp: 0.0088, Comm: 0.0285, Prec@1: 57.8125, Prec@5: 85.15625
+Master Step: 94, Method Time Cost: 0.00010800361633300781, Update Time Cost: 0.0025162696838378906
+Master node is entering step: 95
+Master: Broadcasting current step to workers: step=95
+Worker 1: Worker 1 just received next step: step=95
+Rank of this node: 1, Current step: 95
+Master Step: 95 Krum Cost: 0.0001
+Worker: 1, Step: 95, Epoch: 0 [12032/60000 (20%)], Loss: 2.2432, Time Cost: 0.0388, Comp: 0.0088, Comm: 0.0289, Prec@1: 46.875, Prec@5: 85.9375
+Master Step: 95, Method Time Cost: 0.00010967254638671875, Update Time Cost: 0.0025408267974853516
+Master node is entering step: 96
+Master: Broadcasting current step to workers: step=96
+Worker 1: Worker 1 just received next step: step=96
+Rank of this node: 1, Current step: 96
+Master Step: 96 Krum Cost: 0.0001
+Worker: 1, Step: 96, Epoch: 0 [12160/60000 (20%)], Loss: 2.2418, Time Cost: 0.0394, Comp: 0.0088, Comm: 0.0294, Prec@1: 50.78125, Prec@5: 82.8125
+Master Step: 96, Method Time Cost: 0.00011301040649414062, Update Time Cost: 0.0025093555450439453
+Master node is entering step: 97
+Master: Broadcasting current step to workers: step=97
+Worker 1: Worker 1 just received next step: step=97
+Rank of this node: 1, Current step: 97
+Master Step: 97 Krum Cost: 0.0001
+Worker: 1, Step: 97, Epoch: 0 [12288/60000 (20%)], Loss: 2.2511, Time Cost: 0.0387, Comp: 0.0088, Comm: 0.0287, Prec@1: 41.40625, Prec@5: 81.25
+Master Step: 97, Method Time Cost: 0.00011134147644042969, Update Time Cost: 0.0025022029876708984
+Master node is entering step: 98
+Master: Broadcasting current step to workers: step=98
+Worker 1: Worker 1 just received next step: step=98
+Rank of this node: 1, Current step: 98
+Master Step: 98 Krum Cost: 0.0001
+Worker: 1, Step: 98, Epoch: 0 [12416/60000 (21%)], Loss: 2.2322, Time Cost: 0.0401, Comp: 0.0088, Comm: 0.0301, Prec@1: 57.03125, Prec@5: 89.84375
+Master Step: 98, Method Time Cost: 0.0001251697540283203, Update Time Cost: 0.0025017261505126953
+Master node is entering step: 99
+Master: Broadcasting current step to workers: step=99
+Worker 1: Worker 1 just received next step: step=99
+Rank of this node: 1, Current step: 99
+Master Step: 99 Krum Cost: 0.0001
+Worker: 1, Step: 99, Epoch: 0 [12544/60000 (21%)], Loss: 2.2480, Time Cost: 0.0396, Comp: 0.0088, Comm: 0.0296, Prec@1: 49.21875, Prec@5: 74.21875
+Master Step: 99, Method Time Cost: 0.00010848045349121094, Update Time Cost: 0.002513885498046875
+Master node is entering step: 100
+Master: Broadcasting current step to workers: step=100
+Worker 1: Worker 1 just received next step: step=100
+Rank of this node: 1, Current step: 100
+Master Step: 100 Krum Cost: 0.0001
+Worker: 1, Step: 100, Epoch: 0 [12672/60000 (21%)], Loss: 2.2349, Time Cost: 0.0389, Comp: 0.0088, Comm: 0.0290, Prec@1: 58.59375, Prec@5: 85.15625
+Master Step: 100, Method Time Cost: 0.00011110305786132812, Update Time Cost: 0.002527475357055664
+Done sending massage to workers!
+Now the next step is: 100
