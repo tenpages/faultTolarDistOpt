@@ -267,6 +267,29 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._grad_aggregate_buffer[g_idx] = geo_median
         print("Master Step: {} Found Geo Median Cost: {:.4f}".format(self.cur_step, time.time()-geo_median_start))
 
+    def _krum(self):
+        def __krum(grad_list, s):
+            """
+            Krum function in https://arxiv.org/abs/1703.02757
+            :param grad_list: gradients from all workers
+            :param s: number of faulty workers
+            :return: gradient from worker i that minimizes Krum score
+            """
+            score = []
+            for i, g_i in enumerate(grad_list):
+                neighbor_distances = []
+                for j, g_j in enumerate(grad_list):
+                    if i!=j:
+                        neighbor_distances.append(np.linalg.norm(g_i-g_j)**2)
+                score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-s-2]))
+            i_star = score.index(min(score))
+            return grad_list[i_star]
+        krum_start = time.time()
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            krum_median = __krum(grads, self._s)
+            self._grad_aggregate_buffer[g_idx] = krum_median
+        print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
+
 
 class GradientAccumulator(object):
     """
