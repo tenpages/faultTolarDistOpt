@@ -95,7 +95,7 @@ def load_data(dataset, seed, args):
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ]))
-        train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=False)
         test_loader = None
         return train_loader, training_set, test_loader
     print("here2")
