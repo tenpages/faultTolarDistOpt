@@ -25,7 +25,7 @@ import master
 import worker
 
 SEED_ = 428
-
+TORCH_SEED_ = 761
 
 def add_fit_args(parser):
     """
@@ -86,6 +86,7 @@ def add_fit_args(parser):
 
 def load_data(dataset, seed, args):
     print("here")
+    torch.manual_seed(TORCH_SEED_)
     if seed:
         torch.manual_seed(seed)
         random.seed(seed)
