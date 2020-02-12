@@ -30,7 +30,8 @@ class SGDModified(Optimizer):
             for i,p in enumerate(group['params']):
                 if mode=='normal':
                     d_p=torch.from_numpy(grads[i]).float()
-                elif mode=='geometric_median' or mode=='maj_vote' or mode=='cyclic' or mode=='krum':
+                elif mode=='geometric_median' or mode=='maj_vote' or mode=='cyclic' or mode=='krum'\
+                        or mode=='median_of_means':
                     d_p=torch.from_numpy(grads[i].reshape(p.size())).float()
                 if weight_decay != 0:
                     d_p.add_(weight_decay, p.data)
