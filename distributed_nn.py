@@ -14,11 +14,6 @@ import torch.nn.functional as F
 
 import numpy as np
 
-# from nn_ops import NN_trainer, accuracy
-# from
-
-# from
-# from
 from torchvision import datasets, transforms
 
 import master
