@@ -324,6 +324,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             print(type(grads))
             print(type(grads[0]))
             median = np.median(np.array([np.mean(np.array(grads[i:i+b])) for i in range(0,self.num_workers,b)]), axis=0)
+            print(median)
             self._grad_aggregate_buffer[g_idx] = median
 
     def _grad_norm(self):
