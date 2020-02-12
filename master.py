@@ -326,7 +326,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def _grad_norm(self):
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            ranks = np.argsort(np.linalg.norm(np.array(a), axis=1))
+            ranks = np.argsort(np.linalg.norm(np.array(grads), axis=1))
             norm = np.linalg.norm(grads[ranks[self.num_workers-self._s-1]])
             for i in range(self.num_workers-self._s, self.num_workers):
                 grads[ranks[i]]=grads[ranks[i]]*norm/np.linalg.norm(grads[ranks[i]])
