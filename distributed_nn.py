@@ -91,7 +91,7 @@ def load_data(dataset, seed, args, rank, world_size):
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ]))
-        testing_set =  datasets.MNIST('./mnist_data', train=False, download=True, transform=transforms.Compose([
+        testing_set = datasets.MNIST('./mnist_data', train=False, download=True, transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ]))
