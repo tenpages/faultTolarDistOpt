@@ -251,7 +251,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def _save_model(self, file_path):
         with open(file_path, "wb") as f_:
-            torch.save(self.network, f_)
+            torch.save(self.network.state_dict(), f_)
 
     def _load_model(self, file_path):
         model_state_dict = torch.load(file_path)
