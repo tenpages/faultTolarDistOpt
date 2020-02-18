@@ -98,7 +98,7 @@ def load_data(dataset, seed, args, rank, world_size):
         if rank!=0:
             group_size = int(len(training_set)/(world_size-1))
             training_data = training_set.data[group_size*(rank-1):group_size*rank]
-            training_data.view(training_data.shape[0],1,training_data.shape[1],training_data.shape[2])
+            training_data = training_data.view(training_data.shape[0],1,training_data.shape[1],training_data.shape[2])
             training_targets = training_set.targets[group_size*(rank-1):group_size*rank]
             training_set = torch.utils.data.TensorDataset(training_data, training_targets)
         train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
