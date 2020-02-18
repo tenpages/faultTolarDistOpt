@@ -82,7 +82,7 @@ def add_fit_args(parser):
 
 class MNISTSubLoader(datasets.MNIST):
     def __init__(self, *args, group_size=0, start_from=0, **kwargs):
-        super(SubLoader, self).__init__(*args, **kwargs)
+        super(MNISTSubLoader, self).__init__(*args, **kwargs)
         if group_size == 0:
             return
         if self.train:
