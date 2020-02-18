@@ -22,6 +22,7 @@ import worker
 SEED_ = 428
 TORCH_SEED_ = 761
 
+
 def add_fit_args(parser):
     """
     parser : argparse.ArgumentParser
@@ -79,30 +80,44 @@ def add_fit_args(parser):
     return args
 
 
+class SubLoader(datasets.MNIST):
+    def __init__(self, *args, group_size=0, start_from=0, **kwargs):
+        super(SubLoader, self).__init__(*args, **kwargs)
+        if group_size == 0:
+            return
+        if self.train:
+            print(self.train_data.shape)
+            print(self.train_labels.shape)
+            self.data = self.data[start_from:start_from + group_size]
+            self.targets = self.targets[start_from:start_from + group_size]
+
+
 def load_data(dataset, seed, args, rank, world_size):
     print("here")
     torch.manual_seed(TORCH_SEED_)
     if seed:
         torch.manual_seed(seed)
         random.seed(seed)
-    print("dataset: "+dataset)
+    print("dataset: " + dataset)
     if dataset == "MNIST":
-        training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ]))
-        testing_set = datasets.MNIST('./mnist_data', train=False, download=True, transform=transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ]))
-        if rank!=0:
-            group_size = int(len(training_set)/(world_size-1))
-            training_data = training_set.data[group_size*(rank-1):group_size*rank]
-            training_data = training_data.view(training_data.shape[0],1,training_data.shape[1],training_data.shape[2])
-            training_targets = training_set.targets[group_size*(rank-1):group_size*rank]
-            training_set = torch.utils.data.TensorDataset(training_data, training_targets)
+        if rank==0:
+            training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,))
+            ]))
+        else:
+            group_size = int(60000 / (world_size - 1))
+            training_set = SubLoader('./mnist_data_sub/'+str(rank), train=True, download=True, transforms=transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,))
+            ]), group_size=group_size, start_from=group_size*(rank-1))
+        # testing_set = datasets.MNIST('./mnist_data', train=False, download=True, transform=transforms.Compose([
+        #     transforms.ToTensor(),
+        #     transforms.Normalize((0.1307,), (0.3081,))
+        # ]))
         train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-        test_loader = torch.utils.data.DataLoader(testing_set)
+        # test_loader = torch.utils.data.DataLoader(testing_set)
+        test_loader = None
         return train_loader, training_set, test_loader
     print("here2")
     return None, None, None
@@ -118,7 +133,8 @@ def prepare(args, rank, world_size):
     if args.approach == "baseline":
         # randomly select adversarial nodes
         adversaries = _generate_adversarial_nodes(args, world_size)
-        train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank, world_size=world_size)
+        train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank,
+                                                            world_size=world_size)
         kwargs_master = {
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
@@ -169,12 +185,14 @@ if __name__ == "__main__":
         if rank == 0:
             master_fc_nn = master.SyncReplicaMaster_NN(comm=comm, **kwargs_master)
             master_fc_nn.build_model()
-            print("Master node: the world size is {}, cur step: {}".format(master_fc_nn.world_size, master_fc_nn.cur_step))
+            print("Master node: the world size is {}, cur step: {}".format(master_fc_nn.world_size,
+                                                                           master_fc_nn.cur_step))
             master_fc_nn.start()
             print("Done sending massage to workers!")
         else:
             worker_fc_nn = worker.DistributedWorker(comm=comm, **kwargs_worker)
             worker_fc_nn.build_model()
-            print("Worker node: {} in all {}, next step: {}".format(worker_fc_nn.rank, worker_fc_nn.world_size, worker_fc_nn.next_step))
+            print("Worker node: {} in all {}, next step: {}".format(worker_fc_nn.rank, worker_fc_nn.world_size,
+                                                                    worker_fc_nn.next_step))
             worker_fc_nn.train(train_loader=train_loader, test_loader=test_loader)
             print("Now the next step is: {}".format(worker_fc_nn.next_step))
