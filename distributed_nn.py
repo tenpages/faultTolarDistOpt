@@ -84,7 +84,7 @@ def add_fit_args(parser):
     return args
 
 
-def load_data(dataset, seed, args):
+def load_data(dataset, seed, args, rank, world_size):
     print("here")
     torch.manual_seed(TORCH_SEED_)
     if seed:
@@ -96,8 +96,17 @@ def load_data(dataset, seed, args):
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ]))
-        train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=False)
-        test_loader = None
+        testing_set =  datasets.MNIST('./mnist_data', train=False, download=True, transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ]))
+        if rank!=0:
+            group_size = int(len(training_set)/(world_size-1))
+            training_data = training_set.data[group_size*(rank-1):group_size*rank]
+            training_targets = training_set.targets[group_size*(rank-1):group_size*rank]
+            training_set = torch.utils.data.TensorDataset(training_data, training_targets)
+        train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        test_loader = torch.utils.data.DataLoader(testing_set)
         return train_loader, training_set, test_loader
     print("here2")
     return None, None, None
@@ -113,7 +122,7 @@ def prepare(args, rank, world_size):
     if args.approach == "baseline":
         # randomly select adversarial nodes
         adversaries = _generate_adversarial_nodes(args, world_size)
-        train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args)
+        train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank, world_size=world_size)
         kwargs_master = {
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
