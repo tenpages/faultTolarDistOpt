@@ -133,12 +133,7 @@ if __name__ == "__main__":
 
     # load training and test set here:
     if args.dataset == "MNIST":
-        test_loader = torch.utils.data.DataLoader(
-            datasets.MNIST('./mnist_data', train=False, transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,))
-            ])), batch_size=args.eval_batch_size, shuffle=True)
-
+F
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
                         'eval_batch_size': args.eval_batch_size, 'network': args.network}
     evaluator_nn = DistributedEvaluator(**kwargs_evaluator)
