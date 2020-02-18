@@ -107,7 +107,7 @@ def load_data(dataset, seed, args, rank, world_size):
             ]))
         else:
             group_size = int(60000 / (world_size - 1))
-            training_set = SubLoader('./mnist_data_sub/'+str(rank), train=True, download=True, transforms=transforms.Compose([
+            training_set = SubLoader('./mnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,))
             ]), group_size=group_size, start_from=group_size*(rank-1))
