@@ -80,7 +80,7 @@ def add_fit_args(parser):
     return args
 
 
-class SubLoader(datasets.MNIST):
+class MNISTSubLoader(datasets.MNIST):
     def __init__(self, *args, group_size=0, start_from=0, **kwargs):
         super(SubLoader, self).__init__(*args, **kwargs)
         if group_size == 0:
@@ -107,7 +107,7 @@ def load_data(dataset, seed, args, rank, world_size):
             ]))
         else:
             group_size = int(60000 / (world_size - 1))
-            training_set = SubLoader('./mnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
+            training_set = MNISTSubLoader('./mnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,))
             ]), group_size=group_size, start_from=group_size*(rank-1))
