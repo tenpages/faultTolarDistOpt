@@ -146,6 +146,7 @@ def prepare(args, rank, world_size):
         adversaries = _generate_adversarial_nodes(args, world_size)
         train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank,
                                                             world_size=world_size)
+        data_shape = training_set[0][0].size()[0]*training_set[0][0].size()[1]*training_set[0][0].size()[2]
         kwargs_master = {
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
