@@ -119,6 +119,17 @@ def load_data(dataset, seed, args, rank, world_size):
         # test_loader = torch.utils.data.DataLoader(testing_set)
         test_loader = None
         return train_loader, training_set, test_loader
+
+    elif dataset == "CIFAR10":
+        training_set = datasets.CIFAR10('./cifar10_data', train=True, download=True, transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ]))
+        train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        test_loader = None
+
+        return train_loader, training_set, test_loader
+
     print("here2")
     return None, None, None
 
@@ -148,7 +159,8 @@ def prepare(args, rank, world_size):
             'train_dir': args.train_dir,
             'update_mode': args.mode,
             'compress_grad': args.compress_grad,
-            'checkpoint_step': args.checkpoint_step
+            'checkpoint_step': args.checkpoint_step,
+            'data_size': data_shape
         }
         kwargs_worker = {
             'batch_size': args.batch_size,
@@ -165,7 +177,8 @@ def prepare(args, rank, world_size):
             'eval_freq': args.eval_freq,
             'train_dir': args.train_dir,
             'checkpoint_step': args.checkpoint_step,
-            'adversaries': adversaries
+            'adversaries': adversaries,
+            'data_size': data_shape
         }
     print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)

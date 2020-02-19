@@ -35,13 +35,15 @@ class DistributedWorker(NN_Trainer):
         self._train_dir = kwargs['train_dir']
         self._checkpoint_step = kwargs['checkpoint_step']
         self._max_steps = kwargs['max_steps']
+        self._size = kwargs['data_size']
 
         self._layer_cur_step = []
         self._fail_workers = kwargs['adversaries']
 
     def build_model(self):
+        # print("building model, self._size ", self._size)
         if self.network_config == 'FC':
-            self.network = Full_Connected()
+            self.network = Full_Connected(self._size)
 
         if self._checkpoint_step != 0:
             file_path = '../checkpoints/model_step_' + str(self._checkpoint_step)

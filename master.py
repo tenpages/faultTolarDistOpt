@@ -45,10 +45,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._compress_grad = kwargs['compress_grad']
         self._checkpoint_step = kwargs['checkpoint_step']
         self._s = kwargs['worker_fail']
+        self._size = kwargs['data_size']
 
-    def build_model(self):
+    def build_model(self) :
+        # print("building model, self._size ", self._size)
         if self.network_config == "FC":
-            self.network = Full_Connected_Split()
+            self.network = Full_Connected_Split(self._size)
 
         if self._checkpoint_step != 0:
             file_path = "../checkpoints/geo_median/model_step_" + str(self._checkpoint_step)

@@ -12,9 +12,9 @@ from compress_gradient import compress
 
 
 class Full_Connected(nn.Module):
-    def __init__(self):
+    def __init__(self, size):
         super(Full_Connected, self).__init__()
-        self.fc1 = nn.Linear(784, 800)
+        self.fc1 = nn.Linear(size, 800)
         self.fc2 = nn.Linear(800, 500)
         self.fc3 = nn.Linear(500, 10)
         self.relu = nn.ReLU()
@@ -35,9 +35,9 @@ class Full_Connected(nn.Module):
 
 
 class Full_Connected_Split(nn.Module):
-    def __init__(self):
+    def __init__(self, size):
         super(Full_Connected_Split, self).__init__()
-        self.fc1 = nn.Linear(784, 800)
+        self.fc1 = nn.Linear(size, 800)
         self.fc2 = nn.Linear(800, 500)
         self.fc3 = nn.Linear(500, 10)
         self.relu = nn.ReLU()
