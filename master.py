@@ -140,7 +140,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_start = time.time()
                 self._coor_wise_median()
                 method_duration = time.time() - method_start
-            elif self._update_mode == 'coor_wise_trimed_mean':
+            elif self._update_mode == 'coor_wise_trimmed_mean':
                 method_start = time.time()
                 self._coor_wise_trimmed_mean()
                 method_duration = time.time() - method_start
@@ -171,7 +171,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._model_shapes.append(param.size())
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer.append(np.zeros(param.size()))
-            elif self._update_mode in ('geometric_median', 'krum', 'coor_wise_median', 'coor_wise_trimed_mean', 'median_of_means', 'grad_norm'):
+            elif self._update_mode in ('geometric_median', 'krum', 'coor_wise_median', 'coor_wise_trimmed_mean', 'median_of_means', 'grad_norm'):
                 self._grad_aggregate_buffer.append([])
 
     def async_bcast_step(self):
@@ -221,7 +221,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def aggregate_gradient(self, gradient, layer_idx):
         if self._update_mode == 'normal':
             self._grad_aggregate_buffer[layer_idx] += gradient
-        elif self._update_mode in ("geometric_median", "krum", 'coor_wise_median', 'coor_wise_trimed_mean', 'median_of_means', 'grad_norm'):
+        elif self._update_mode in ("geometric_median", "krum", 'coor_wise_median', 'coor_wise_trimmed_mean', 'median_of_means', 'grad_norm'):
             _shape = gradient.shape
             if len(_shape) == 1:
                 self._grad_aggregate_buffer[layer_idx].append(gradient)
@@ -245,7 +245,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for i in range(len(self._grad_aggregate_buffer)):
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
-            elif self._update_mode in ("geometric_median", "krum", 'coor_wise_median', 'coor_wise_trimed_mean', 'median_of_means', 'grad_norm'):
+            elif self._update_mode in ("geometric_median", "krum", 'coor_wise_median', 'coor_wise_trimmed_mean', 'median_of_means', 'grad_norm'):
                 self._grad_aggregate_buffer[i] = []
 
     def _generate_model_path(self):
