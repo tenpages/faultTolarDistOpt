@@ -62,6 +62,7 @@ class DistributedEvaluator(NN_Trainer):
     '''
 
     def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self._cur_step = 0
         self._model_dir = kwargs['model_dir']
         self._eval_freq = int(kwargs['eval_freq'])
