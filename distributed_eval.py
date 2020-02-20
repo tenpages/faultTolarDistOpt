@@ -70,7 +70,7 @@ class DistributedEvaluator(object):
         # this one is going to be used to avoid fetch the weights for multiple times
         self._layer_cur_step = []
         if self.network_config == "FC":
-            self.network = Full_Connected()
+            self.network = Full_Connected(kwargs['input_size'])
 
     def evaluate(self, validation_loader):
         # init objective to fetch at the begining
