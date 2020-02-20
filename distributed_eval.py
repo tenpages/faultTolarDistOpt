@@ -125,13 +125,15 @@ if __name__ == "__main__":
 
     # load training and test set here:
     if args.dataset == "MNIST":
-        test_loader = torch.utils.data.DataLoader(
-            datasets.MNIST('./mnist_data', train=False, transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,))
-            ])), batch_size=args.eval_batch_size, shuffle=True)
+        testing_set=datasets.MNIST('./mnist_data', train=False, transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ]))
+        test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
+        data_shape = testing_set[0][0].size()[0]*testing_set[0][0].size()[1]*testing_set[0][0].size()[2]
 
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
-                        'eval_batch_size': args.eval_batch_size, 'network': args.network}
+                        'eval_batch_size': args.eval_batch_size, 'network': args.network,
+                        'input_size': data_shape}
     evaluator_nn = DistributedEvaluator(**kwargs_evaluator)
     evaluator_nn.evaluate(validation_loader=test_loader)
