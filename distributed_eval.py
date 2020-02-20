@@ -53,7 +53,7 @@ def add_fit_args(parser):
     return args
 
 
-class DistributedEvaluator(NN_Trainer):
+class DistributedEvaluator(object):
     '''
     The DistributedEvaluator aims at providing a seperate node in the distributed cluster to evaluate
     the model on validation/test set and return the results
@@ -62,7 +62,6 @@ class DistributedEvaluator(NN_Trainer):
     '''
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
         self._cur_step = 0
         self._model_dir = kwargs['model_dir']
         self._eval_freq = int(kwargs['eval_freq'])
@@ -70,6 +69,8 @@ class DistributedEvaluator(NN_Trainer):
         self.network_config = kwargs['network']
         # this one is going to be used to avoid fetch the weights for multiple times
         self._layer_cur_step = []
+        if self.network_config == "FC":
+            self.network = Full_Connected()
 
     def evaluate(self, validation_loader):
         # init objective to fetch at the begining
@@ -85,8 +86,10 @@ class DistributedEvaluator(NN_Trainer):
                 self._evaluate_model(validation_loader)
                 self._next_step_to_fetch += self._eval_freq
             else:
+                break
                 # TODO(hwang): sleep appropriate period of time make sure to tune this parameter
-                time.sleep(10)
+                # time.sleep(10)
+        print("finished evaluation.")
 
     def _evaluate_model(self, test_loader):
         self.network.eval()
@@ -108,19 +111,7 @@ class DistributedEvaluator(NN_Trainer):
         test_loss /= len(test_loader.dataset)
         print('Test set: Average loss: {:.4f}, Prec@1: {} Prec@5: {}'.format(test_loss, prec1, prec5))
 
-    '''
     def _load_model(self, file_path):
-        with open(file_path, "rb") as f_:
-            self.network = torch.load(f_)
-        return self.network
-    '''
-
-    def _load_model(self, file_path):
-        # self.network = build_model(self.network_config, num_classes=10)
-        # build network
-        if self.network_config == "FC":
-            self.network = Full_Connected()
-
         with open(file_path, "rb") as f_:
             self.network.load_state_dict(torch.load(f_))
 
