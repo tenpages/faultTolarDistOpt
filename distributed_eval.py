@@ -80,6 +80,7 @@ class DistributedEvaluator(object):
         # we continue to do the model evaluation
         while True:
             model_dir_ = self._model_dir_generator(self._next_step_to_fetch)
+            print("loading model from directory ".format(model_dir_))
             if os.path.isfile(model_dir_):
                 self._load_model(model_dir_)
                 print("Evaluator evaluating results on step {}".format(self._next_step_to_fetch))
@@ -131,9 +132,11 @@ if __name__ == "__main__":
         ]))
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0]*testing_set[0][0].size()[1]*testing_set[0][0].size()[2]
+    print("testing set loaded.")
 
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
                         'eval_batch_size': args.eval_batch_size, 'network': args.network,
                         'input_size': data_shape}
     evaluator_nn = DistributedEvaluator(**kwargs_evaluator)
+    print("evaluator initiated.")
     evaluator_nn.evaluate(validation_loader=test_loader)
