@@ -320,10 +320,18 @@ class SyncReplicaMaster_NN(NN_Trainer):
             trimed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._s:self.num_workers-self._s], axis=0)
             self._grad_aggregate_buffer[g_idx] = trimed_mean
 
+    """
     def _median_of_means(self):
         b = math.floor(self.num_workers / (2*self._s+0.5))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             median = np.median(np.array([np.mean(np.array(grads[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0)
+            self._grad_aggregate_buffer[g_idx] = median
+    """
+
+    def _median_of_means(self):
+        b = math.floor(self.num_workers / (2*self._s+0.5))
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            median = np.array(hd.geomedian(np.array([np.mean(np.array(grads[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0))
             self._grad_aggregate_buffer[g_idx] = median
 
     def _grad_norm(self):
