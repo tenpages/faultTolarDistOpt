@@ -7,3 +7,5 @@ __pycache__
 mnist_data/
 
 mnist_data_sub/
+
+logs*
