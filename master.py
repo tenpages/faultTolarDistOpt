@@ -340,7 +340,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             norm = np.linalg.norm(grads[ranks[self.num_workers-self._s-1]])
             for i in range(self.num_workers-self._s, self.num_workers):
                 grads[ranks[i]]=grads[ranks[i]]*norm/np.linalg.norm(grads[ranks[i]])
-            self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads), axis=0)
+            self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads), axis=0)/self.num_workers
 
 
 class GradientAccumulator(object):
