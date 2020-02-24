@@ -369,7 +369,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 concatenated_gradients = np.array(grads)
             else:
                 concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
-            separator.append(concatenated_gradients[0])
+            separator.append(len(concatenated_gradients[0]))
         print(concatenated_gradients.shape)
         print(separator)
 
