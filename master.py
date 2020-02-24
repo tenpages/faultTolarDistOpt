@@ -150,6 +150,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_duration = time.time() - method_start
             elif self._update_mode == 'grad_norm':
                 method_start = time.time()
+                self._grad_norm()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'grad_norm_coor_wise':
+                method_start = time.time()
                 self._grad_norm_coor_wise()
                 method_duration = time.time() - method_start
 
@@ -171,7 +175,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._model_shapes.append(param.size())
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer.append(np.zeros(param.size()))
-            elif self._update_mode in ('geometric_median', 'krum', 'coor_wise_median', 'coor_wise_trimmed_mean', 'median_of_means', 'grad_norm'):
+            elif self._update_mode in ('geometric_median', 'krum', 'coor_wise_median', 'coor_wise_trimmed_mean', 'median_of_means', 'grad_norm', 'grad_norm_coor_wise'):
                 self._grad_aggregate_buffer.append([])
 
     def async_bcast_step(self):
@@ -221,7 +225,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def aggregate_gradient(self, gradient, layer_idx):
         if self._update_mode == 'normal':
             self._grad_aggregate_buffer[layer_idx] += gradient
-        elif self._update_mode in ("geometric_median", "krum", 'coor_wise_median', 'coor_wise_trimmed_mean', 'median_of_means', 'grad_norm'):
+        elif self._update_mode in ("geometric_median", "krum", 'coor_wise_median', 'coor_wise_trimmed_mean', 'median_of_means', 'grad_norm', 'grad_norm_coor_wise'):
             _shape = gradient.shape
             if len(_shape) == 1:
                 self._grad_aggregate_buffer[layer_idx].append(gradient)
@@ -245,7 +249,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for i in range(len(self._grad_aggregate_buffer)):
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
-            elif self._update_mode in ("geometric_median", "krum", 'coor_wise_median', 'coor_wise_trimmed_mean', 'median_of_means', 'grad_norm'):
+            elif self._update_mode in ("geometric_median", "krum", 'coor_wise_median', 'coor_wise_trimmed_mean', 'median_of_means', 'grad_norm','grad_norm_coor_wise'):
                 self._grad_aggregate_buffer[i] = []
 
     def _generate_model_path(self):
@@ -345,19 +349,14 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def _grad_norm_coor_wise(self):
         print("size of buffer",len(self._grad_aggregate_buffer))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            print(g_idx,":")
-            print(len(grads))
-            print(grads[0].shape)
-            print(grads)
+            print(g_idx)
             calculated_grad = grads[0]
             for idx, i in enumerate(np.array(grads).T):
-                print(idx,":",len(i))
                 ranks = np.argsort(np.linalg.norm(i, axis=0))
                 norm = np.linalg.norm(i[ranks[self.num_workers - self._s-1]])
                 for j in range(self.num_workers-self._s, self.num_workers):
                     i[ranks[j]] = i[ranks[j]]*norm/np.linalg.norm(i[ranks[j]])
                 calculated_grad[idx] = np.average(i)
-            print("calculated",g_idx)
             self._grad_aggregate_buffer[g_idx] = calculated_grad
 
 
