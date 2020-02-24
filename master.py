@@ -150,7 +150,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_duration = time.time() - method_start
             elif self._update_mode == 'grad_norm':
                 method_start = time.time()
-                self._grad_norm_coor_wise()
+                self._grad_norm()
                 method_duration = time.time() - method_start
 
             update_start = time.time()
@@ -336,6 +336,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def _grad_norm(self):
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            print(len(grads))
             ranks = np.argsort(np.linalg.norm(np.array(grads), axis=1))
             norm = np.linalg.norm(grads[ranks[self.num_workers-self._s-1]])
             for i in range(self.num_workers-self._s, self.num_workers):
