@@ -363,6 +363,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def _grad_norm_full_grad(self):
         concatenated_gradients = None
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            print(np.array(grads).shape)
             if g_idx == 0:
                 concatenated_gradients = np.array(grads)
             else:
