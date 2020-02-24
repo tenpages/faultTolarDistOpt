@@ -44,6 +44,8 @@ class DistributedWorker(NN_Trainer):
         # print("building model, self._size ", self._size)
         if self.network_config == 'FC':
             self.network = Full_Connected(self._size)
+        elif self.network_config == 'LeNet':
+            self.network = LeNet(self._size)
 
         if self._checkpoint_step != 0:
             file_path = '../checkpoints/model_step_' + str(self._checkpoint_step)
