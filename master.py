@@ -343,10 +343,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads), axis=0)/self.num_workers
 
     def _grad_norm_coor_wise(self):
+        print("size of buffer",len(self._grad_aggregate_buffer))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             print(g_idx,":")
             print(len(grads))
             print(grads[0].shape)
+            print(grads)
             calculated_grad = grads[0]
             for idx, i in enumerate(np.array(grads).T):
                 ranks = np.argsort(np.linalg.norm(i, axis=0))
@@ -354,6 +356,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for j in range(self.num_workers-self._s, self.num_workers):
                     i[ranks[j]] = i[ranks[j]]*norm/np.linalg.norm(i[ranks[j]])
                 calculated_grad[idx] = np.average(i)
+            print("calculated",g_idx)
             self._grad_aggregate_buffer[g_idx] = calculated_grad
 
 
