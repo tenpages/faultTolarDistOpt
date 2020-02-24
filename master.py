@@ -353,6 +353,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             calculated_grad = grads[0]
             for idx, i in enumerate(np.array(grads).T):
                 ranks = np.argsort(np.linalg.norm(i, axis=0))
+                print(ranks)
                 norm = np.linalg.norm(i[ranks[self.num_workers - self._s-1]])
                 for j in range(self.num_workers-self._s, self.num_workers):
                     i[ranks[j]] = i[ranks[j]]*norm/np.linalg.norm(i[ranks[j]])
