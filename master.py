@@ -343,6 +343,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads), axis=0)/self.num_workers
 
     def _grad_norm_coor_wise(self):
+        print(self._grad_aggregate_buffer)
+        assert (1==2)
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             calculated_grad = grads[0]
             for idx, i in enumerate(np.array(grads).T):
