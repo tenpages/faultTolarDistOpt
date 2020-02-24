@@ -9,6 +9,7 @@ import numpy as np
 
 from compress_gradient import compress
 from model_ops.fc import Full_Connected
+from model_ops.lenet import LeNet
 from nn_ops import NN_Trainer
 
 STEP_START_ = 1
@@ -45,7 +46,7 @@ class DistributedWorker(NN_Trainer):
         if self.network_config == 'FC':
             self.network = Full_Connected(self._size)
         elif self.network_config == 'LeNet':
-            self.network = LeNet(self._size)
+            self.network = LeNet()
 
         if self._checkpoint_step != 0:
             file_path = '../checkpoints/model_step_' + str(self._checkpoint_step)
@@ -111,13 +112,21 @@ class DistributedWorker(NN_Trainer):
                         #print("loss calculation", X_batch.shape, logits.shape, y_batch.shape)
                         loss = self.criterion(logits, y_batch)
                         #print(loss)
+                    elif "LeNet" in self.network_config:
+                        #print("loss calculation", X_batch.shape, logits.shape, y_batch.shape)
+                        print("Network config = ",self.network_config)
+                        loss = self.criterion(logits, y_batch)
+                        #print(loss)
                     else:
                         print("wrong network config")
                         assert (False)
+
                     epoch_avg_loss += loss.item()
                     forward_duration = time.time() - forward_start_time
 
                     if "FC" in self.network_config:
+                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                    elif "LeNet" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
 
                     prec1, prec5 = accuracy(logits.data, train_label_batch.long(), topk=(1, 5))
@@ -198,10 +207,17 @@ class DistributedWorker(NN_Trainer):
         self.network.load_state_dict(new_state_dict)
 
     def _backward(self, loss, logits_1=None, computation_time=None):
+        print('in _backward',self.network_config)
         b_start = time.time()
         loss.backward()
         b_duration = time.time()-b_start
         if "FC" in self.network_config:
+            computation_time += b_duration
+            c_start = time.time()
+            self._send_grads()
+            c_duration = time.time() - c_start
+            return computation_time, c_duration
+        elif "LeNet" in self.network_config:
             computation_time += b_duration
             c_start = time.time()
             self._send_grads()

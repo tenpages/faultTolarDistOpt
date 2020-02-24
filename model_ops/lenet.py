@@ -65,5 +65,9 @@ class LeNet_Split(nn.Module):
         # loss = self.criterion(x, target)
         return x
 
+    @property
+    def fetch_init_channel_index(self):
+        return self._init_channel_index
+
     def name(self):
         return 'lenet_split'

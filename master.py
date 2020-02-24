@@ -8,7 +8,7 @@ from torch.autograd import Variable
 from mpi4py import MPI
 
 from compress_gradient import decompress
-from model_ops.lenet import LeNet
+from model_ops.lenet import LeNet_Split
 from model_ops.fc import Full_Connected_Split
 from nn_ops import NN_Trainer, accuracy
 from optim.sgd_modified import SGDModified
