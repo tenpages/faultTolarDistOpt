@@ -150,7 +150,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_duration = time.time() - method_start
             elif self._update_mode == 'grad_norm':
                 method_start = time.time()
-                self._grad_norm()
+                self._grad_norm_coor_wise()
                 method_duration = time.time() - method_start
 
             update_start = time.time()
