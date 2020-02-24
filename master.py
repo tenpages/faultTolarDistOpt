@@ -360,6 +360,15 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 calculated_grad[idx] = np.average(i)
             self._grad_aggregate_buffer[g_idx] = calculated_grad
 
+    def _grad_norm_full_grad(self):
+        concatenated_gradients = None
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=0)
+        print(concatenated_gradients.shape)
+
 
 class GradientAccumulator(object):
     """

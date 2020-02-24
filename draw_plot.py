@@ -7,6 +7,38 @@ current_step = 0
 new_ticks = np.linspace(0,1220,62)
 plt.figure(figsize=(10,9), dpi=1200)
 plt.xlim(0,1220)
+#plt.ylim(-1,1)
+#plt.xticks(new_ticks)
+plt.xlabel("Step")
+plt.ylabel("Loss")
+
+for model_name in model_names:
+    step=[]
+    loss=[]
+    if model_name=='normal':
+        filename = 'results-' + model_name + '-41-0-1200'
+    else:
+        filename = 'results-'+model_name+'-41-10-1200'
+    print(model_name)
+    with open(filename,"r") as f:
+        for line in f:
+            t=re.match("Evaluator evaluating results on step (\d+)\D+",line)
+            if t!=None:
+                current_step = int(t.groups()[0])
+            else:
+                t=re.match("Test set: Average loss: (.+), Prec@1: (\d+\.\d+) Prec@5: (\d+\.\d+)",line)
+                if t!=None:
+                    current_loss = float(t.groups()[0])
+                    step.append(current_step)
+                    loss.append(current_loss)
+    plt.plot(step,loss,label=model_name)
+
+plt.legend(loc="right")
+plt.savefig("loss.pdf")
+plt.clf()
+
+plt.figure(figsize=(10,9), dpi=1200)
+plt.xlim(0,1220)
 plt.ylim(0,100)
 #plt.xticks(new_ticks)
 plt.xlabel("Step")
@@ -15,7 +47,10 @@ plt.ylabel("Precision")
 for model_name in model_names:
     step=[]
     prec1=[]
-    filename = 'results-'+model_name+'-41-2-1200'
+    if model_name=='normal':
+        filename = 'results-' + model_name + '-41-0-1200'
+    else:
+        filename = 'results-'+model_name+'-41-10-1200'
     print(model_name)
     with open(filename,"r") as f:
         for line in f:
