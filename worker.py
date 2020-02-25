@@ -46,7 +46,7 @@ class DistributedWorker(NN_Trainer):
             self.network = Full_Connected(self._size)
 
         if self._checkpoint_step != 0:
-            file_path = '../checkpoints/model_step_' + str(self._checkpoint_step)
+            file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
             self._load_model(file_path)
 
         self.optimizer = torch.optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
@@ -233,6 +233,12 @@ class DistributedWorker(NN_Trainer):
                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+param_idx)
                     req_send_check.append(req_isend)
         req_send_check[-1].wait()
+
+    def _load_model(self, file_path):
+        with open(file_path, "rb") as f_:
+            model_state_dict = torch.load(f_)
+            self.network.load_state_dict(model_state_dict)
+            print("Validation Worker Done Loading Checkpoint from {}".format(file_path))
 
 
 def accuracy(output, target, topk=(1,)):

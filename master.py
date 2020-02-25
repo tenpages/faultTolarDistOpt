@@ -53,7 +53,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.network = Full_Connected_Split(self._size)
 
         if self._checkpoint_step != 0:
-            file_path = "../checkpoints/geo_median/model_step_" + str(self._checkpoint_step)
+            file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
             self._load_model(file_path)
             self.cur_step = int(self._checkpoint_step)
 
@@ -267,9 +267,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
             torch.save(self.network.state_dict(), f_)
 
     def _load_model(self, file_path):
-        model_state_dict = torch.load(file_path)
-        self.network.load_state_dict(model_state_dict)
-        print("Master loading checkpoint from {}".format(file_path))
+        with open(file_path, "rb") as f_:
+            model_state_dict = torch.load(f_)
+            self.network.load_state_dict(model_state_dict)
+            print("Master loading checkpoint from {}".format(file_path))
 
     def _evaluate_model(self, validation_loader):
         self.network.eval()
