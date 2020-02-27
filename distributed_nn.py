@@ -76,6 +76,10 @@ def add_fit_args(parser):
                         help='compress/None indicate if we compress the gradient matrix before communication')
     parser.add_argument('--checkpoint-step', type=int, default=0, metavar='N',
                         help='which step to proceed the training process')
+    parser.add_argument('--faulty-pattern', type=str, default='fixed', metavar='N',
+                        help='decide faulty gradients are send from "fixed" workers or "changing" workers each step')
+    parser.add_argument('--data-distribution', type=str, default='same', metavar='N',
+                        help='decide if data is "distributed" among workers or every worker owns the "same" data')
     args = parser.parse_args()
     return args
 
@@ -105,18 +109,21 @@ def load_data(dataset, seed, args, rank, world_size):
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,))
             ]))
+            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         else:
-            group_size = int(60000 / (world_size - 1))
-            training_set = MNISTSubLoader('./mnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,))
-            ]), group_size=group_size, start_from=group_size*(rank-1))
-        # testing_set = datasets.MNIST('./mnist_data', train=False, download=True, transform=transforms.Compose([
-        #     transforms.ToTensor(),
-        #     transforms.Normalize((0.1307,), (0.3081,))
-        # ]))
-        train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-        # test_loader = torch.utils.data.DataLoader(testing_set)
+            if args.data_distribution == 'distributed':
+                group_size = int(60000 / (world_size - 1))
+                training_set = MNISTSubLoader('./mnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.1307,), (0.3081,))
+                ]), group_size=group_size, start_from=group_size*(rank-1))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'same':
+                training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.1307,), (0.3081,))
+                ]))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
         return train_loader, training_set, test_loader
 
@@ -136,8 +143,11 @@ def load_data(dataset, seed, args, rank, world_size):
 
 def _generate_adversarial_nodes(args, world_size):
     np.random.seed(SEED_)
-    return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
-            range(args.max_steps + 1)]
+    if args.faulty_pattern == 'fixed':
+        return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False)] * (args.max_steps + 1)
+    elif args.faulty_pattern == 'changing':
+        return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
+                range(args.max_steps + 1)]
 
 
 def prepare(args, rank, world_size):
