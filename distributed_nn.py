@@ -29,7 +29,7 @@ def add_fit_args(parser):
     return a parser added with args required by fit
     """
     parser.add_argument('--batch-size', type=int, default=128, metavar='N',
-                        help='input batch size for training (default: 64)')
+                        help='input batch size for training (default: 128)')
     parser.add_argument('--test-batch-size', type=int, default=100, metavar='N',
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--max-steps', type=int, default=10000, metavar='N',
@@ -119,11 +119,14 @@ def load_data(dataset, seed, args, rank, world_size):
                 ]), group_size=group_size, start_from=group_size*(rank-1))
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
+                torch.manual_seed(TORCH_SEED_+rank)
                 training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]))
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+                print(list(train_loader)[0])
+                assert (False)
         test_loader = None
         return train_loader, training_set, test_loader
 
