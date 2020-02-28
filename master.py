@@ -240,6 +240,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad'):
             print(self._grad_aggregate_buffer[layer_idx][source].shape, gradient.shape)
+            print(self._grad_aggregate_buffer[layer_idx][source].dtype, gradient.dtype)
             self._grad_aggregate_buffer[layer_idx][source] = gradient.reshape(-1)
             """
             _shape = gradient.shape
