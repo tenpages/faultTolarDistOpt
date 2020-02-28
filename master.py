@@ -449,7 +449,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for i in range(self.num_workers-self._s, self.num_workers):
             concatenated_gradients[ranks[i]] = concatenated_gradients[ranks[i]]*norm/np.linalg.norm(concatenated_gradients[ranks[i]])
         print(np.linalg.norm(concatenated_gradients, axis=1))
+        print(concatenated_gradients[0])
         sum_gradient = np.mean(np.array(concatenated_gradients), axis=0)
+        print(sum_gradient)
         print(np.linalg.norm(sum_gradient))
         self._grad_aggregate_buffer=np.split(sum_gradient,separator[:len(separator)-1])
         # print(len(self._grad_aggregate_buffer))
