@@ -118,7 +118,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                     # aggregate the gradient
                     if self.grad_accumulator.gradient_aggregate_counter[layer_index] <= self._num_grad_to_collect:
-                        self.aggregate_gradient(gradient=received_grad, layer_idx=layer_index)
+                        self.aggregate_gradient(gradient=received_grad, layer_idx=layer_index, source=status.source-1)
 
                     self.grad_accumulator.gradient_aggregate_counter[layer_index] += 1
 
@@ -188,7 +188,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer.append(np.zeros(param.size()))
             elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise','grad_norm_full_grad'):
-                self._grad_aggregate_buffer.append([])
+                self._grad_aggregate_buffer.append(np.zeros(param.size()).reshape(-1))
 
     def async_bcast_step(self):
         """
@@ -235,6 +235,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
         return gradient_fetch_requests
 
     def aggregate_gradient(self, gradient, layer_idx):
+        self._grad_aggregate_buffer[layer_idx] += gradient
+        """
         if self._update_mode == 'normal':
             self._grad_aggregate_buffer[layer_idx] += gradient
         elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
@@ -244,6 +246,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer[layer_idx].append(gradient)
             elif len(_shape) > 1:
                 self._grad_aggregate_buffer[layer_idx].append(gradient.reshape(-1))  # gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
+        """
 
     def model_update(self, tmp_module):
         new_state_dict = {}
@@ -260,11 +263,14 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def meset_grad_buffer(self):
         for i in range(len(self._grad_aggregate_buffer)):
+            self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
+            """
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
             elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad'):
                 self._grad_aggregate_buffer[i] = []
+            """
 
     def _generate_model_path(self):
         return self._train_dir + "model_step_" + str(self.cur_step)
