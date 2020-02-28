@@ -239,6 +239,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._grad_aggregate_buffer[layer_idx] += gradient
         elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad'):
+            print(self._grad_aggregate_buffer[layer_idx][source].shape)
             self._grad_aggregate_buffer[layer_idx][source] = gradient
             """
             _shape = gradient.shape
