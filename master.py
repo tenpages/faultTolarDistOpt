@@ -46,6 +46,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._checkpoint_step = kwargs['checkpoint_step']
         self._s = kwargs['worker_fail']
         self._size = kwargs['data_size']
+        self._multi_krum_m = kwargs['multi_krum_m']
 
     def build_model(self) :
         # print("building model, self._size ", self._size)
@@ -136,6 +137,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_start = time.time()
                 self._krum()
                 method_duration = time.time() - method_start
+            elif self._update_mode == 'multi_krum':
+                method_start = time.time()
+                self._multi_krum(self._multi_krum_m)
+                method_duration = time.time() - method_start
             elif self._update_mode == 'coor_wise_median':
                 method_start = time.time()
                 self._coor_wise_median()
@@ -179,7 +184,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._model_shapes.append(param.size())
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer.append(np.zeros(param.size()))
-            elif self._update_mode in ('geometric_median', 'krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
+            elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise','grad_norm_full_grad'):
                 self._grad_aggregate_buffer.append([])
 
@@ -230,7 +235,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def aggregate_gradient(self, gradient, layer_idx):
         if self._update_mode == 'normal':
             self._grad_aggregate_buffer[layer_idx] += gradient
-        elif self._update_mode in ("geometric_median", "krum", 'coor_wise_median', 'coor_wise_trimmed_mean',
+        elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad'):
             _shape = gradient.shape
             if len(_shape) == 1:
@@ -255,7 +260,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for i in range(len(self._grad_aggregate_buffer)):
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
-            elif self._update_mode in ("geometric_median", "krum", 'coor_wise_median', 'coor_wise_trimmed_mean',
+            elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad'):
                 self._grad_aggregate_buffer[i] = []
 
@@ -321,6 +326,35 @@ class SyncReplicaMaster_NN(NN_Trainer):
             krum_median = __krum(grads, self._s)
             self._grad_aggregate_buffer[g_idx] = krum_median
         print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
+
+    def _multi_krum(self, m):
+        def __krum(grad_list, grad_idxs, s):
+            """
+            Krum function.
+            :param grad_list: gradients from all workers
+            :param grad_idxs: list of indexes under consideration
+            :param s: number of faulty workers
+            :return: i, gradient from worker i that minimizes Krum score
+            """
+            score = []
+            for i, idx_i in enumerate(grad_idxs):
+                neighbor_distances = []
+                for j, idx_j in enumerate(grad_idxs):
+                    if i!=j:
+                        neighbor_distances.append(np.linalg.norm(grad_list[idx_i]-grad_list[idx_j])**2)
+                score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-s-2]))
+            i_star = score.index(min(score))
+            return grad_idxs[i_star], grad_list[grad_idxs[i_star]]
+        krum_start = time.time()
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            grads_in_consideration = []
+            current_list = list(range(self.num_workers))
+            for _ in range(m):
+                i, grad = __krum(grads, current_list, self._s)
+                grads_in_consideration.append(grad)
+                current_list.reomve(i)
+            self._grad_aggregate_buffer[g_idx] = np.mean(np.array(grads_in_consideration), axis=0)
+        print("Master Step: {} Multi-Krum cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
     def _coor_wise_median(self):
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):

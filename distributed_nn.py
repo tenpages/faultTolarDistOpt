@@ -80,6 +80,8 @@ def add_fit_args(parser):
                         help='decide faulty gradients are send from "fixed" workers or "changing" workers each step')
     parser.add_argument('--data-distribution', type=str, default='same', metavar='N',
                         help='decide if data is "distributed" among workers or every worker owns the "same" data')
+    parser.add_argument('--multi-krum-m', type=int, default=1, metavar='N',
+                        help='parameter m in multi-krum. Positive, default 1, no large than n-2f-1')
     args = parser.parse_args()
     return args
 
@@ -152,6 +154,9 @@ def _generate_adversarial_nodes(args, world_size):
 
 
 def prepare(args, rank, world_size):
+    if args.mode=='multi_krum' and (args.multi_krum_m<=0 or args.multi_krum_m>world_size-args.worker_fail-1):
+        raise Exception("Wrong number for multi-krum parameter m.")
+
     if args.approach == "baseline":
         # randomly select adversarial nodes
         adversaries = _generate_adversarial_nodes(args, world_size)
@@ -172,7 +177,8 @@ def prepare(args, rank, world_size):
             'update_mode': args.mode,
             'compress_grad': args.compress_grad,
             'checkpoint_step': args.checkpoint_step,
-            'data_size': data_shape
+            'data_size': data_shape,
+            'multi_krum_m': args.multi_krum_m
         }
         kwargs_worker = {
             'batch_size': args.batch_size,
