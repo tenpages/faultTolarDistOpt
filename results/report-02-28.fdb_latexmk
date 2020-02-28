@@ -1,10 +1,10 @@
 # Fdb version 3
-["xdvipdfmx"] 1582307488 "report-02-21.xdv" "report-02-21.pdf" "report-02-21" 1582908463
-  "report-02-21.xdv" 1582307488 15688 d2ce2ddc966adca59ffc84bc63522d8f "xelatex"
+["xdvipdfmx"] 1582910334 "report-02-28.xdv" "report-02-28.pdf" "report-02-28" 1582910335
+  "report-02-28.xdv" 1582910334 14684 cc8c38b1f8c4eccadb8d9f756bb55654 "xelatex"
   (generated)
-  "report-02-21.pdf"
-["xelatex"] 1582307487 "report-02-21.tex" "report-02-21.xdv" "report-02-21" 1582908463
-  "/dev/null" 1582908463 0 d41d8cd98f00b204e9800998ecf8427e ""
+  "report-02-28.pdf"
+["xelatex"] 1582910334 "report-02-28.tex" "report-02-28.xdv" "report-02-28" 1582910335
+  "/dev/null" 1582910333 0 d41d8cd98f00b204e9800998ecf8427e ""
   "/usr/local/texlive/2019/texmf-dist/fonts/map/fontname/texfonts.map" 1511824771 3332 103109f5612ad95229751940c61aada0 ""
   "/usr/local/texlive/2019/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/local/texlive/2019/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm" 1246382020 988 bdf658c3bfc2d96d3c8b02cfc1c94c20 ""
@@ -140,11 +140,11 @@
   "/usr/local/texlive/2019/texmf-dist/web2c/texmf.cnf" 1566248362 39543 a0bd1f17d0daea30a3905c0b020d0959 ""
   "/usr/local/texlive/2019/texmf-var/web2c/xetex/xelatex.fmt" 1567097982 3752890 7d530d940f26cd7723c8e0b7ccbfb596 ""
   "/usr/local/texlive/2019/texmf.cnf" 1572634255 677 7bd5672dc3e9822a34c47a263a3f9018 ""
-  "prec1.pdf" 1582307470 14823 67d245ef3628450a338c5221d2d5b003 ""
+  "loss-10000.pdf" 1582910311 11168 fcc191b20632c8698765bcdb72f6709a ""
   "prec5.pdf" 1582307470 14423 2db91c0f400aa94872cf3f85aeb347cd ""
-  "report-02-21.aux" 1582307488 232 36dbd5ad06795915bc27ec662f9e6e07 "xelatex"
-  "report-02-21.tex" 1582307487 3556 27830367947ba1d06ca82bbdf9cdf625 ""
+  "report-02-28.aux" 1582910334 225 c5f16cc5c9b0d758c371d0710b658878 "xelatex"
+  "report-02-28.tex" 1582910332 3845 16af5428ddf52c3204433ef0db2d58ab ""
   (generated)
-  "report-02-21.log"
-  "report-02-21.xdv"
-  "report-02-21.aux"
+  "report-02-28.log"
+  "report-02-28.aux"
+  "report-02-28.xdv"
