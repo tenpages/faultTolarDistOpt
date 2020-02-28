@@ -212,6 +212,7 @@ class DistributedWorker(NN_Trainer):
         concatenatedWrong = None
         for param_idx, param in enumerate(self.network.parameters()):
             grad = param.grad.data.numpy().astype(np.float64)
+            print(grad.shape)
             if param_idx == 0:
                 concatenated = grad
             else:
