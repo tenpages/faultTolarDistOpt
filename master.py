@@ -112,6 +112,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         #            "\n")
                         #    f.write("The shape used to be "+str(self.grad_accumulator._shape_counter[layer_index][status.source-1]))
                     # check gradient shape
+                    print(received_grad.shape)
                     assert (received_grad.shape == self._model_shapes[layer_index])
 
                     # aggregate the gradient
