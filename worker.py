@@ -213,19 +213,23 @@ class DistributedWorker(NN_Trainer):
         for param_idx, param in enumerate(self.network.parameters()):
             grad = param.grad.data.numpy().astype(np.float64)
             print(grad.shape)
+            """
             if param_idx == 0:
                 concatenated = grad
             else:
                 concatenated = np.concatenate((concatenated, grad))
+            """
 
             if len(req_send_check) != 0:
                 req_send_check[-1].wait()
             if self.rank in self._fail_workers[self.cur_step]:
                 simulated_grad = err_simulation(grad, self._err_mode)
+                """
                 if param_idx == 0:
                     concatenatedWrong = simulated_grad
                 else:
                     concatenatedWrong = np.concatenate((concatenatedWrong, simulated_grad))
+                """
 
                 if self._compress_grad == 'compress':
                     _compressed_grad = compress(simulated_grad)
@@ -245,10 +249,12 @@ class DistributedWorker(NN_Trainer):
                     #    f.write(str(self.rank)+" is sending grads to master on step "+str(self.cur_step)+" for parameter "+str(param_idx)+" in shape "+str(grad.shape)+"which has the value\n"+str(grad)+"\n")
                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+param_idx)
                     req_send_check.append(req_isend)
+        """
         if self.rank in self._fail_workers[self.cur_step]:
             print("Faulty node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenatedWrong),"which should have been",np.linalg.norm(concatenated))
         else:
             print("Normal node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenated))
+        """
         req_send_check[-1].wait()
 
     def _load_model(self, file_path):
