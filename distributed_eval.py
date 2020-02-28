@@ -96,22 +96,21 @@ class DistributedEvaluator(object):
         self.network.eval()
         test_loss = 0
         correct = 0
-        criterion = torch.nn.CrossEntropyLoss()
-        prec1_counter_ = prec5_counter_ = batch_counter_ = 0
+        prec1_counter_ = prec3_counter_ = batch_counter_ = 0
         for data, y_batch in test_loader:
             data, target = Variable(data, volatile=True), Variable(y_batch)
             output = self.network(data)
-            test_loss += criterion(output, target)  # size_average=False).item()  # sum up batch loss
+            test_loss += F.nll_loss(output, target, size_average=False).item()  # sum up batch loss
             # pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
             # correct += pred.eq(target.data.view_as(pred)).cpu().sum()
             prec1_tmp, prec3_tmp = accuracy(output.data, y_batch, topk=(1, 3))
             prec1_counter_ += prec1_tmp.numpy()[0]
-            prec5_counter_ += prec3_tmp.numpy()[0]
+            prec3_counter_ += prec3_tmp.numpy()[0]
             batch_counter_ += 1
         prec1 = prec1_counter_ / batch_counter_
-        prec3 = prec5_counter_ / batch_counter_
+        prec3 = prec3_counter_ / batch_counter_
         test_loss /= len(test_loader.dataset)
-        print('Test set: Average loss: {:.4f}, Prec@1: {} Prec@3: {}'.format(test_loss, prec1, prec3))
+        print('Test set: Average loss: {:.4f}, Prec@1: {} Prec@5: {}'.format(test_loss, prec1, prec3))
 
     def _load_model(self, file_path):
         with open(file_path, "rb") as f_:
