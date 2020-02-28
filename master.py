@@ -265,14 +265,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def meset_grad_buffer(self):
         for i in range(len(self._grad_aggregate_buffer)):
-            self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
-            """
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
             elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad'):
-                self._grad_aggregate_buffer[i] = []
-            """
+                self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
 
     def _generate_model_path(self):
         return self._train_dir + "model_step_" + str(self.cur_step)
