@@ -234,19 +234,19 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 gradient_fetch_requests.append(req)
         return gradient_fetch_requests
 
-    def aggregate_gradient(self, gradient, layer_idx):
-        self._grad_aggregate_buffer[layer_idx] += gradient
-        """
+    def aggregate_gradient(self, gradient, layer_idx, source):
         if self._update_mode == 'normal':
             self._grad_aggregate_buffer[layer_idx] += gradient
         elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad'):
+            self._grad_aggregate_buffer[layer_idx][source] = gradient
+            """
             _shape = gradient.shape
             if len(_shape) == 1:
                 self._grad_aggregate_buffer[layer_idx].append(gradient)
             elif len(_shape) > 1:
                 self._grad_aggregate_buffer[layer_idx].append(gradient.reshape(-1))  # gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
-        """
+            """
 
     def model_update(self, tmp_module):
         new_state_dict = {}
