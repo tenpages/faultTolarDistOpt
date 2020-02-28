@@ -215,7 +215,7 @@ class DistributedWorker(NN_Trainer):
             if param_idx == 0:
                 concatenated = grad
             else:
-                concatenated = np.concatenate((concatenated, grad), axis=1)
+                concatenated = np.concatenate((concatenated, grad))
 
             if len(req_send_check) != 0:
                 req_send_check[-1].wait()
@@ -224,7 +224,7 @@ class DistributedWorker(NN_Trainer):
                 if param_idx == 0:
                     concatenatedWrong = simulated_grad
                 else:
-                    concatenatedWrong = np.concatenate((concatenatedWrong, simulated_grad), axis=1)
+                    concatenatedWrong = np.concatenate((concatenatedWrong, simulated_grad))
 
                 if self._compress_grad == 'compress':
                     _compressed_grad = compress(simulated_grad)
