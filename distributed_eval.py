@@ -100,6 +100,8 @@ class DistributedEvaluator(object):
         for data, y_batch in test_loader:
             data, target = Variable(data, volatile=True), Variable(y_batch)
             output = self.network(data)
+            print(output)
+            print(target)
             test_loss += torch.nn.CrossEntropyLoss(output, target)  # size_average=False).item()  # sum up batch loss
             # pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
             # correct += pred.eq(target.data.view_as(pred)).cpu().sum()
