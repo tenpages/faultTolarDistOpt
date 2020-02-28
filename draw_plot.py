@@ -2,11 +2,12 @@ import matplotlib.pyplot as plt
 import re
 import numpy as np
 
-model_names = ['normal', 'krum', 'median_of_means', 'coor_wise_median', 'coor_wise_trimmed_mean', 'grad_norm']
+#model_names = ['normal', 'krum', 'median_of_means', 'coor_wise_median', 'coor_wise_trimmed_mean', 'grad_norm']
+model_names = ['normal', 'krum']
 current_step = 0
-new_ticks = np.linspace(0,1220,62)
+new_ticks = np.linspace(0,8850,178)
 plt.figure(figsize=(10,9), dpi=1200)
-plt.xlim(0,1220)
+plt.xlim(0,8900)
 #plt.ylim(-1,1)
 #plt.xticks(new_ticks)
 plt.xlabel("Step")
@@ -16,9 +17,9 @@ for model_name in model_names:
     step=[]
     loss=[]
     if model_name=='normal':
-        filename = 'results-' + model_name + '-41-0-1200'
+        filename = 'results-' + model_name + '-40-0-10000'
     else:
-        filename = 'results-'+model_name+'-41-10-1200'
+        filename = 'results-'+model_name+'-40-15-10000'
     print(model_name)
     with open(filename,"r") as f:
         for line in f:
@@ -34,7 +35,7 @@ for model_name in model_names:
     plt.plot(step,loss,label=model_name)
 
 plt.legend(loc="right")
-plt.savefig("loss.pdf")
+plt.savefig("loss-10000.pdf")
 plt.clf()
 
 plt.figure(figsize=(10,9), dpi=1200)
