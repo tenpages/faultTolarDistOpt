@@ -188,8 +188,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer.append(np.zeros(param.size()))
             elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise','grad_norm_full_grad'):
-                self._grad_aggregate_buffer.append(np.zeros(param.size()).reshape(-1))
-                print(np.zeros(param.size()).reshape(-1).shape)
+                self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
 
     def async_bcast_step(self):
         """
