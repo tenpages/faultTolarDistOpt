@@ -211,6 +211,7 @@ class DistributedWorker(NN_Trainer):
         req_send_check = []
         concatenated = None
         concatenatedWrong = None
+        printNorms = []
         for param_idx, param in enumerate(self.network.parameters()):
             grad = param.grad.data.numpy().astype(np.float64)
             # print(grad.shape)
@@ -228,6 +229,7 @@ class DistributedWorker(NN_Trainer):
                     concatenatedWrong = simulated_grad.reshape((reduce(lambda x, y: x * y, _shape),))
                 else:
                     concatenatedWrong = np.concatenate((concatenatedWrong, simulated_grad.reshape((reduce(lambda x, y: x * y, _shape),))))
+                printNorms.append(np.linalg.norm(simulated_grad.reshape(-1)))
 
                 if self._compress_grad == 'compress':
                     _compressed_grad = compress(simulated_grad)
@@ -237,6 +239,8 @@ class DistributedWorker(NN_Trainer):
                     req_isend = self.comm.Isend([simulated_grad, MPI.DOUBLE], dest=0, tag=88+param_idx)
                     req_send_check.append(req_isend)
             else:
+                printNorms.append(np.linalg.norm(grad.reshape(-1)))
+
                 if self._compress_grad == 'compress':
                     _compressed_grad = compress(grad)
                     #print(self.rank," is sending gradients to master on step ",self.cur_step," for parameter ",param_idx," in length ",len(_compressed_grad))
@@ -248,9 +252,11 @@ class DistributedWorker(NN_Trainer):
                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+param_idx)
                     req_send_check.append(req_isend)
         if self.rank in self._fail_workers[self.cur_step]:
-            print("Faulty node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenatedWrong),"which should have been",np.linalg.norm(concatenated))
+            print("Faulty node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenatedWrong),"which should have been",np.linalg.norm(concatenated),
+                  "Gradients:",printNorms)
         else:
-            print("Normal node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenated))
+            print("Normal node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenated),
+                  "Gradients:",printNorms)
         req_send_check[-1].wait()
 
     def _load_model(self, file_path):
