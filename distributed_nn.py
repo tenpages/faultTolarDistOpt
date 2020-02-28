@@ -92,19 +92,19 @@ class MNISTSubLoader(datasets.MNIST):
         if group_size == 0:
             return
         if self.train:
-            print(self.train_data.shape)
-            print(self.train_labels.shape)
+            #print(self.train_data.shape)
+            #print(self.train_labels.shape)
             self.data = self.data[start_from:start_from + group_size]
             self.targets = self.targets[start_from:start_from + group_size]
 
 
 def load_data(dataset, seed, args, rank, world_size):
-    print("here")
+    #print("here")
     torch.manual_seed(TORCH_SEED_)
     if seed:
         torch.manual_seed(seed)
         random.seed(seed)
-    print("dataset: " + dataset)
+    #print("dataset: " + dataset)
     if dataset == "MNIST":
         if rank==0:
             training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
@@ -140,7 +140,7 @@ def load_data(dataset, seed, args, rank, world_size):
 
         return train_loader, training_set, test_loader
 
-    print("here2")
+    #print("here2")
     return None, None, None
 
 
@@ -160,6 +160,7 @@ def prepare(args, rank, world_size):
     if args.approach == "baseline":
         # randomly select adversarial nodes
         adversaries = _generate_adversarial_nodes(args, world_size)
+        print("Faulty agents:", adversaries[0], "Total:", len(adversaries[0]))
         train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank,
                                                             world_size=world_size)
         data_shape = training_set[0][0].size()[0]*training_set[0][0].size()[1]*training_set[0][0].size()[2]
@@ -198,7 +199,7 @@ def prepare(args, rank, world_size):
             'adversaries': adversaries,
             'data_size': data_shape
         }
-    print(train_loader, training_set, test_loader)
+    # print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)
     return datum, kwargs_master, kwargs_worker
 
