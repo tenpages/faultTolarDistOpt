@@ -113,6 +113,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         #    f.write("The shape used to be "+str(self.grad_accumulator._shape_counter[layer_index][status.source-1]))
                     # check gradient shape
                     # print(received_grad.shape)
+                    print(layer_index,":",status.source-1)
                     assert (received_grad.shape == self._model_shapes[layer_index])
 
                     # aggregate the gradient
@@ -242,7 +243,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if len(_shape) == 1:
                 self._grad_aggregate_buffer[layer_idx].append(gradient)
             elif len(_shape) > 1:
-                self._grad_aggregate_buffer[layer_idx].append(gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
+                self._grad_aggregate_buffer[layer_idx].append(gradient.reshape(-1))  # gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
 
     def model_update(self, tmp_module):
         new_state_dict = {}
