@@ -359,7 +359,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             for _ in range(m):
                 i, grad = __krum(grads, current_list, self._s)
                 grads_in_consideration.append(grad)
-                current_list.reomve(i)
+                current_list.remove(i)
             self._grad_aggregate_buffer[g_idx] = np.mean(np.array(grads_in_consideration), axis=0)
         print("Master Step: {} Multi-Krum cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
