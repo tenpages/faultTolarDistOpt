@@ -356,7 +356,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             grads_in_consideration = []
             current_list = list(range(self.num_workers))
-            for _ in range(m):
+            for rnd in range(m):
+                print("Round:",rnd)
                 i, grad = __krum(grads, current_list, self._s)
                 grads_in_consideration.append(grad)
                 current_list.remove(i)
