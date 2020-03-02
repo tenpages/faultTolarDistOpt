@@ -47,6 +47,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._s = kwargs['worker_fail']
         self._size = kwargs['data_size']
         self._multi_krum_m = kwargs['multi_krum_m']
+        self._grad_norm_keep_all = kwargs['grad_norm_keep_all']
 
     def build_model(self) :
         # print("building model, self._size ", self._size)
@@ -452,7 +453,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
             concatenated_gradients[ranks[i]] = concatenated_gradients[ranks[i]]*norm/np.linalg.norm(concatenated_gradients[ranks[i]])
         print(np.linalg.norm(concatenated_gradients, axis=1))
         print(concatenated_gradients[0].shape)
-        sum_gradient = np.mean(concatenated_gradients, axis=0)
+        if self.grad_norm_keep_all == True:
+            sum_gradient = np.mean(concatenated_gradients, axis=0)
+        else:
+            sum_gradient = np.mean(concatenated_gradients[ranks[:(self.num_workers-self._s)]])
         print(sum_gradient.shape)
         print(np.linalg.norm(sum_gradient))
         self._grad_aggregate_buffer=np.split(sum_gradient,separator[:len(separator)-1])

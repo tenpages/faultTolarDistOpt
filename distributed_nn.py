@@ -1,3 +1,4 @@
+import ast
 import sys
 import math
 import threading
@@ -82,6 +83,8 @@ def add_fit_args(parser):
                         help='decide if data is "distributed" among workers or every worker owns the "same" data')
     parser.add_argument('--multi-krum-m', type=int, default=1, metavar='N',
                         help='parameter m in multi-krum. Positive, default 1, no large than n-2f-1')
+    parser.add_argument('--grad-norm-keep-all', type=ast.literal_eval, default=True, metavar='N',
+                        help='decide if when using gradient norm clipping, keep all gradients (True) or throw away the largest ones (False)')
     args = parser.parse_args()
     return args
 
@@ -179,7 +182,8 @@ def prepare(args, rank, world_size):
             'compress_grad': args.compress_grad,
             'checkpoint_step': args.checkpoint_step,
             'data_size': data_shape,
-            'multi_krum_m': args.multi_krum_m
+            'multi_krum_m': args.multi_krum_m,
+            'grad_norm_keep_all': args.grad_norm_keep_all,
         }
         kwargs_worker = {
             'batch_size': args.batch_size,
