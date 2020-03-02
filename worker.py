@@ -111,6 +111,9 @@ class DistributedWorker(NN_Trainer):
                     if (not updated) and (not first):
                         continue
 
+                    if updated and self.rank==1:
+                        print("Updated:", "batch_id=",batch_idx,"cur_step=",self.cur_step)
+
                     iteration_last_step = time.time() - iter_start_time
                     iter_start_time = time.time()
                     first = False
