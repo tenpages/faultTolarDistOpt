@@ -66,9 +66,9 @@ class DistributedWorker(NN_Trainer):
             assert (self.cur_step == STEP_START_)
         else:
             assert (self.cur_step == int(self._checkpoint_step) + 1)
-            loader_length = len(loader)
+            loader_length = len(train_loader)
             while loader_step + loader_length < self.cur_step:
-                dump = list(loader)
+                dump = list(train_loader)
                 loader_step += loader_length
                 loader_epoch += 1
 
