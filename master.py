@@ -67,11 +67,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def start(self):
         self.async_bcast_step()
 
-        for i in range(1, self._max_steps + 1):
+        for i in range(self._checkpoint_step + 1, self._max_steps + 1):
             self.network.train()
             self._first_grad_received = False
             enough_gradients_received = False
 
+            assert (i == self.cur_step)
             print("Master node is entering step: {}".format(i))
 
             self.async_bcast_step()

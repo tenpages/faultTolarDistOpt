@@ -82,11 +82,14 @@ class DistributedWorker(NN_Trainer):
 
         print("Worker {}: starting training".format(self.rank))
 
+        flag = True
         for num_epoch in range(loader_epoch, self.max_epochs):
             for batch_idx, (train_input_batch, train_label_batch) in enumerate(train_loader):
-                if loader_step<self.cur_step:
+                if loader_step<self.cur_step and flag:
                     loader_step += 1
                     continue
+                else:
+                    flag = False
 
                 if self.cur_step == self._max_steps:
                     break
