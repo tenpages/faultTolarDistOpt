@@ -85,10 +85,12 @@ class DistributedWorker(NN_Trainer):
         flag = True
         for num_epoch in range(loader_epoch, self.max_epochs):
             for batch_idx, (train_input_batch, train_label_batch) in enumerate(train_loader):
-                print("batch_id=",batch_idx)
+                if self.rank == 1:
+                    print("batch_id=",batch_idx)
                 if loader_step<self.cur_step and flag:
                     loader_step += 1
-                    print("skipped")
+                    if self.rank == 1:
+                        print("skipped")
                     continue
                 else:
                     flag = False
