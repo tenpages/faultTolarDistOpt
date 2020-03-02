@@ -86,7 +86,7 @@ class DistributedWorker(NN_Trainer):
         for num_epoch in range(loader_epoch, self.max_epochs):
             for batch_idx, (train_input_batch, train_label_batch) in enumerate(train_loader):
                 if self.rank == 1:
-                    print("batch_id=",batch_idx,"loader_step=",loader_step,"cur_step=",cur_step)
+                    print("batch_id=",batch_idx,"loader_step=",loader_step,"cur_step=",self.cur_step)
                 if loader_step<self.cur_step and flag:
                     loader_step += 1
                     if self.rank == 1:
