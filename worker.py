@@ -71,6 +71,8 @@ class DistributedWorker(NN_Trainer):
                 dump = list(train_loader)
                 loader_step += loader_length
                 loader_epoch += 1
+                if self.rank == 1:
+                    print("Move to step=",loader_step,"epoch=",loader_epoch)
 
         num_batch_per_epoch = len(train_loader.dataset) / self.batch_size
         batch_idx = -1
