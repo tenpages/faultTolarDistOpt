@@ -67,6 +67,8 @@ class DistributedWorker(NN_Trainer):
         else:
             assert (self.cur_step == int(self._checkpoint_step) + 1)
             loader_length = len(train_loader)
+            if self.rank==1:
+                print("Starting from step=",loader_step)
             while loader_step + loader_length < self.cur_step:
                 dump = list(train_loader)
                 loader_step += loader_length
