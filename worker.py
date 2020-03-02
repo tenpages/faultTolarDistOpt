@@ -60,10 +60,17 @@ class DistributedWorker(NN_Trainer):
 
         self.sync_fetch_step()
         assert (self.update_step())
+        loader_step = 1
+        loader_epoch = 0
         if self._checkpoint_step == 0:
             assert (self.cur_step == STEP_START_)
         else:
             assert (self.cur_step == int(self._checkpoint_step) + 1)
+            loader_length = len(loader)
+            while loader_step + loader_length < self.cur_step:
+                dump = list(loader)
+                loader_step += loader_length
+                loader_epoch += 1
 
         num_batch_per_epoch = len(train_loader.dataset) / self.batch_size
         batch_idx = -1
@@ -75,8 +82,12 @@ class DistributedWorker(NN_Trainer):
 
         print("Worker {}: starting training".format(self.rank))
 
-        for num_epoch in range(self.max_epochs):
+        for num_epoch in range(loader_epoch, self.max_epochs):
             for batch_idx, (train_input_batch, train_label_batch) in enumerate(train_loader):
+                if loader_step<self.cur_step:
+                    loader_step += 1
+                    continue
+
                 if self.cur_step == self._max_steps:
                     break
 
