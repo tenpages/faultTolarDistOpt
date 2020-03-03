@@ -145,10 +145,10 @@ class DistributedWorker(NN_Trainer):
                         self.network.load_state_dict(torch.load("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)))
                         with open("x_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)+"_new", "wb") as f:
                             torch.save(X_batch, f)
-                        X_batch = torch.load("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
+                        X_batch = torch.load("x_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
                         with open("y_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)+"_new", "wb") as f:
                             torch.save(y_batch, f)
-                        y_batch = torch.load("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
+                        y_batch = torch.load("y_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
 
                     self.network.train()
                     self.optimizer.zero_grad()
