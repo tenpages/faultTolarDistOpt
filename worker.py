@@ -139,6 +139,10 @@ class DistributedWorker(NN_Trainer):
                         self.async_fetch_weight_async()
                     fetch_weight_duration = time.time() - fetch_weight_start_time
 
+                    if self.cur_step==8:
+                        with open("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step), "wb") as f:
+                            torch.save(self.network.state_dict(), f)
+
                     self.network.train()
                     self.optimizer.zero_grad()
 
