@@ -142,13 +142,13 @@ class DistributedWorker(NN_Trainer):
                     if self.cur_step==8 and self.rank==1:
                         with open("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)+"_new", "wb") as f:
                             torch.save(self.network.state_dict(), f)
-                        self.network.load_state_dict(torch.load("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)))
+                        # self.network.load_state_dict(torch.load("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)))
                         with open("x_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)+"_new", "wb") as f:
                             torch.save(X_batch, f)
-                        X_batch = torch.load("x_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
+                        # X_batch = torch.load("x_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
                         with open("y_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)+"_new", "wb") as f:
                             torch.save(y_batch, f)
-                        y_batch = torch.load("y_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
+                        # y_batch = torch.load("y_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
 
                     self.network.train()
                     self.optimizer.zero_grad()
@@ -160,8 +160,7 @@ class DistributedWorker(NN_Trainer):
                         loss = self.criterion(logits, y_batch)
                         #print(loss)
                     else:
-                        print("wrong network config")
-                        assert (False)
+                        raise Exception("No such network as "+self.network_config)
                     epoch_avg_loss += loss.item()
                     forward_duration = time.time() - forward_start_time
 
