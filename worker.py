@@ -117,7 +117,7 @@ class DistributedWorker(NN_Trainer):
                         else:
                             print("====== Not updated:", "batch_id=",batch_idx,"cur_step=",self.cur_step)
                         with open("print-dataset-log-with-checkpoint"+str(self._checkpoint_step), "a+") as f:
-                            f.write(str(self.cur_step)+":\n")
+                            f.write(str(self.cur_step)+": epoch="+str(num_epoch)+", batch_idx="+str(batch_idx)+"\n")
                             f.write(str(train_input_batch)+"\n")
                             f.write(str(train_label_batch)+"\n")
                             f.write("============================\n")
