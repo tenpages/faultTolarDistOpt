@@ -128,6 +128,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for j in self.grad_accumulator.gradient_aggregate_counter:
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
 
+            if self.cur_step == 8:
+                for idx, grads in enumerate(self._grad_aggregate_buffer):
+                    print(grads.shape)
+                    grads.dump("layer_"+str(idx)+"_of_step_8")
+
             # update by given gradient filter
             if self._update_mode == 'normal':
                 method_start = time.time()
