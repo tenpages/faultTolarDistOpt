@@ -140,13 +140,15 @@ class DistributedWorker(NN_Trainer):
                     fetch_weight_duration = time.time() - fetch_weight_start_time
 
                     if self.cur_step==8 and self.rank==1:
-                        with open("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step), "wb") as f:
+                        with open("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)+"_new", "wb") as f:
                             torch.save(self.network.state_dict(), f)
-                        #self.network.load_state_dict(torch.load("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)))
-                        with open("x_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step), "wb") as f:
+                        self.network.load_state_dict(torch.load("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)))
+                        with open("x_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)+"_new", "wb") as f:
                             torch.save(X_batch, f)
-                        with open("y_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step), "wb") as f:
+                        X_batch = torch.load("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
+                        with open("y_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)+"_new", "wb") as f:
                             torch.save(y_batch, f)
+                        y_batch = torch.load("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
 
                     self.network.train()
                     self.optimizer.zero_grad()
