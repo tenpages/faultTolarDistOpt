@@ -116,6 +116,11 @@ class DistributedWorker(NN_Trainer):
                             print("====== Updated:", "batch_id=",batch_idx,"cur_step=",self.cur_step)
                         else:
                             print("====== Not updated:", "batch_id=",batch_idx,"cur_step=",self.cur_step)
+                        with open("print-dataset-log-with-checkpoint"+str(self._checkpoint_step), "a+") as f:
+                            f.write(str(self.cur_step)+":\n")
+                            f.write(str(train_input_batch)+"\n")
+                            f.write(str(train_label_batch)+"\n")
+                            f.write("============================\n")
 
                     iteration_last_step = time.time() - iter_start_time
                     iter_start_time = time.time()
