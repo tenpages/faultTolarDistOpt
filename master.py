@@ -409,7 +409,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if self._grad_norm_keep_all == True:
                 self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads), axis=0)/self.num_workers
             else:
-                self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads[ranks[:(self.num_workers-self._s)]]))/(self.num_workers-self._s)
+                self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads)[ranks[:(self.num_workers-self._s)]], axis=0)/(self.num_workers-self._s)
 
     def _grad_norm_coor_wise(self):
         print("size of buffer",len(self._grad_aggregate_buffer))
