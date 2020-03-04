@@ -68,6 +68,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def start(self):
         self.async_bcast_step()
 
+        if self._checkpoint_step != 0:
+            torch.set_rng_state(torch.load(self._train_dir+"rng_state_"+str(self.checkpoint_step)))
+        
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
             self.network.train()
             self._first_grad_received = False
