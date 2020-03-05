@@ -194,6 +194,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if self._eval_freq!=0 and self.cur_step % self._eval_freq == 0:
                 self._save_model(file_path=self._generate_model_path())
                 torch.save(torch.get_rng_state(), open(self._train_dir+"rng_state_"+str(self.cur_step),"wb"))
+                torch.save(self.optimizer, open(self._train_dir+"optim_"+str(self.cur_step),"wb"))
             print("Master Step: {}, Method Time Cost: {}, Update Time Cost: {}".format(self.cur_step, method_duration,
                                                                                        update_duration))
             self.cur_step += 1
