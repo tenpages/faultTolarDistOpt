@@ -73,6 +73,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
             self.network.train()
+            self.optimizer.zero_grad()
             self._first_grad_received = False
             enough_gradients_received = False
 
