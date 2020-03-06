@@ -9,6 +9,7 @@ size = comm.Get_size()
 
 if rank==0:
 	print("MASTER: initiated")
+	print("World size:", size)
 	receiver=[]
 	requests=[]
 	for i in range(size-1):
