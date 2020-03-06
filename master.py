@@ -69,7 +69,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self.async_bcast_step()
 
         if self._checkpoint_step != 0:
-            torch.set_rng_state(torch.load(self._train_dir+"rng_state_"+str(self._checkpoint_step)))
+            # torch.set_rng_state(torch.load(self._train_dir+"rng_state_"+str(self._checkpoint_step)))
             self.optimizer.load_state_dict(torch.load(self._train_dir+"optim_"+str(self._checkpoint_step)))
         
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
@@ -198,7 +198,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
             if self._eval_freq!=0 and self.cur_step % self._eval_freq == 0:
                 self._save_model(file_path=self._generate_model_path())
-                torch.save(torch.get_rng_state(), open(self._train_dir+"rng_state_"+str(self.cur_step),"wb"))
+                # torch.save(torch.get_rng_state(), open(self._train_dir+"rng_state_"+str(self.cur_step),"wb"))
                 torch.save(self.optimizer.state_dict(), open(self._train_dir+"optim_"+str(self.cur_step),"wb"))
             print("Master Step: {}, Method Time Cost: {}, Update Time Cost: {}".format(self.cur_step, method_duration,
                                                                                        update_duration))
