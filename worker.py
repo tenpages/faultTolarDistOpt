@@ -95,11 +95,13 @@ class DistributedWorker(NN_Trainer):
                     loader_step += 1
                     if self.rank == 1:
                         print("skipped")
+                        """
                         with open("print-dataset-log-with-checkpoint"+str(self._checkpoint_step), "a+") as f:
                             f.write(str(self.cur_step)+": epoch="+str(num_epoch)+", batch_idx="+str(batch_idx)+" SKIPPED\n")
                             f.write(str(train_input_batch)+"\n")
                             f.write(str(train_label_batch)+"\n")
                             f.write("============================\n")
+                        """
                     continue
                 else:
                     flag = False
@@ -139,6 +141,7 @@ class DistributedWorker(NN_Trainer):
                         self.async_fetch_weight_async()
                     fetch_weight_duration = time.time() - fetch_weight_start_time
 
+                    """
                     if self.cur_step>=8 and self.rank==1:
                         with open("model_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)+"_"+str(self._checkpoint_step), "wb") as f:
                             torch.save(self.network.state_dict(), f)
@@ -149,6 +152,7 @@ class DistributedWorker(NN_Trainer):
                         with open("y_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step)+"_"+str(self._checkpoint_step), "wb") as f:
                             torch.save(y_batch, f)
                         # y_batch = torch.load("y_batch_of_agent_"+str(self.rank)+"_at_step_"+str(self.cur_step))
+                    """
 
                     self.network.train()
                     self.optimizer.zero_grad()
