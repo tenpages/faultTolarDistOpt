@@ -48,6 +48,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._size = kwargs['data_size']
         self._multi_krum_m = kwargs['multi_krum_m']
         self._grad_norm_keep_all = kwargs['grad_norm_keep_all']
+        self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
 
     def build_model(self) :
         # print("building model, self._size ", self._size)
@@ -424,20 +425,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def _grad_norm_coor_wise(self):
         print("size of buffer",len(self._grad_aggregate_buffer))
-        """
-        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            print(g_idx)
-            calculated_grad = grads[0]
-            for idx, i in enumerate(np.array(grads).T):
-                # print(idx,':',len(i),len(ranks))
-                ranks = np.argsort(np.abs(i))
-                norm = np.abs(i[ranks[self.num_workers - self._s-1]])
-                for j in range(self.num_workers-self._s, self.num_workers):
-                    i[ranks[j]] = i[ranks[j]]*norm/np.abs(i[ranks[j]])
-                calculated_grad[idx] = np.average(i)
-            self._grad_aggregate_buffer[g_idx] = calculated_grad
-        """
-
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             """
             grads: nums_of_workers x size_of_param
@@ -454,6 +441,36 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     summation += grads[j][i]
                 calculated_grad[i] = summation/self.num_workers
             self._grad_aggregate_buffer[g_idx] = calculated_grad
+
+    def _grad_norm_multi_parts(self):
+        concatenated_gradients = None
+        separator = []
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            print(np.array(grads).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+            separator.append(len(concatenated_gradients[0]))
+        gradient_parts = np.split(concatenated_gradients, list(range(0,len(concatenated_gradients[0]),int(len(concatenated_gradients[0])/self._grad_norm_clip_n)))[1:], axis=1)
+        for g_idx, grads in enumerate(gradient_parts):
+            print(np.array(grads).shape)
+            ranks = np.argsort(np.linalg.norm(np.array(grads), axis=1))
+            norm = np.linalg.norm(grads[ranks[self.num_workers-self._s-1]])
+            for i in range(self.num_workers-self._s, self.num_workers):
+                grads[ranks[i]]=grads[ranks[i]]*norm/np.linalg.norm(grads[ranks[i]])
+            if self._grad_norm_keep_all == True:
+                gradient_parts[g_idx] = np.sum(np.array(grads), axis=0)/self.num_workers
+            else:
+                gradient_parts[g_idx] = np.sum(np.array(grads)[ranks[:(self.num_workers-self._s)]], axis=0)/(self.num_workers-self._s)
+        concatenated_gradients = None
+        for g_idx, grad in enumerate(gradient_parts):
+            print(np.array(grad).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grad)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, grad))
+        self._grad_aggregate_buffer = np.split(concatenated_gradients,separator[:len(separator)-1])
 
     def _grad_norm_full_grad(self):
         concatenated_gradients = None
