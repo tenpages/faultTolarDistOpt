@@ -85,6 +85,8 @@ def add_fit_args(parser):
                         help='parameter m in multi-krum. Positive, default 1, no large than n-2f-1')
     parser.add_argument('--grad-norm-keep-all', type=ast.literal_eval, default=True, metavar='N',
                         help='decide if when using gradient norm clipping, keep all gradients (True) or throw away the largest ones (False)')
+    parser.add_argument('--grad-norm-clip-n', type=int, default=1, metavar='N',
+                        help='specifying parameter n when using gradient norm clipping (multi-parts) with n piece')
     args = parser.parse_args()
     return args
 
@@ -184,6 +186,7 @@ def prepare(args, rank, world_size):
             'data_size': data_shape,
             'multi_krum_m': args.multi_krum_m,
             'grad_norm_keep_all': args.grad_norm_keep_all,
+            'grad_norm_clip_n': args.grad_norm_clip_n
         }
         kwargs_worker = {
             'batch_size': args.batch_size,
