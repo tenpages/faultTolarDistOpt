@@ -5,6 +5,7 @@ import torch
 from mpi4py import MPI
 from torch import nn
 from torch.autograd import Variable
+from torch.nn.modules.loss import _Loss
 
 import numpy as np
 
@@ -13,6 +14,14 @@ from model_ops.fc import Full_Connected
 from nn_ops import NN_Trainer
 
 STEP_START_ = 1
+
+
+class selfDefineLinearRegLoss(_Loss):
+    def __init__(self, size_average=None, reduce=None, reduction='mean'):
+        super(selfDefineLinearRegLoss, self).__init__(size_average, reduce, reduction)
+
+    def forward(self, input, target, weight):
+        return (torch.matmul(input, weight) + target).norm(p=2).pow(2)
 
 
 class DistributedWorker(NN_Trainer):
@@ -51,7 +60,7 @@ class DistributedWorker(NN_Trainer):
             self._load_model(file_path)
 
         self.optimizer = torch.optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = selfDefineLinearRegLoss()
 
         self.init_recv_buf()
 
@@ -67,14 +76,14 @@ class DistributedWorker(NN_Trainer):
         else:
             assert (self.cur_step == int(self._checkpoint_step) + 1)
             loader_length = len(train_loader)
-            if self.rank==1:
-                print("Starting from step=",loader_step)
+            if self.rank == 1:
+                print("Starting from step=", loader_step)
             while loader_step + loader_length < self.cur_step:
                 dump = list(train_loader)
                 loader_step += loader_length
                 loader_epoch += 1
                 if self.rank == 1:
-                    print("Move to step=",loader_step,"epoch=",loader_epoch)
+                    print("Move to step=", loader_step, "epoch=", loader_epoch)
 
         num_batch_per_epoch = len(train_loader.dataset) / self.batch_size
         batch_idx = -1
@@ -90,8 +99,8 @@ class DistributedWorker(NN_Trainer):
         for num_epoch in range(loader_epoch, self.max_epochs):
             for batch_idx, (train_input_batch, train_label_batch) in enumerate(train_loader):
                 if self.rank == 1:
-                    print("batch_id=",batch_idx,"loader_step=",loader_step,"cur_step=",self.cur_step)
-                if loader_step<self.cur_step and flag:
+                    print("batch_id=", batch_idx, "loader_step=", loader_step, "cur_step=", self.cur_step)
+                if loader_step < self.cur_step and flag:
                     loader_step += 1
                     if self.rank == 1:
                         print("skipped")
@@ -120,9 +129,9 @@ class DistributedWorker(NN_Trainer):
 
                     if self.rank == 1:
                         if updated:
-                            print("====== Updated:", "batch_id=",batch_idx,"cur_step=",self.cur_step)
+                            print("====== Updated:", "batch_id=", batch_idx, "cur_step=", self.cur_step)
                         else:
-                            print("====== Not updated:", "batch_id=",batch_idx,"cur_step=",self.cur_step)
+                            print("====== Not updated:", "batch_id=", batch_idx, "cur_step=", self.cur_step)
                         """
                         with open("print-dataset-log-with-checkpoint"+str(self._checkpoint_step), "a+") as f:
                             f.write(str(self.cur_step)+": epoch="+str(num_epoch)+", batch_idx="+str(batch_idx)+"\n")
@@ -162,11 +171,11 @@ class DistributedWorker(NN_Trainer):
                     forward_start_time = time.time()
                     logits = self.network(X_batch)
                     if "FC" in self.network_config:
-                        #print("loss calculation", X_batch.shape, logits.shape, y_batch.shape)
+                        # print("loss calculation", X_batch.shape, logits.shape, y_batch.shape)
                         loss = self.criterion(logits, y_batch)
-                        #print(loss)
+                        # print(loss)
                     else:
-                        raise Exception("No such network as "+self.network_config)
+                        raise Exception("No such network as " + self.network_config)
                     epoch_avg_loss += loss.item()
                     forward_duration = time.time() - forward_start_time
 
@@ -194,7 +203,8 @@ class DistributedWorker(NN_Trainer):
 
     def sync_fetch_step(self):
         self.next_step = self.comm.recv(source=0, tag=10)
-        print('Worker {}: Worker {} just received next step syncly: step={}'.format(self.rank, self.rank, self.next_step))
+        print(
+            'Worker {}: Worker {} just received next step syncly: step={}'.format(self.rank, self.rank, self.next_step))
 
     def async_fetch_step(self):
         req = self.comm.irecv(source=0, tag=10)
@@ -207,7 +217,8 @@ class DistributedWorker(NN_Trainer):
         for layer_idx, layer in enumerate(self.model_recv_buf.recv_buf):
             if self.model_recv_buf.layer_cur_step[layer_idx] < self.cur_step:
                 layers_to_update.append(layer_idx)
-                req = self.comm.Irecv([self.model_recv_buf.recv_buf[layer_idx], MPI.DOUBLE], source=0, tag=11+layer_idx)
+                req = self.comm.Irecv([self.model_recv_buf.recv_buf[layer_idx], MPI.DOUBLE], source=0,
+                                      tag=11 + layer_idx)
                 request_layers.append(req)
 
         assert (len(layers_to_update) == len(request_layers))
@@ -242,7 +253,7 @@ class DistributedWorker(NN_Trainer):
         model_counter_ = 0
         for param_idx, (key_name, param) in enumerate(self.network.state_dict().items()):
             if 'running_mean' in key_name or 'running_var' in key_name:
-                tmp_dict={key_name: param}
+                tmp_dict = {key_name: param}
             else:
                 assert param.size() == weights_to_update[model_counter_].shape
                 tmp_dict = {key_name: torch.from_numpy(weights_to_update[model_counter_])}
@@ -253,7 +264,7 @@ class DistributedWorker(NN_Trainer):
     def _backward(self, loss, logits_1=None, computation_time=None):
         b_start = time.time()
         loss.backward()
-        b_duration = time.time()-b_start
+        b_duration = time.time() - b_start
         if "FC" in self.network_config:
             computation_time += b_duration
             c_start = time.time()
@@ -291,10 +302,10 @@ class DistributedWorker(NN_Trainer):
 
                 if self._compress_grad == 'compress':
                     _compressed_grad = compress(simulated_grad)
-                    req_isend = self.comm.isend(_compressed_grad, dest=0, tag=88+param_idx)
+                    req_isend = self.comm.isend(_compressed_grad, dest=0, tag=88 + param_idx)
                     req_send_check.append(req_isend)
                 else:
-                    req_isend = self.comm.Isend([simulated_grad, MPI.DOUBLE], dest=0, tag=88+param_idx)
+                    req_isend = self.comm.Isend([simulated_grad, MPI.DOUBLE], dest=0, tag=88 + param_idx)
                     req_send_check.append(req_isend)
             else:
                 """
@@ -303,13 +314,13 @@ class DistributedWorker(NN_Trainer):
 
                 if self._compress_grad == 'compress':
                     _compressed_grad = compress(grad)
-                    #print(self.rank," is sending gradients to master on step ",self.cur_step," for parameter ",param_idx," in length ",len(_compressed_grad))
-                    req_isend = self.comm.isend(_compressed_grad, dest=0, tag=88+param_idx)
+                    # print(self.rank," is sending gradients to master on step ",self.cur_step," for parameter ",param_idx," in length ",len(_compressed_grad))
+                    req_isend = self.comm.isend(_compressed_grad, dest=0, tag=88 + param_idx)
                     req_send_check.append(req_isend)
                 else:
-                    #with open("worker{}log.txt".format(self.rank),"a+") as f:
+                    # with open("worker{}log.txt".format(self.rank),"a+") as f:
                     #    f.write(str(self.rank)+" is sending grads to master on step "+str(self.cur_step)+" for parameter "+str(param_idx)+" in shape "+str(grad.shape)+"which has the value\n"+str(grad)+"\n")
-                    req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+param_idx)
+                    req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88 + param_idx)
                     req_send_check.append(req_isend)
         """
         if self.rank in self._fail_workers[self.cur_step]:
@@ -364,8 +375,8 @@ def err_simulation(grad, mode, cyclic=False):
             return ADVERSARY_ * grad
     elif mode == 'constant':
         if cyclic:
-            adv = np.ones(grad.shape, dtype=np.float64)*CONST_
+            adv = np.ones(grad.shape, dtype=np.float64) * CONST_
             assert adv.shape == grad.shape
-            return np.add(adv,grad)
+            return np.add(adv, grad)
         else:
-            return np.ones(grad.shape, dtype=np.float64)*CONST_
+            return np.ones(grad.shape, dtype=np.float64) * CONST_
