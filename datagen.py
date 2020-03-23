@@ -14,8 +14,8 @@ for i in range(100):
 		X = np.vstack([X,Xi])
 		Y = np.append(Y,Yi)
 
-X = torch.tensor(X)
-Y = torch.tensor(Y)
+X = torch.tensor(X).float()
+Y = torch.tensor(Y).float()
 dataset = torch.utils.data.TensorDataset(X,Y)
 with open("linRegDataset","wb") as f:
 	torch.save(dataset, f)
