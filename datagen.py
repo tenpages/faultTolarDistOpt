@@ -1,11 +1,11 @@
 import numpy as np
 import torch
 
-weight = np.random.rand(1000)*2-1
+weight = np.random.rand(1000).astype("float32")*2-1
 
 for i in range(100):
-	Xi = np.random.rand(100,1000)-.5
-	zi = np.random.rand(100)/5-.1
+	Xi = np.random.rand(100,1000).astype("float32")-.5
+	zi = np.random.rand(100).astype("float32")/5-.1
 	Yi = np.matmul(Xi,weight) + zi
 	if i==0:
 		X = Xi
