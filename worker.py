@@ -182,15 +182,14 @@ class DistributedWorker(NN_Trainer):
                     if "FC" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
 
-                    prec1, prec5 = accuracy(logits.data, train_label_batch.long(), topk=(1, 5))
+                    # prec1, prec5 = accuracy(logits.data, train_label_batch.long(), topk=(1, 5))
                     print(
-                        'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.4f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@5: {}'.format(
+                        'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.4f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}'.format(
                             self.rank,
                             self.cur_step, num_epoch, batch_idx * self.batch_size, len(train_loader.dataset),
                             (100. * (batch_idx * self.batch_size) / len(train_loader.dataset)), loss.item(),
                                                       time.time() - iter_start_time, computation_time,
-                                                      c_duration + fetch_weight_duration,
-                            prec1.numpy()[0], prec5.numpy()[0]))
+                                                      c_duration + fetch_weight_duration))
 
                     if self.cur_step % self._eval_freq == 0 and self.rank == 1:
                         # save snapshots
