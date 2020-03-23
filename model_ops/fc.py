@@ -14,20 +14,11 @@ from compress_gradient import compress
 class Full_Connected(nn.Module):
     def __init__(self, size):
         super(Full_Connected, self).__init__()
-        self.fc1 = nn.Linear(size, 800)
-        self.fc2 = nn.Linear(800, 500)
-        self.fc3 = nn.Linear(500, 10)
-        self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
+        self.fc1 = nn.Linear(size, 1)
 
     def forward(self, x):
-        out = x.view(-1, x.size()[1]*x.size()[2]*x.size()[3])
+        out = x.view(-1, x.size()[1])
         out = self.fc1(out)
-        out = self.relu(out)
-        out = self.fc2(out)
-        out = self.relu(out)
-        out = self.fc3(out)
-        out = self.sigmoid(out)
         return out
 
     def name(self):
@@ -37,13 +28,9 @@ class Full_Connected(nn.Module):
 class Full_Connected_Split(nn.Module):
     def __init__(self, size):
         super(Full_Connected_Split, self).__init__()
-        self.fc1 = nn.Linear(size, 800)
-        self.fc2 = nn.Linear(800, 500)
-        self.fc3 = nn.Linear(500, 10)
-        self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
+        self.fc1 = nn.Linear(size, 1)
 
-        self.full_modules = [self.fc1, self.fc2, self.fc3]
+        self.full_modules = [self.fc1]
         self._init_channel_index = len(self.full_modules)*2
 
     def forward(self, x):
@@ -60,36 +47,11 @@ class Full_Connected_Split(nn.Module):
         """
         self.output = []
         self.input = []
-        x = x.view(-1, x.size()[1]*x.size()[2]*x.size()[3])
+        x = x.view(-1, x.size()[1])
 
         x = Variable(x.data, requires_grad=True)
         self.input.append(x)
         x = self.fc1(x)
-        self.output.append(x)
-
-        x = Variable(x.data, requires_grad=True)
-        self.input.append(x)
-        x = self.relu(x)
-        self.output.append(x)
-
-        x = Variable(x.data, requires_grad=True)
-        self.input.append(x)
-        x = self.fc2(x)
-        self.output.append(x)
-
-        x = Variable(x.data, requires_grad=True)
-        self.input.append(x)
-        x = self.relu(x)
-        self.output.append(x)
-
-        x = Variable(x.data, requires_grad=True)
-        self.input.append(x)
-        x = self.fc3(x)
-        self.output.append(x)
-
-        x = Variable(x.data, requires_grad=True)
-        self.input.append(x)
-        x = self.sigmoid(x)
         self.output.append(x)
 
         return x
