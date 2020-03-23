@@ -15,14 +15,14 @@ from nn_ops import NN_Trainer
 
 STEP_START_ = 1
 
-
+"""
 class selfDefineLinearRegLoss(_Loss):
     def __init__(self, size_average=None, reduce=None, reduction='mean'):
         super(selfDefineLinearRegLoss, self).__init__(size_average, reduce, reduction)
 
     def forward(self, input, target, weight):
         return (torch.matmul(input, weight) + target).norm(p=2).pow(2)
-
+"""
 
 class DistributedWorker(NN_Trainer):
     def __init__(self, comm, **kwargs):
@@ -60,7 +60,7 @@ class DistributedWorker(NN_Trainer):
             self._load_model(file_path)
 
         self.optimizer = torch.optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
-        self.criterion = selfDefineLinearRegLoss()
+        self.criterion = nn.MSELoss()
 
         self.init_recv_buf()
 
