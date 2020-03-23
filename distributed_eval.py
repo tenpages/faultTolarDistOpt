@@ -96,7 +96,8 @@ class DistributedEvaluator(object):
         self.network.eval()
         test_loss = 0
         correct = 0
-        # prec1_counter_ = prec3_counter_ = batch_counter_ = 0
+        # prec1_counter_ = prec3_counter_ = 0
+        batch_counter_ = 0
         for data, y_batch in test_loader:
             data, target = Variable(data, volatile=True), Variable(y_batch)
             output = self.network(data)
