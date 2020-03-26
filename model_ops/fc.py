@@ -14,7 +14,7 @@ from compress_gradient import compress
 class Full_Connected(nn.Module):
     def __init__(self, size):
         super(Full_Connected, self).__init__()
-        self.fc1 = nn.Linear(size, 1)
+        self.fc1 = nn.Linear(size, 1, bias=False)
 
     def forward(self, x):
         out = x.view(-1, x.size()[1])
