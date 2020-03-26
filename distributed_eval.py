@@ -111,7 +111,7 @@ class DistributedEvaluator(object):
         # prec1 = prec1_counter_ / batch_counter_
         # prec3 = prec3_counter_ / batch_counter_
         test_loss /= len(test_loader.dataset)
-        print('Test set: Average loss: {:.4f}'.format(test_loss))
+        print('Test set: Average loss: {:.9f}'.format(test_loss))
 
     def _load_model(self, file_path):
         with open(file_path, "rb") as f_:
