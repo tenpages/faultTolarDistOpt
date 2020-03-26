@@ -28,5 +28,5 @@ with open("linRegDataset2","wb") as f:
 	torch.save(dataset, f)
 with open("linRegDataset3","wb") as f:
 	torch.save(dataset2, f)
-with open("linRegWeight","wb") as f:
+with open("linRegWeight2","wb") as f:
 	np.save(f, weight)
