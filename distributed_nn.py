@@ -103,6 +103,18 @@ class MNISTSubLoader(datasets.MNIST):
             self.targets = self.targets[start_from:start_from + group_size]
 
 
+class CIFAR10SubLoader(datasets.CIFAR10):
+    def __init__(self, *args, group_size=0, start_from=0, **kwargs):
+        super(CIFAR10SubLoader, self).__init__(*args, **kwargs)
+        if group_size == 0:
+            return
+        if self.train:
+            #print(self.train_data.shape)
+            #print(self.train_labels.shape)
+            self.data = self.data[start_from:start_from + group_size]
+            self.targets = self.targets[start_from:start_from + group_size]
+
+
 def load_data(dataset, seed, args, rank, world_size):
     #print("here")
     torch.manual_seed(TORCH_SEED_)
@@ -136,12 +148,29 @@ def load_data(dataset, seed, args, rank, world_size):
         return train_loader, training_set, test_loader
 
     elif dataset == "CIFAR10":
-        training_set = datasets.CIFAR10('./cifar10_data', train=True, download=True, transform=transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ]))
-        train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-        test_loader = None
+        if rank==0:
+            training_set = datasets.CIFAR10('./cifar10_data', train=True, download=True, transform=transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ]))
+            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            test_loader = None
+        else:
+            if args.data_distribution == 'distributed':
+                group_size = int(50000 / (world_size - 1))
+                training_set = CIFAR10SubLoader('./cifar10_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ]), group_size=group_size, start_from=group_size*(rank-1))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'same':
+                torch.manual_seed(TORCH_SEED_+rank)
+                training_set = datasets.CIFAR10('./cifar10_data', train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ]))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+
 
         return train_loader, training_set, test_loader
 
