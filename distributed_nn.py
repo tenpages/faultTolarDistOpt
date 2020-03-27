@@ -1,3 +1,4 @@
+import ast
 import sys
 import math
 import threading
@@ -14,17 +15,13 @@ import torch.nn.functional as F
 
 import numpy as np
 
-# from nn_ops import NN_trainer, accuracy
-# from
-
-# from
-# from
 from torchvision import datasets, transforms
 
 import master
 import worker
 
 SEED_ = 428
+TORCH_SEED_ = 761
 
 
 def add_fit_args(parser):
@@ -33,7 +30,7 @@ def add_fit_args(parser):
     return a parser added with args required by fit
     """
     parser.add_argument('--batch-size', type=int, default=128, metavar='N',
-                        help='input batch size for training (default: 64)')
+                        help='input batch size for training (default: 128)')
     parser.add_argument('--test-batch-size', type=int, default=100, metavar='N',
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--max-steps', type=int, default=10000, metavar='N',
@@ -80,22 +77,61 @@ def add_fit_args(parser):
                         help='compress/None indicate if we compress the gradient matrix before communication')
     parser.add_argument('--checkpoint-step', type=int, default=0, metavar='N',
                         help='which step to proceed the training process')
+    parser.add_argument('--faulty-pattern', type=str, default='fixed', metavar='N',
+                        help='decide faulty gradients are send from "fixed" workers or "changing" workers each step')
+    parser.add_argument('--data-distribution', type=str, default='same', metavar='N',
+                        help='decide if data is "distributed" among workers or every worker owns the "same" data')
+    parser.add_argument('--multi-krum-m', type=int, default=1, metavar='N',
+                        help='parameter m in multi-krum. Positive, default 1, no large than n-2f-1')
+    parser.add_argument('--grad-norm-keep-all', type=ast.literal_eval, default=True, metavar='N',
+                        help='decide if when using gradient norm clipping, keep all gradients (True) or throw away the largest ones (False)')
+    parser.add_argument('--grad-norm-clip-n', type=int, default=1, metavar='N',
+                        help='specifying parameter n when using gradient norm clipping (multi-parts) with n piece')
     args = parser.parse_args()
     return args
 
 
-def load_data(dataset, seed, args):
-    print("here\n")
+class MNISTSubLoader(datasets.MNIST):
+    def __init__(self, *args, group_size=0, start_from=0, **kwargs):
+        super(MNISTSubLoader, self).__init__(*args, **kwargs)
+        if group_size == 0:
+            return
+        if self.train:
+            #print(self.train_data.shape)
+            #print(self.train_labels.shape)
+            self.data = self.data[start_from:start_from + group_size]
+            self.targets = self.targets[start_from:start_from + group_size]
+
+
+def load_data(dataset, seed, args, rank, world_size):
+    #print("here")
+    torch.manual_seed(TORCH_SEED_)
     if seed:
         torch.manual_seed(seed)
         random.seed(seed)
-    print("dataset: "+dataset)
+    #print("dataset: " + dataset)
     if dataset == "MNIST":
-        training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ]))
-        train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        if rank==0:
+            training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,))
+            ]))
+            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        else:
+            if args.data_distribution == 'distributed':
+                group_size = int(60000 / (world_size - 1))
+                training_set = MNISTSubLoader('./mnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.1307,), (0.3081,))
+                ]), group_size=group_size, start_from=group_size*(rank-1))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'same':
+                torch.manual_seed(TORCH_SEED_+rank)
+                training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.1307,), (0.3081,))
+                ]))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
         return train_loader, training_set, test_loader
 
@@ -109,21 +145,29 @@ def load_data(dataset, seed, args):
 
         return train_loader, training_set, test_loader
 
-    print("here2")
+    #print("here2")
     return None, None, None
 
 
 def _generate_adversarial_nodes(args, world_size):
     np.random.seed(SEED_)
-    return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
-            range(args.max_steps + 1)]
+    if args.faulty_pattern == 'fixed':
+        return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False)] * (args.max_steps + 1)
+    elif args.faulty_pattern == 'changing':
+        return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
+                range(args.max_steps + 1)]
 
 
 def prepare(args, rank, world_size):
+    if args.mode=='multi_krum' and (args.multi_krum_m<=0 or args.multi_krum_m>world_size-args.worker_fail-1):
+        raise Exception("Wrong number for multi-krum parameter m.")
+
     if args.approach == "baseline":
         # randomly select adversarial nodes
         adversaries = _generate_adversarial_nodes(args, world_size)
-        train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args)
+        print("Faulty agents:", adversaries[0], "Total:", len(adversaries[0]))
+        train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank,
+                                                            world_size=world_size)
         data_shape = training_set[0][0].size()[0]*training_set[0][0].size()[1]*training_set[0][0].size()[2]
         kwargs_master = {
             'batch_size': args.batch_size,
@@ -139,7 +183,10 @@ def prepare(args, rank, world_size):
             'update_mode': args.mode,
             'compress_grad': args.compress_grad,
             'checkpoint_step': args.checkpoint_step,
-            'data_size': data_shape
+            'data_size': data_shape,
+            'multi_krum_m': args.multi_krum_m,
+            'grad_norm_keep_all': args.grad_norm_keep_all,
+            'grad_norm_clip_n': args.grad_norm_clip_n
         }
         kwargs_worker = {
             'batch_size': args.batch_size,
@@ -159,7 +206,7 @@ def prepare(args, rank, world_size):
             'adversaries': adversaries,
             'data_size': data_shape
         }
-    print(train_loader, training_set, test_loader)
+    # print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)
     return datum, kwargs_master, kwargs_worker
 
@@ -177,12 +224,14 @@ if __name__ == "__main__":
         if rank == 0:
             master_fc_nn = master.SyncReplicaMaster_NN(comm=comm, **kwargs_master)
             master_fc_nn.build_model()
-            print("Master node: the world size is {}, cur step: {}".format(master_fc_nn.world_size, master_fc_nn.cur_step))
+            print("Master node: the world size is {}, cur step: {}".format(master_fc_nn.world_size,
+                                                                           master_fc_nn.cur_step))
             master_fc_nn.start()
             print("Done sending massage to workers!")
         else:
             worker_fc_nn = worker.DistributedWorker(comm=comm, **kwargs_worker)
             worker_fc_nn.build_model()
-            print("Worker node: {} in all {}, next step: {}".format(worker_fc_nn.rank, worker_fc_nn.world_size, worker_fc_nn.next_step))
+            print("Worker node: {} in all {}, next step: {}".format(worker_fc_nn.rank, worker_fc_nn.world_size,
+                                                                    worker_fc_nn.next_step))
             worker_fc_nn.train(train_loader=train_loader, test_loader=test_loader)
             print("Now the next step is: {}".format(worker_fc_nn.next_step))

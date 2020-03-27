@@ -15,6 +15,8 @@ from optim.sgd_modified import SGDModified
 
 from functools import reduce
 
+import math
+
 STEP_START_ = 1
 
 
@@ -45,6 +47,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._checkpoint_step = kwargs['checkpoint_step']
         self._s = kwargs['worker_fail']
         self._size = kwargs['data_size']
+        self._multi_krum_m = kwargs['multi_krum_m']
+        self._grad_norm_keep_all = kwargs['grad_norm_keep_all']
+        self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
 
     def build_model(self) :
         # print("building model, self._size ", self._size)
@@ -55,9 +60,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.network = LeNet_Split()
 
         if self._checkpoint_step != 0:
-            file_path = "../checkpoints/geo_median/model_step_" + str(self._checkpoint_step)
+            file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
             self._load_model(file_path)
-            self.cur_step = int(self._checkpoint_step)
+            self.cur_step = int(self._checkpoint_step) + 1
 
         # gradient accumulator collects gradients from worker nodes
         self.grad_accumulator = GradientAccumulator(self.network, self.world_size - 1, mode=self._compress_grad)
@@ -68,11 +73,17 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def start(self):
         self.async_bcast_step()
 
-        for i in range(1, self._max_steps + 1):
+        if self._checkpoint_step != 0:
+            # torch.set_rng_state(torch.load(self._train_dir+"rng_state_"+str(self._checkpoint_step)))
+            self.optimizer.load_state_dict(torch.load(self._train_dir+"optim_"+str(self._checkpoint_step)))
+        
+        for i in range(self._checkpoint_step + 1, self._max_steps + 1):
             self.network.train()
+            self.optimizer.zero_grad()
             self._first_grad_received = False
             enough_gradients_received = False
 
+            assert (i == self.cur_step)
             print("Master node is entering step: {}".format(i))
 
             self.async_bcast_step()
@@ -113,17 +124,26 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         #            "\n")
                         #    f.write("The shape used to be "+str(self.grad_accumulator._shape_counter[layer_index][status.source-1]))
                     # check gradient shape
+                    # print(received_grad.shape)
+                    # print("Received from worker ",status.source-1,": gradient with norm",np.linalg.norm(received_grad.reshape(-1)))
                     assert (received_grad.shape == self._model_shapes[layer_index])
 
                     # aggregate the gradient
                     if self.grad_accumulator.gradient_aggregate_counter[layer_index] <= self._num_grad_to_collect:
-                        self.aggregate_gradient(gradient=received_grad, layer_idx=layer_index)
+                        self.aggregate_gradient(gradient=received_grad, layer_idx=layer_index, source=status.source-1)
 
                     self.grad_accumulator.gradient_aggregate_counter[layer_index] += 1
 
                 enough_gradients_received = True
                 for j in self.grad_accumulator.gradient_aggregate_counter:
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
+
+            """
+            if self.cur_step >= 8:
+                for idx, grads in enumerate(self._grad_aggregate_buffer):
+                    print(np.array(grads).shape)
+                    np.array(grads).dump("layer_"+str(idx)+"_of_step_"+str(self.cur_step)+"_"+str(self._checkpoint_step))
+            """
 
             # update by given gradient filter
             if self._update_mode == 'normal':
@@ -138,6 +158,45 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_start = time.time()
                 self._krum()
                 method_duration = time.time() - method_start
+            elif self._update_mode == 'multi_krum':
+                method_start = time.time()
+                self._multi_krum(self._multi_krum_m)
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'coor_wise_median':
+                method_start = time.time()
+                self._coor_wise_median()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'coor_wise_trimmed_mean':
+                method_start = time.time()
+                self._coor_wise_trimmed_mean()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'median_of_means':
+                method_start = time.time()
+                self._median_of_means()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'grad_norm':
+                method_start = time.time()
+                self._grad_norm()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'grad_norm_full_grad':
+                method_start = time.time()
+                self._grad_norm_full_grad()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'grad_norm_coor_wise':
+                method_start = time.time()
+                self._grad_norm_coor_wise()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'grad_norm_multi_parts':
+                method_start = time.time()
+                self._grad_norm_multi_parts()
+                method_duration = time.time() - method_start
+
+            """
+            if self.cur_step >= 8:
+                for idx, grads in enumerate(self._grad_aggregate_buffer):
+                    print(np.array(grads).shape)
+                    np.array(grads).dump("layer_"+str(idx)+"_of_step_"+str(self.cur_step)+"_"+str(self._checkpoint_step)+"_processed")
+            """
 
             update_start = time.time()
             self.optimizer.step(grads=self._grad_aggregate_buffer, mode=self._update_mode)
@@ -148,6 +207,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
             if self._eval_freq!=0 and self.cur_step % self._eval_freq == 0:
                 self._save_model(file_path=self._generate_model_path())
+                # torch.save(torch.get_rng_state(), open(self._train_dir+"rng_state_"+str(self.cur_step),"wb"))
+                torch.save(self.optimizer.state_dict(), open(self._train_dir+"optim_"+str(self.cur_step),"wb"))
             print("Master Step: {}, Method Time Cost: {}, Update Time Cost: {}".format(self.cur_step, method_duration,
                                                                                        update_duration))
             self.cur_step += 1
@@ -157,8 +218,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._model_shapes.append(param.size())
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer.append(np.zeros(param.size()))
-            elif self._update_mode in ('geometric_median', 'krum'):
-                self._grad_aggregate_buffer.append([])
+            elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
+                                       'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
+                                       'grad_norm_multi_parts'):
+                self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
 
     def async_bcast_step(self):
         """
@@ -204,15 +267,22 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 gradient_fetch_requests.append(req)
         return gradient_fetch_requests
 
-    def aggregate_gradient(self, gradient, layer_idx):
+    def aggregate_gradient(self, gradient, layer_idx, source):
         if self._update_mode == 'normal':
             self._grad_aggregate_buffer[layer_idx] += gradient
-        elif self._update_mode in ("geometric_median", "krum"):
+        elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
+                                   'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
+                                   'grad_norm_multi_parts'):
+            # print(self._grad_aggregate_buffer[layer_idx][source].shape, gradient.shape)
+            # print(self._grad_aggregate_buffer[layer_idx][source].dtype, gradient.dtype)
+            self._grad_aggregate_buffer[layer_idx][source] = gradient.reshape(-1)
+            """
             _shape = gradient.shape
             if len(_shape) == 1:
                 self._grad_aggregate_buffer[layer_idx].append(gradient)
             elif len(_shape) > 1:
-                self._grad_aggregate_buffer[layer_idx].append(gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
+                self._grad_aggregate_buffer[layer_idx].append(gradient.reshape(-1))  # gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
+            """
 
     def model_update(self, tmp_module):
         new_state_dict = {}
@@ -231,20 +301,23 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for i in range(len(self._grad_aggregate_buffer)):
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
-            elif self._update_mode in ("geometric_median", "krum"):
-                self._grad_aggregate_buffer[i] = []
+            elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
+                                       'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
+                                       'grad_norm_multi_parts'):
+                self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
 
     def _generate_model_path(self):
         return self._train_dir + "model_step_" + str(self.cur_step)
 
     def _save_model(self, file_path):
         with open(file_path, "wb") as f_:
-            torch.save(self.network, f_)
+            torch.save(self.network.state_dict(), f_)
 
     def _load_model(self, file_path):
-        model_state_dict = torch.load(file_path)
-        self.network.load_state_dict(model_state_dict)
-        print("Master loading checkpoint from {}".format(file_path))
+        with open(file_path, "rb") as f_:
+            model_state_dict = torch.load(f_)
+            self.network.load_state_dict(model_state_dict)
+            print("Master loading checkpoint from {}".format(file_path))
 
     def _evaluate_model(self, validation_loader):
         self.network.eval()
@@ -295,6 +368,154 @@ class SyncReplicaMaster_NN(NN_Trainer):
             krum_median = __krum(grads, self._s)
             self._grad_aggregate_buffer[g_idx] = krum_median
         print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
+
+    def _multi_krum(self, m):
+        def __krum(grad_list, grad_idxs, s):
+            """
+            Krum function.
+            :param grad_list: gradients from all workers
+            :param grad_idxs: list of indexes under consideration
+            :param s: number of faulty workers
+            :return: i, gradient from worker i that minimizes Krum score
+            """
+            score = []
+            for i, idx_i in enumerate(grad_idxs):
+                neighbor_distances = []
+                for j, idx_j in enumerate(grad_idxs):
+                    if i!=j:
+                        neighbor_distances.append(np.linalg.norm(grad_list[idx_i]-grad_list[idx_j])**2)
+                score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-s-2]))
+            i_star = score.index(min(score))
+            return grad_idxs[i_star], grad_list[grad_idxs[i_star]]
+        krum_start = time.time()
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            grads_in_consideration = []
+            current_list = list(range(self.num_workers))
+            for rnd in range(m):
+                print("Round:",rnd)
+                i, grad = __krum(grads, current_list, self._s)
+                grads_in_consideration.append(grad)
+                current_list.remove(i)
+            self._grad_aggregate_buffer[g_idx] = np.mean(np.array(grads_in_consideration), axis=0)
+        print("Master Step: {} Multi-Krum cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
+
+    def _coor_wise_median(self):
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            median = np.median(np.array(grads), axis=0)
+            self._grad_aggregate_buffer[g_idx] = median
+
+    def _coor_wise_trimmed_mean(self):
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            trimed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._s:self.num_workers-self._s], axis=0)
+            self._grad_aggregate_buffer[g_idx] = trimed_mean
+
+    """
+    def _median_of_means(self):
+        b = math.floor(self.num_workers / (2*self._s+0.5))
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            median = np.median(np.array([np.mean(np.array(grads[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0)
+            self._grad_aggregate_buffer[g_idx] = median
+    """
+
+    def _median_of_means(self):
+        b = math.floor(self.num_workers / (2*self._s+0.5))
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            median = np.array(hd.geomedian(np.array([np.mean(np.array(grads[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0))
+            self._grad_aggregate_buffer[g_idx] = median
+
+    def _grad_norm(self):
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            ranks = np.argsort(np.linalg.norm(np.array(grads), axis=1))
+            norm = np.linalg.norm(grads[ranks[self.num_workers-self._s-1]])
+            for i in range(self.num_workers-self._s, self.num_workers):
+                grads[ranks[i]]=grads[ranks[i]]*norm/np.linalg.norm(grads[ranks[i]])
+            if self._grad_norm_keep_all == True:
+                self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads), axis=0)/self.num_workers
+            else:
+                self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads)[ranks[:(self.num_workers-self._s)]], axis=0)/(self.num_workers-self._s)
+
+    def _grad_norm_coor_wise(self):
+        print("size of buffer",len(self._grad_aggregate_buffer))
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            """
+            grads: nums_of_workers x size_of_param
+            """
+            print(g_idx)
+            calculated_grad = grads[0]
+            ranks = np.argsort(grads, axis=0)
+            for i in range(len(grads[0])):
+                norm = np.abs(grads[ranks[self.num_workers-self._s-1][i]][i])
+                for j in range(self.num_workers-self._s, self.num_workers):
+                    grads[ranks[j][i]][i] = grads[ranks[j][i]][i]*norm/np.abs(grads[ranks[j][i]][i])
+                summation = 0
+                for j in range(self.num_workers):
+                    summation += grads[j][i]
+                calculated_grad[i] = summation/self.num_workers
+            self._grad_aggregate_buffer[g_idx] = calculated_grad
+
+    def _grad_norm_multi_parts(self):
+        concatenated_gradients = None
+        separator = []
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            print(np.array(grads).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+            separator.append(len(concatenated_gradients[0]))
+        gradient_parts = np.split(concatenated_gradients, list(range(0,len(concatenated_gradients[0]),int(len(concatenated_gradients[0])/self._grad_norm_clip_n)))[1:], axis=1)
+        for g_idx, grads in enumerate(gradient_parts):
+            print(np.array(grads).shape)
+            ranks = np.argsort(np.linalg.norm(np.array(grads), axis=1))
+            norm = np.linalg.norm(grads[ranks[self.num_workers-self._s-1]])
+            for i in range(self.num_workers-self._s, self.num_workers):
+                grads[ranks[i]]=grads[ranks[i]]*norm/np.linalg.norm(grads[ranks[i]])
+            if self._grad_norm_keep_all == True:
+                gradient_parts[g_idx] = np.sum(np.array(grads), axis=0)/self.num_workers
+            else:
+                gradient_parts[g_idx] = np.sum(np.array(grads)[ranks[:(self.num_workers-self._s)]], axis=0)/(self.num_workers-self._s)
+        concatenated_gradients = None
+        for g_idx, grad in enumerate(gradient_parts):
+            print(np.array(grad).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grad)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, grad))
+        self._grad_aggregate_buffer = np.split(concatenated_gradients,separator[:len(separator)-1])
+
+    def _grad_norm_full_grad(self):
+        concatenated_gradients = None
+        separator = []
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            print(np.array(grads).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+            separator.append(len(concatenated_gradients[0]))
+        # print(concatenated_gradients.shape)
+        # print(separator)
+        ranks = np.argsort(np.linalg.norm(np.array(concatenated_gradients), axis=1))
+        norm = np.linalg.norm(concatenated_gradients[ranks[self.num_workers-self._s-1]])
+        print(np.sqrt(np.sum(np.square([np.linalg.norm(self._grad_aggregate_buffer[i], axis=1) for i in range(len(self._grad_aggregate_buffer))]), axis=0)))
+        print(np.linalg.norm(concatenated_gradients, axis=1))
+        print(np.mean(np.linalg.norm(concatenated_gradients, axis=1)))
+        print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
+        for i in range(self.num_workers-self._s, self.num_workers):
+            concatenated_gradients[ranks[i]] = concatenated_gradients[ranks[i]]*norm/np.linalg.norm(concatenated_gradients[ranks[i]])
+        print(np.linalg.norm(concatenated_gradients, axis=1))
+        print(concatenated_gradients[0].shape)
+        if self._grad_norm_keep_all == True:
+            sum_gradient = np.mean(concatenated_gradients, axis=0)
+        else:
+            print(ranks[:(self.num_workers-self._s)])
+            sum_gradient = np.mean(np.array(concatenated_gradients)[ranks[:(self.num_workers-self._s)]], axis=0)
+        print(sum_gradient.shape)
+        print(np.linalg.norm(sum_gradient))
+        self._grad_aggregate_buffer=np.split(sum_gradient,separator[:len(separator)-1])
+        # print(len(self._grad_aggregate_buffer))
+        # for i in self._grad_aggregate_buffer:
+        #     print(i.shape)
 
 
 class GradientAccumulator(object):

@@ -1,0 +1,188 @@
+testing set loaded.
+evaluator initiated.
+loading model from directory 
+Evaluator evaluating results on step 20
+Test set: Average loss: -0.5111, Prec@1: 18.649999618530273 Prec@5: 68.19999694824219
+loading model from directory 
+Evaluator evaluating results on step 40
+Test set: Average loss: -0.5228, Prec@1: 33.59000015258789 Prec@5: 84.69999694824219
+loading model from directory 
+Evaluator evaluating results on step 60
+Test set: Average loss: -0.5351, Prec@1: 49.22999954223633 Prec@5: 92.07999420166016
+loading model from directory 
+Evaluator evaluating results on step 80
+Test set: Average loss: -0.5484, Prec@1: 58.04999923706055 Prec@5: 94.79000091552734
+loading model from directory 
+Evaluator evaluating results on step 100
+Test set: Average loss: -0.5628, Prec@1: 63.39999771118164 Prec@5: 96.02999877929688
+loading model from directory 
+Evaluator evaluating results on step 120
+Test set: Average loss: -0.5787, Prec@1: 66.18000030517578 Prec@5: 96.4000015258789
+loading model from directory 
+Evaluator evaluating results on step 140
+Test set: Average loss: -0.5958, Prec@1: 68.72000122070312 Prec@5: 96.72999572753906
+loading model from directory 
+Evaluator evaluating results on step 160
+Test set: Average loss: -0.6141, Prec@1: 70.51000213623047 Prec@5: 96.79999542236328
+loading model from directory 
+Evaluator evaluating results on step 180
+Test set: Average loss: -0.6332, Prec@1: 71.97999572753906 Prec@5: 96.97999572753906
+loading model from directory 
+Evaluator evaluating results on step 200
+Test set: Average loss: -0.6525, Prec@1: 73.23999786376953 Prec@5: 97.23999786376953
+loading model from directory 
+Evaluator evaluating results on step 220
+Test set: Average loss: -0.6714, Prec@1: 74.40999603271484 Prec@5: 97.36000061035156
+loading model from directory 
+Evaluator evaluating results on step 240
+Test set: Average loss: -0.6894, Prec@1: 75.5999984741211 Prec@5: 97.52999877929688
+loading model from directory 
+Evaluator evaluating results on step 260
+Test set: Average loss: -0.7058, Prec@1: 76.15999603271484 Prec@5: 97.73999786376953
+loading model from directory 
+Evaluator evaluating results on step 280
+Test set: Average loss: -0.7204, Prec@1: 77.08999633789062 Prec@5: 97.90999603271484
+loading model from directory 
+Evaluator evaluating results on step 300
+Test set: Average loss: -0.7332, Prec@1: 77.93000030517578 Prec@5: 98.15999603271484
+loading model from directory 
+Evaluator evaluating results on step 320
+Test set: Average loss: -0.7446, Prec@1: 78.68000030517578 Prec@5: 98.36000061035156
+loading model from directory 
+Evaluator evaluating results on step 340
+Test set: Average loss: -0.7552, Prec@1: 79.41999816894531 Prec@5: 98.3699951171875
+loading model from directory 
+Evaluator evaluating results on step 360
+Test set: Average loss: -0.7652, Prec@1: 80.1199951171875 Prec@5: 98.41999816894531
+loading model from directory 
+Evaluator evaluating results on step 380
+Test set: Average loss: -0.7752, Prec@1: 80.54999542236328 Prec@5: 98.5199966430664
+loading model from directory 
+Evaluator evaluating results on step 400
+Test set: Average loss: -0.7837, Prec@1: 80.7699966430664 Prec@5: 98.56999969482422
+loading model from directory 
+Evaluator evaluating results on step 420
+Test set: Average loss: -0.7923, Prec@1: 81.12999725341797 Prec@5: 98.58999633789062
+loading model from directory 
+Evaluator evaluating results on step 440
+Test set: Average loss: -0.7999, Prec@1: 81.18000030517578 Prec@5: 98.62999725341797
+loading model from directory 
+Evaluator evaluating results on step 460
+Test set: Average loss: -0.8071, Prec@1: 81.58000183105469 Prec@5: 98.6199951171875
+loading model from directory 
+Evaluator evaluating results on step 480
+Test set: Average loss: -0.8134, Prec@1: 81.63999938964844 Prec@5: 98.70999908447266
+loading model from directory 
+Evaluator evaluating results on step 500
+Test set: Average loss: -0.8191, Prec@1: 81.73999786376953 Prec@5: 98.75
+loading model from directory 
+Evaluator evaluating results on step 520
+Test set: Average loss: -0.8242, Prec@1: 81.81999969482422 Prec@5: 98.75999450683594
+loading model from directory 
+Evaluator evaluating results on step 540
+Test set: Average loss: -0.8288, Prec@1: 82.04999542236328 Prec@5: 98.79999542236328
+loading model from directory 
+Evaluator evaluating results on step 560
+Test set: Average loss: -0.8336, Prec@1: 82.29000091552734 Prec@5: 98.81999969482422
+loading model from directory 
+Evaluator evaluating results on step 580
+Test set: Average loss: -0.8372, Prec@1: 82.5 Prec@5: 98.81999969482422
+loading model from directory 
+Evaluator evaluating results on step 600
+Test set: Average loss: -0.8409, Prec@1: 82.43999481201172 Prec@5: 98.86000061035156
+loading model from directory 
+Evaluator evaluating results on step 620
+Test set: Average loss: -0.8441, Prec@1: 82.7699966430664 Prec@5: 98.8699951171875
+loading model from directory 
+Evaluator evaluating results on step 640
+Test set: Average loss: -0.8474, Prec@1: 82.70999908447266 Prec@5: 98.88999938964844
+loading model from directory 
+Evaluator evaluating results on step 660
+Test set: Average loss: -0.8500, Prec@1: 82.8499984741211 Prec@5: 98.88999938964844
+loading model from directory 
+Evaluator evaluating results on step 680
+Test set: Average loss: -0.8527, Prec@1: 82.83000183105469 Prec@5: 98.90999603271484
+loading model from directory 
+Evaluator evaluating results on step 700
+Test set: Average loss: -0.8561, Prec@1: 83.22999572753906 Prec@5: 98.91999816894531
+loading model from directory 
+Evaluator evaluating results on step 720
+Test set: Average loss: -0.8579, Prec@1: 83.31999969482422 Prec@5: 98.95999908447266
+loading model from directory 
+Evaluator evaluating results on step 740
+Test set: Average loss: -0.8606, Prec@1: 83.58000183105469 Prec@5: 98.95999908447266
+loading model from directory 
+Evaluator evaluating results on step 760
+Test set: Average loss: -0.8630, Prec@1: 83.7699966430664 Prec@5: 98.94999694824219
+loading model from directory 
+Evaluator evaluating results on step 780
+Test set: Average loss: -0.8648, Prec@1: 83.83000183105469 Prec@5: 98.97000122070312
+loading model from directory 
+Evaluator evaluating results on step 800
+Test set: Average loss: -0.8668, Prec@1: 84.00999450683594 Prec@5: 98.97999572753906
+loading model from directory 
+Evaluator evaluating results on step 820
+Test set: Average loss: -0.8688, Prec@1: 84.04000091552734 Prec@5: 98.98999786376953
+loading model from directory 
+Evaluator evaluating results on step 840
+Test set: Average loss: -0.8710, Prec@1: 84.27999877929688 Prec@5: 99.0199966430664
+loading model from directory 
+Evaluator evaluating results on step 860
+Test set: Average loss: -0.8725, Prec@1: 84.36000061035156 Prec@5: 99.02999877929688
+loading model from directory 
+Evaluator evaluating results on step 880
+Test set: Average loss: -0.8746, Prec@1: 84.54000091552734 Prec@5: 99.02999877929688
+loading model from directory 
+Evaluator evaluating results on step 900
+Test set: Average loss: -0.8762, Prec@1: 84.63999938964844 Prec@5: 99.04000091552734
+loading model from directory 
+Evaluator evaluating results on step 920
+Test set: Average loss: -0.8776, Prec@1: 84.79999542236328 Prec@5: 99.04999542236328
+loading model from directory 
+Evaluator evaluating results on step 940
+Test set: Average loss: -0.8790, Prec@1: 84.8699951171875 Prec@5: 99.0999984741211
+loading model from directory 
+Evaluator evaluating results on step 960
+Test set: Average loss: -0.8812, Prec@1: 85.08000183105469 Prec@5: 99.0999984741211
+loading model from directory 
+Evaluator evaluating results on step 980
+Test set: Average loss: -0.8825, Prec@1: 85.18999481201172 Prec@5: 99.07999420166016
+loading model from directory 
+Evaluator evaluating results on step 1000
+Test set: Average loss: -0.8831, Prec@1: 85.33999633789062 Prec@5: 99.04999542236328
+loading model from directory 
+Evaluator evaluating results on step 1020
+Test set: Average loss: -0.8847, Prec@1: 85.44999694824219 Prec@5: 99.04000091552734
+loading model from directory 
+Evaluator evaluating results on step 1040
+Test set: Average loss: -0.8863, Prec@1: 85.63999938964844 Prec@5: 99.04000091552734
+loading model from directory 
+Evaluator evaluating results on step 1060
+Test set: Average loss: -0.8871, Prec@1: 85.83999633789062 Prec@5: 99.02999877929688distributed_eval.py:101: UserWarning: volatile was removed and now has no effect. Use `with torch.no_grad():` instead.
+  data, target = Variable(data, volatile=True), Variable(y_batch)
+/home/shuo/anaconda3/lib/python3.7/site-packages/torch/nn/_reduction.py:43: UserWarning: size_average and reduce args will be deprecated, please use reduction='sum' instead.
+  warnings.warn(warning.format(ret))
+
+loading model from directory 
+Evaluator evaluating results on step 1080
+Test set: Average loss: -0.8883, Prec@1: 85.90999603271484 Prec@5: 99.04000091552734
+loading model from directory 
+Evaluator evaluating results on step 1100
+Test set: Average loss: -0.8895, Prec@1: 85.94999694824219 Prec@5: 99.04000091552734
+loading model from directory 
+Evaluator evaluating results on step 1120
+Test set: Average loss: -0.8908, Prec@1: 86.18000030517578 Prec@5: 99.04000091552734
+loading model from directory 
+Evaluator evaluating results on step 1140
+Test set: Average loss: -0.8918, Prec@1: 86.20999908447266 Prec@5: 99.04999542236328
+loading model from directory 
+Evaluator evaluating results on step 1160
+Test set: Average loss: -0.8926, Prec@1: 86.33999633789062 Prec@5: 99.04000091552734
+loading model from directory 
+Evaluator evaluating results on step 1180
+Test set: Average loss: -0.8936, Prec@1: 86.44999694824219 Prec@5: 99.04999542236328
+loading model from directory 
+Evaluator evaluating results on step 1200
+Test set: Average loss: -0.8944, Prec@1: 86.47000122070312 Prec@5: 99.06999969482422
+loading model from directory 
+finished evaluation.
