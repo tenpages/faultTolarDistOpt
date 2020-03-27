@@ -3,23 +3,31 @@ import re
 import numpy as np
 
 #model_names = ['normal', 'krum', 'median_of_means', 'coor_wise_median', 'coor_wise_trimmed_mean', 'grad_norm']
-model_names = ['normal', 'krum']
+#model_names = ['normal', 'grad_norm-drop-f', 'grad_norm-keep-n-clip', 'grad_norm_full_grad-drop-f', 'grad_norm_full_grad-keep-n-clip', 'grad_norm_multi_parts-20-keep-n-clip']
+#model_names = ['normal', 'grad_norm', 'grad_norm_full_grad', 'grad_norm_multi_parts-20']
+#model_names = ['normal', 'grad_norm-drop-f', 'grad_norm_full_grad-drop-f']
+#model_names = ['normal', 'krum', 'multi_krum-5']
+model_names = ['100','40','25','10','5']
 current_step = 0
-new_ticks = np.linspace(0,8850,178)
+new_ticks = np.linspace(0,60000,1201)
 plt.figure(figsize=(10,9), dpi=1200)
-plt.xlim(0,8900)
+plt.xlim(0,60000)
 #plt.ylim(-1,1)
 #plt.xticks(new_ticks)
 plt.xlabel("Step")
 plt.ylabel("Loss")
+losses=[]
 
 for model_name in model_names:
     step=[]
     loss=[]
+    """
     if model_name=='normal':
         filename = 'results-' + model_name + '-40-0-10000'
     else:
-        filename = 'results-'+model_name+'-40-15-10000'
+        filename = 'results-'+model_name+'-keep-n-clip-40-15-10000'
+    """
+    filename = 'results-normal-1-'+model_name+'-0-60000'
     print(model_name)
     with open(filename,"r") as f:
         for line in f:
@@ -32,10 +40,13 @@ for model_name in model_names:
                     current_loss = float(t.groups()[0])
                     step.append(current_step)
                     loss.append(current_loss)
-    plt.plot(step,loss,label=model_name)
+    plt.plot(step,loss,label=model_name,linewidth=.1)
+    losses.append(loss)
 
 plt.legend(loc="right")
-plt.savefig("loss-10000.pdf")
+plt.savefig("results/loss-normal-1.pdf")
+plt.xlim(10000,60000)
+plt.savefig("results/loss-normal-1-2.pdf")
 plt.clf()
 
 plt.figure(figsize=(10,9), dpi=1200)
