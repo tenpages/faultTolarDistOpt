@@ -11,3 +11,5 @@ mnist_data_sub/
 logs*
 
 results-
+
+draw_plot.py
