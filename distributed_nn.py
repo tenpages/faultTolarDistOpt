@@ -154,7 +154,6 @@ def load_data(dataset, seed, args, rank, world_size):
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ]))
             train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-            test_loader = None
         else:
             if args.data_distribution == 'distributed':
                 group_size = int(50000 / (world_size - 1))
@@ -170,8 +169,7 @@ def load_data(dataset, seed, args, rank, world_size):
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                 ]))
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-
-
+        test_loader = None
         return train_loader, training_set, test_loader
 
     #print("here2")
