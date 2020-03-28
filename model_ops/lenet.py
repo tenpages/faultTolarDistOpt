@@ -16,7 +16,7 @@ class LeNet(nn.Module):
         super(LeNet, self).__init__()
         self.conv1 = nn.Conv2d(channel, 20, 5, 1)
         self.conv2 = nn.Conv2d(20, 50, 5, 1)
-        self.size_before_fc = ((size-4)/2-4)/2
+        self.size_before_fc = int(((size-4)/2-4)/2)
         self.fc1 = nn.Linear(self.size_before_fc*self.size_before_fc*50, 500)
         self.fc2 = nn.Linear(500, 10)
         self.criterion = nn.CrossEntropyLoss()
