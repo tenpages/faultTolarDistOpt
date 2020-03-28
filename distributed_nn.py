@@ -233,7 +233,7 @@ def prepare(args, rank, world_size):
             'train_dir': args.train_dir,
             'checkpoint_step': args.checkpoint_step,
             'adversaries': adversaries,
-            'total_size': data_shape
+            'total_size': data_shape,
             'channel': training_set[0][0].size()[0],
             '1d_size': training_set[0][0].size()[1],
         }
