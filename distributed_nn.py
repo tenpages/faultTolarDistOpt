@@ -210,7 +210,7 @@ def prepare(args, rank, world_size):
             'update_mode': args.mode,
             'compress_grad': args.compress_grad,
             'checkpoint_step': args.checkpoint_step,
-            'data_size': data_shape,
+            'total_size': data_shape,
             'channel': training_set[0][0].size()[0],
             '1d_size': training_set[0][0].size()[1],
             'multi_krum_m': args.multi_krum_m,
