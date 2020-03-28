@@ -31,7 +31,6 @@ class LeNet(nn.Module):
         x = x.view(-1, self.size_before_fc*self.size_before_fc*50)
         x = self.fc1(x)
         x = self.fc2(x)
-        # loss = self.criterion(x, target)
         return x
 
     def name(self):
@@ -48,13 +47,7 @@ class LeNet_Split(nn.Module):
         self.fc2 = nn.Linear(500, 10)
         self.criterion = nn.CrossEntropyLoss()
 
-        self.full_modules = [self.conv1,self.conv2,self.fc1, self.fc2]
-        self._init_channel_index = len(self.full_modules)*2
-
     def forward(self, x):
-        self.output = []
-        self.input = []
-
         x = self.conv1(x)
         x = F.max_pool2d(x, 2, 2)
         x = F.relu(x)
@@ -64,12 +57,7 @@ class LeNet_Split(nn.Module):
         x = x.view(-1, self.size_before_fc*self.size_before_fc*50)
         x = self.fc1(x)
         x = self.fc2(x)
-        # loss = self.criterion(x, target)
         return x
-
-    @property
-    def fetch_init_channel_index(self):
-        return self._init_channel_index
 
     def name(self):
         return 'lenet_split'
