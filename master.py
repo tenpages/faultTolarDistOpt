@@ -46,7 +46,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._compress_grad = kwargs['compress_grad']
         self._checkpoint_step = kwargs['checkpoint_step']
         self._s = kwargs['worker_fail']
-        self._size = kwargs['data_size']
+        self._total_size = kwargs['total_size']
+        self._channel = kwargs['channel']
+        self._size = kwargs['1d_size']
         self._multi_krum_m = kwargs['multi_krum_m']
         self._grad_norm_keep_all = kwargs['grad_norm_keep_all']
         self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
@@ -54,10 +56,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def build_model(self) :
         # print("building model, self._size ", self._size)
         if self.network_config == "FC":
-            self.network = Full_Connected_Split(self._size)
+            self.network = Full_Connected_Split(self._total_size)
 
         elif self.network_config == "LeNet":
-            self.network = LeNet_Split()
+            self.network = LeNet_Split(self._channel,self._size)
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)

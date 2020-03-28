@@ -211,6 +211,8 @@ def prepare(args, rank, world_size):
             'compress_grad': args.compress_grad,
             'checkpoint_step': args.checkpoint_step,
             'data_size': data_shape,
+            'channel':training_set[0][0].size()[0],
+            '1d_size':training_set[0][0].size()[1],
             'multi_krum_m': args.multi_krum_m,
             'grad_norm_keep_all': args.grad_norm_keep_all,
             'grad_norm_clip_n': args.grad_norm_clip_n
@@ -231,7 +233,9 @@ def prepare(args, rank, world_size):
             'train_dir': args.train_dir,
             'checkpoint_step': args.checkpoint_step,
             'adversaries': adversaries,
-            'data_size': data_shape
+            'total_size': data_shape
+            'channel':training_set[0][0].size()[0],
+            '1d_size':training_set[0][0].size()[1],
         }
     # print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)

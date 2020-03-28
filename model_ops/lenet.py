@@ -12,11 +12,12 @@ import sys
 
 
 class LeNet(nn.Module):
-    def __init__(self):
+    def __init__(self, channel, size):
         super(LeNet, self).__init__()
-        self.conv1 = nn.Conv2d(1, 20, 5, 1)
+        self.conv1 = nn.Conv2d(channel, 20, 5, 1)
         self.conv2 = nn.Conv2d(20, 50, 5, 1)
-        self.fc1 = nn.Linear(4*4*50, 500)
+        self.size_before_fc = ((size-4)/2-4)/2
+        self.fc1 = nn.Linear(self.size_before_fc*self.size_before_fc*50, 500)
         self.fc2 = nn.Linear(500, 10)
         self.criterion = nn.CrossEntropyLoss()
 
@@ -27,7 +28,7 @@ class LeNet(nn.Module):
         x = self.conv2(x)
         x = F.max_pool2d(x, 2, 2)
         x = F.relu(x)
-        x = x.view(-1, 4*4*50)
+        x = x.view(-1, self.size_before_fc*self.size_before_fc*50)
         x = self.fc1(x)
         x = self.fc2(x)
         # loss = self.criterion(x, target)
