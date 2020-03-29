@@ -73,7 +73,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self.init_model_shapes()
         # optimizer can be others
         self.optimizer = SGDModified(self.network.parameters(), lr=self.lr, momentum=self.momentum)
-        lr_lambda = lambda epoch: 1/(epoch+1)
+        lr_lambda = lambda epoch: 1/(int(epoch/500)+1)
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
 
     def start(self):
