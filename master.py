@@ -61,7 +61,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         elif self.network_config == "LeNet":
             self.network = LeNet_Split(self._channel,self._size)
         elif self.network_config == "ResNet18":
-            self.network = ResNet18_Split(self._channel)
+            self.network = ResNet18(self._channel)
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
