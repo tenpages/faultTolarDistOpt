@@ -172,7 +172,7 @@ class DistributedWorker(NN_Trainer):
                         #print(loss)
                     elif "LeNet" in self.network_config:
                         #print("loss calculation", X_batch.shape, logits.shape, y_batch.shape)
-                        print("Network config = ",self.network_config)
+                        #print("Network config = ",self.network_config)
                         loss = self.criterion(logits, y_batch)
                         #print(loss)
                     else:
@@ -263,7 +263,7 @@ class DistributedWorker(NN_Trainer):
         self.network.load_state_dict(new_state_dict)
 
     def _backward(self, loss, logits_1=None, computation_time=None):
-        print('in _backward',self.network_config)
+        #print('in _backward',self.network_config)
         b_start = time.time()
         loss.backward()
         b_duration = time.time()-b_start

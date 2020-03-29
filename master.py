@@ -10,6 +10,7 @@ from mpi4py import MPI
 from compress_gradient import decompress
 from model_ops.lenet import LeNet_Split
 from model_ops.fc import Full_Connected_Split
+from model_ops.resnet import 
 from nn_ops import NN_Trainer, accuracy
 from optim.sgd_modified import SGDModified
 
@@ -57,9 +58,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # print("building model, self._size ", self._size)
         if self.network_config == "FC":
             self.network = Full_Connected_Split(self._total_size)
-
         elif self.network_config == "LeNet":
             self.network = LeNet_Split(self._channel,self._size)
+        elif self.network_config == "ResNet18":
+            self.network = ResNet18_Split(self._channel)
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
