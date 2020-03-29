@@ -13,3 +13,8 @@ logs*
 results-
 
 draw_plot.py
+
+cifar10_data/
+
+cifar10_data_sub/
+
