@@ -93,17 +93,17 @@ class ResNet(nn.Module):
         return out
 
 def ResNet18(channel):
-    return ResNet(BasicBlock, [2,2,2,2], channel)
+    return ResNet(BasicBlock, [2,2,2,2], channel=channel)
 
 def ResNet34(channel):
-    return ResNet(BasicBlock, [3,4,6,3], channel)
+    return ResNet(BasicBlock, [3,4,6,3], channel=channel)
 
 def ResNet50(channel):
-    return ResNet(Bottleneck, [3,4,6,3], channel)
+    return ResNet(Bottleneck, [3,4,6,3], channel=channel)
 
 def ResNet101(channel):
-    return ResNet(Bottleneck, [3,4,23,3], channel)
+    return ResNet(Bottleneck, [3,4,23,3], channel=channel)
 
 def ResNet152(channel):
-    return ResNet(Bottleneck, [3,8,36,3], channel)
+    return ResNet(Bottleneck, [3,8,36,3], channel=channel)
 
