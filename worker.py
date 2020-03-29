@@ -11,6 +11,7 @@ import numpy as np
 from compress_gradient import compress
 from model_ops.fc import Full_Connected
 from model_ops.lenet import LeNet
+from model_ops.resnet import ResNet18
 from nn_ops import NN_Trainer
 
 STEP_START_ = 1
@@ -50,6 +51,8 @@ class DistributedWorker(NN_Trainer):
             self.network = Full_Connected(self._total_size)
         elif self.network_config == 'LeNet':
             self.network = LeNet(self._channel, self._size)
+        elif self.network_config == 'ResNet18':
+            self.network = ResNet18(self._channel)
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
