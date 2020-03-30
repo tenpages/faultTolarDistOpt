@@ -9,6 +9,7 @@ from mpi4py import MPI
 import numpy as np
 
 from model_ops.fc import Full_Connected
+from model_ops.lenet import LeNet
 from nn_ops import NN_Trainer
 
 import torch
@@ -71,6 +72,8 @@ class DistributedEvaluator(object):
         self._layer_cur_step = []
         if self.network_config == "FC":
             self.network = Full_Connected(kwargs['input_size'])
+        elif self.network_config == 'LeNet':
+            self.network = LeNet(kwargs['channel'], kwargs['1d_size'])
 
     def evaluate(self, validation_loader):
         # init objective to fetch at the begining
@@ -132,11 +135,19 @@ if __name__ == "__main__":
         ]))
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0]*testing_set[0][0].size()[1]*testing_set[0][0].size()[2]
+    elif dataset == "CIFAR10":
+        training_set = datasets.CIFAR10('./cifar10_data', train=False, transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ]))
+        train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.eval_batch_size, shuffle=True)
+        data_shape = testing_set[0][0].size()[0]*testing_set[0][0].size()[1]*testing_set[0][0].size()[2]
     print("testing set loaded.")
 
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
                         'eval_batch_size': args.eval_batch_size, 'network': args.network,
-                        'input_size': data_shape}
+                        'input_size': data_shape, 'channel': training_set[0][0].size()[0],
+                        '1d_size': training_set[0][0].size()[1]}
     evaluator_nn = DistributedEvaluator(**kwargs_evaluator)
     print("evaluator initiated.")
     evaluator_nn.evaluate(validation_loader=test_loader)
