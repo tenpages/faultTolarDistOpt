@@ -201,7 +201,7 @@ def prepare(args, rank, world_size):
         kwargs_master = {
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
-            'diminishing_lr': args.diminishing_lr
+            'diminishing_lr': args.diminishing_lr,
             'max_epochs': args.epochs,
             'max_steps': args.max_steps,
             'momentum': args.momentum,
