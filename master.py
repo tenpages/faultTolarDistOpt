@@ -32,6 +32,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self.num_workers = self.world_size - 1
         self.cur_step = STEP_START_
         self.lr = kwargs['learning_rate']
+        self._diminishing_lr = kwargs['diminishing_lr']
         self.momentum = kwargs['momentum']
         self.network_config = kwargs['network']
         self.comm_type = kwargs['comm_method']
@@ -73,8 +74,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self.init_model_shapes()
         # optimizer can be others
         self.optimizer = SGDModified(self.network.parameters(), lr=self.lr, momentum=self.momentum)
-        lr_lambda = lambda epoch: 1/(int(epoch/500)+1)
-        self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
+        if self._diminishing_lr == True:
+            lr_lambda = lambda epoch: 1/(int(epoch/500)+1)
+            self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
 
     def start(self):
         self.async_bcast_step()
@@ -82,10 +84,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
         if self._checkpoint_step != 0:
             # torch.set_rng_state(torch.load(self._train_dir+"rng_state_"+str(self._checkpoint_step)))
             self.optimizer.load_state_dict(torch.load(self._train_dir+"optim_"+str(self._checkpoint_step)))
-            self.scheduler.load_state_dict(torch.load(self._train_dir+"scheduler_"+str(self._checkpoint_step)))
+            if self._diminishing_lr == True:
+                self.scheduler.load_state_dict(torch.load(self._train_dir+"scheduler_"+str(self._checkpoint_step)))
         
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
-            self.scheduler.step()
+            if self._diminishing_lr == True:
+                self.scheduler.step()
             self.network.train()
             self.optimizer.zero_grad()
             self._first_grad_received = False
@@ -217,7 +221,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._save_model(file_path=self._generate_model_path())
                 # torch.save(torch.get_rng_state(), open(self._train_dir+"rng_state_"+str(self.cur_step),"wb"))
                 torch.save(self.optimizer.state_dict(), open(self._train_dir+"optim_"+str(self.cur_step),"wb"))
-                torch.save(self.scheduler.state_dict(), open(self._train_dir+"scheduler_"+str(self.cur_step),"wb"))
+                if self._diminishing_lr == True:
+                    torch.save(self.scheduler.state_dict(), open(self._train_dir+"scheduler_"+str(self.cur_step),"wb"))
             print("Master Step: {}, Method Time Cost: {}, Update Time Cost: {}".format(self.cur_step, method_duration,
                                                                                        update_duration))
             self.cur_step += 1
