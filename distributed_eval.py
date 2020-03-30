@@ -146,8 +146,8 @@ if __name__ == "__main__":
 
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
                         'eval_batch_size': args.eval_batch_size, 'network': args.network,
-                        'input_size': data_shape, 'channel': training_set[0][0].size()[0],
-                        '1d_size': training_set[0][0].size()[1]}
+                        'input_size': data_shape, 'channel': testing_set[0][0].size()[0],
+                        '1d_size': testing_set[0][0].size()[1]}
     evaluator_nn = DistributedEvaluator(**kwargs_evaluator)
     print("evaluator initiated.")
     evaluator_nn.evaluate(validation_loader=test_loader)
