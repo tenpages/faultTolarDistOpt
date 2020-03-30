@@ -39,7 +39,7 @@ def add_fit_args(parser):
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                         help='learning rate (default: 0.01)')
-    parser.add_argument('--deminishing-lr', type=ast.literal_eval, default=False, metavar='N',
+    parser.add_argument('--diminishing-lr', type=ast.literal_eval, default=False, metavar='N',
                         help='set diminishing learning rate (default: False)')
     parser.add_argument('--momentum', type=float, default=0, metavar='M',
                         help='SGD momentum (default: 0)')
