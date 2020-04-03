@@ -257,7 +257,7 @@ class DistributedWorker(NN_Trainer):
         new_state_dict = {}
         model_counter_ = 0
         for param_idx, (key_name, param) in enumerate(self.network.state_dict().items()):
-            if 'running_mean' in key_name or 'running_var' in key_name:
+            if 'running_mean' in key_name or 'running_var' in key_name or 'num_batches_tracked' in key_name:
                 tmp_dict={key_name: param}
             else:
                 print(key_name, param.size(), weights_to_update[model_counter_].shape)
