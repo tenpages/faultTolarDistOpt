@@ -79,6 +79,7 @@ class DistributedWorker(NN_Trainer):
                 print("Starting from step=",loader_step)
             while loader_step + loader_length < self.cur_step:
                 dump = list(train_loader)
+                del dump
                 loader_step += loader_length
                 loader_epoch += 1
                 if self.rank == 1:
@@ -259,6 +260,7 @@ class DistributedWorker(NN_Trainer):
             if 'running_mean' in key_name or 'running_var' in key_name:
                 tmp_dict={key_name: param}
             else:
+                print(key_name, param.size(), weights_to_update[model_counter_].shape)
                 assert param.size() == weights_to_update[model_counter_].shape
                 tmp_dict = {key_name: torch.from_numpy(weights_to_update[model_counter_])}
                 model_counter_ += 1
