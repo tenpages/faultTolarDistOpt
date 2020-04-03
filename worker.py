@@ -179,6 +179,8 @@ class DistributedWorker(NN_Trainer):
                         #print("Network config = ",self.network_config)
                         loss = self.criterion(logits, y_batch)
                         #print(loss)
+                    elif "ResNet" in self.network_config:
+                        loss = self.criterion(logits, y_batch)
                     else:
                         raise Exception("No such network as "+self.network_config)
                     epoch_avg_loss += loss.item()
