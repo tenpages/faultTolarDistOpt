@@ -276,18 +276,12 @@ class DistributedWorker(NN_Trainer):
         b_start = time.time()
         loss.backward()
         b_duration = time.time()-b_start
-        if "FC" in self.network_config:
-            computation_time += b_duration
-            c_start = time.time()
-            self._send_grads()
-            c_duration = time.time() - c_start
-            return computation_time, c_duration
-        elif "LeNet" in self.network_config:
-            computation_time += b_duration
-            c_start = time.time()
-            self._send_grads()
-            c_duration = time.time() - c_start
-            return computation_time, c_duration
+
+        computation_time += b_duration
+        c_start = time.time()
+        self._send_grads()
+        c_duration = time.time() - c_start
+        return computation_time, c_duration
 
     def _send_grads(self):
         req_send_check = []
