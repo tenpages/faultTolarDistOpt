@@ -190,6 +190,8 @@ class DistributedWorker(NN_Trainer):
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
                     elif "LeNet" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                    elif "ResNet" in self.network_config:
+                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
 
                     prec1, prec5 = accuracy(logits.data, train_label_batch.long(), topk=(1, 5))
                     print(
