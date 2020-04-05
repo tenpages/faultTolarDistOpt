@@ -8,6 +8,7 @@ from torch.autograd import Variable
 from mpi4py import MPI
 
 from scipy.spatial.distance import cosine
+import csv
 
 from compress_gradient import decompress
 from model_ops.lenet import LeNet_Split
