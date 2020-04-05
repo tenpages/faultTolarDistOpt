@@ -220,14 +220,14 @@ class SyncReplicaMaster_NN(NN_Trainer):
                             if idx == 1:
                                 concatenated_gradients = np.array(grad)
                             else:
-                                concatenated_gradients = np.concatenate((concatenated_gradients, grad))
+                                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grad)))
                     else:
                         concatenated_gradients = []
                         for idx, grad in enumerate(grads):
                             if idx == 1:
                                 concatenated_gradients = np.array(grad)
                             else:
-                                concatenated_gradients = np.concatenate((concatenated_gradients, grad), axis=1)
+                                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grad)), axis=1)
                     return concatenated_gradients
 
                 self._received_grads = concatenate(self._received_grads,False)
