@@ -218,7 +218,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         print("single dim", np.array(grads[0]).shape)
                         concatenated_gradients = []
                         for idx, grad in enumerate(grads):
-                            if idx == 1:
+                            if idx == 0:
                                 concatenated_gradients = np.array(grad)
                             else:
                                 concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grad)))
@@ -226,7 +226,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         print("multi dim", np.array(grads[0]).shape)
                         concatenated_gradients = []
                         for idx, grad in enumerate(grads):
-                            if idx == 1:
+                            if idx == 0:
                                 concatenated_gradients = np.array(grad)
                             else:
                                 concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grad)), axis=1)
