@@ -215,6 +215,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
                 def concatenate(grads, single_dimension):
                     if single_dimension:
+                        print("single dim", np.array(grads[0]).shape)
                         concatenated_gradients = []
                         for idx, grad in enumerate(grads):
                             if idx == 1:
@@ -222,6 +223,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                             else:
                                 concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grad)))
                     else:
+                        print("multi dim", np.array(grads[0]).shape)
                         concatenated_gradients = []
                         for idx, grad in enumerate(grads):
                             if idx == 1:
@@ -230,7 +232,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                 concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grad)), axis=1)
                     return concatenated_gradients
 
+                print("concatenate received grads")
                 self._received_grads = concatenate(self._received_grads,False)
+                print("concatenate filtered grad")
                 self._filtered_grad = concatenate(self._filtered_grad,True)
 
                 distances = []
