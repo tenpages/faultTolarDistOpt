@@ -237,7 +237,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for agent_grad in self._received_grads:
                     distances.append(cosine(agent_grad, self._filtered_grad))
 
-                with open("cosine.csv","a") as f:
+                with open(self._train_dir+"cosine.csv","a") as f:
                     csv_writer = csv.writer(f, delimiter=',')
                     csv_writer.writerow([self.cur_step]+distances)
 
