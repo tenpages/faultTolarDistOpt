@@ -89,6 +89,8 @@ def add_fit_args(parser):
                         help='decide if when using gradient norm clipping, keep all gradients (True) or throw away the largest ones (False)')
     parser.add_argument('--grad-norm-clip-n', type=int, default=1, metavar='N',
                         help='specifying parameter n when using gradient norm clipping (multi-parts) with n piece')
+    parser.add_argument('--calculate-cosine', type=ast.literal_eval, default=True, metavar='N',
+                        help='calculate or not the cosine distance between received gradients and the filtered gradient')
     args = parser.parse_args()
     return args
 
@@ -218,7 +220,8 @@ def prepare(args, rank, world_size):
             '1d_size': training_set[0][0].size()[1],
             'multi_krum_m': args.multi_krum_m,
             'grad_norm_keep_all': args.grad_norm_keep_all,
-            'grad_norm_clip_n': args.grad_norm_clip_n
+            'grad_norm_clip_n': args.grad_norm_clip_n,
+            'calculate_cosine': args.calculate_cosine
         }
         kwargs_worker = {
             'batch_size': args.batch_size,

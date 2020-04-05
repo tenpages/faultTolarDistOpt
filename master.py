@@ -7,6 +7,8 @@ from torch.autograd import Variable
 
 from mpi4py import MPI
 
+from scipy.spatial.distance import cosine
+
 from compress_gradient import decompress
 from model_ops.lenet import LeNet_Split
 from model_ops.fc import Full_Connected_Split
@@ -54,6 +56,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._multi_krum_m = kwargs['multi_krum_m']
         self._grad_norm_keep_all = kwargs['grad_norm_keep_all']
         self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
+        self._calculate_cosine = kwargs['calculate_cosine']
 
     def build_model(self) :
         # print("building model, self._size ", self._size)
@@ -157,6 +160,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     np.array(grads).dump("layer_"+str(idx)+"_of_step_"+str(self.cur_step)+"_"+str(self._checkpoint_step))
             """
 
+            if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
+                self._received_grads = self._grad_aggregate_buffer.copy()
+
             # update by given gradient filter
             if self._update_mode == 'normal':
                 method_start = time.time()
@@ -202,6 +208,38 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_start = time.time()
                 self._grad_norm_multi_parts()
                 method_duration = time.time() - method_start
+
+            if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
+                self._filtered_grad = self._grad_aggregate_buffer.copy()
+
+            if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
+                def concatenate(grads, single_dimension):
+                    if single_dimension:
+                        concatenated_gradients = []
+                        for idx, grad in enumerate(grads):
+                            if idx == 1:
+                                concatenated_gradients = np.array(grad)
+                            else:
+                                concatenated_gradients = np.concatenate((concatenated_gradients, grad))
+                    else:
+                        concatenated_gradients = []
+                        for idx, grad in enumerate(grads):
+                            if idx == 1:
+                                concatenated_gradients = np.array(grad)
+                            else:
+                                concatenated_gradients = np.concatenate((concatenated_gradients, grad), axis=1)
+                    return concatenated_gradients
+
+                self._received_grads = concatenate(self._received_grads,False)
+                self._filtered_grad = concatenate(self._filtered_grad,True)
+
+                distances = []
+                for agent_grad in self._received_grads:
+                    distances.append(cosine(agent_grad, self._filtered_grad))
+
+                with open("cosine.csv","a") as f:
+                    csv_writer = csv.writer(f, delimiter=',')
+                    csv_writer.writerow([self.cur_step]+distances)
 
             """
             if self.cur_step >= 8:
