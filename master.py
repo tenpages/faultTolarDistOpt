@@ -239,12 +239,19 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._filtered_grad = concatenate(self._filtered_grad,True)
 
                 distances = []
+                ratio_norms = []
+                filtered_norm = np.linalg.norm(self._filtered_grad)
                 for agent_grad in self._received_grads:
                     distances.append(cosine(agent_grad, self._filtered_grad))
+                    ratio_norms.append(np.linalg.norm(agent_grad)/filtered_norm)
 
                 with open(self._train_dir+"cosine.csv","a") as f:
                     csv_writer = csv.writer(f, delimiter=',')
                     csv_writer.writerow([self.cur_step]+distances)
+
+                with open(self._train_dir+"norm.csv","a") as f:
+                    csv_writer = csv.writer(f, delimiter=',')
+                    csv_writer.writerow([self.cur_step]+ratio_norms)
 
             """
             if self.cur_step >= 8:
