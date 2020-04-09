@@ -14,7 +14,7 @@ for i in range(10):
 X = np.array(X).reshape(-1,10)
 weight = np.array([1]*10)
 
-Y = np.matmul(X, weight).reshape(-1,1) + np.random.rand(190)/50-.01
+Y = np.matmul(X, weight).reshape(-1,1) + np.random.rand(190).reshape(-1,1)/50-.01
 Yp = np.matmul(X, weight).reshape(-1,1)
 
 X = torch.tensor(X).float()
