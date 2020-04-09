@@ -104,12 +104,12 @@ class MNISTSubLoader(datasets.MNIST):
 
 
 def load_data(dataset, seed, args, rank, world_size):
-    #print("here")
+    print("here")
     torch.manual_seed(TORCH_SEED_)
     if seed:
         torch.manual_seed(seed)
         random.seed(seed)
-    #print("dataset: " + dataset)
+    print("dataset: " + dataset)
     if dataset == "MNIST":
         if rank==0:
             training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
