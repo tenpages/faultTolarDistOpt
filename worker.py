@@ -196,6 +196,8 @@ class DistributedWorker(NN_Trainer):
                         if "FC" in self.network_config:
                             pass
                     break
+            if self.cur_step == self._max_steps:
+                break
 
     def init_recv_buf(self):
         self.model_recv_buf = ModelBuffer(self.network)
