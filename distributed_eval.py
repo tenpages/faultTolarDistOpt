@@ -145,6 +145,14 @@ if __name__ == "__main__":
         testing_set=torch.load("linRegDataset3")
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0]
+    elif args.dataset == "LinReg4":
+        testing_set=torch.load("linRegDataset4")
+        test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
+        data_shape = testing_set[0][0].size()[0]
+    elif args.dataset == "LinReg5":
+        testing_set=torch.load("linRegDataset5")
+        test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
+        data_shape = testing_set[0][0].size()[0]
 
     print("testing set loaded.")
 
