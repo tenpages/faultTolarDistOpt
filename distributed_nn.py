@@ -196,6 +196,40 @@ def load_data(dataset, seed, args, rank, world_size):
         test_loader = None
         return train_loader, training_set, test_loader
 
+    elif dataset == "LinReg4":
+        if rank==0:
+            training_set = torch.load("linRegDataset4")
+            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        else:
+            if args.data_distribution == 'distributed':
+                group_size = int(1900 / (world_size - 1))
+                tmp_set = torch.load("linRegDataset4")[group_size*(rank-1):group_size*rank]
+                training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'same':
+                torch.manual_seed(TORCH_SEED_+rank)
+                training_set = torch.load("linRegDataset4")
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        test_loader = None
+        return train_loader, training_set, test_loader
+
+    elif dataset == "LinReg5":
+        if rank==0:
+            training_set = torch.load("linRegDataset5")
+            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        else:
+            if args.data_distribution == 'distributed':
+                group_size = int(1900 / (world_size - 1))
+                tmp_set = torch.load("linRegDataset5")[group_size*(rank-1):group_size*rank]
+                training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'same':
+                torch.manual_seed(TORCH_SEED_+rank)
+                training_set = torch.load("linRegDataset5")
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        test_loader = None
+        return train_loader, training_set, test_loader
+
     #print("here2")
     return None, None, None
 
