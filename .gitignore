@@ -19,3 +19,6 @@ cifar10_data/
 cifar10_data_sub/
 
 draw_plot.py
+
+old-logs/
+
