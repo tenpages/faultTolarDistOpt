@@ -171,15 +171,24 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_duration = time.time() - method_start
             elif self._update_mode == 'geometric_median':
                 method_start = time.time()
-                self._get_geo_median()
+                if self._full_grad == True:
+                    self._geo_median()
+                else:
+                    self._geo_median_splited()
                 method_duration = time.time() - method_start
             elif self._update_mode == 'krum':
                 method_start = time.time()
-                self._krum()
+                if self._full_grad == True:
+                    self._krum()
+                else:
+                    self._krum_splited()
                 method_duration = time.time() - method_start
             elif self._update_mode == 'multi_krum':
                 method_start = time.time()
-                self._multi_krum(self._multi_krum_m)
+                if self._full_grad == True:
+                    self._multi_krum(self._multi_krum_m)
+                else:
+                    self._multi_krum_splited(self._multi_krum_m)
                 method_duration = time.time() - method_start
             elif self._update_mode == 'coor_wise_median':
                 method_start = time.time()
@@ -191,15 +200,17 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_duration = time.time() - method_start
             elif self._update_mode == 'median_of_means':
                 method_start = time.time()
-                self._median_of_means()
+                if self._full_grad == True:
+                    self._median_of_means()
+                else:
+                    self._median_of_means_splited()
                 method_duration = time.time() - method_start
             elif self._update_mode == 'grad_norm':
                 method_start = time.time()
-                self._grad_norm()
-                method_duration = time.time() - method_start
-            elif self._update_mode == 'grad_norm_full_grad':
-                method_start = time.time()
-                self._grad_norm_full_grad()
+                if self._full_grad == True:
+                    self._grad_norm_full_grad()
+                else:
+                    self._grad_norm()
                 method_duration = time.time() - method_start
             elif self._update_mode == 'grad_norm_coor_wise':
                 method_start = time.time()
@@ -403,7 +414,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for i in range(len(self._grad_aggregate_buffer)):
             self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
 
-    def _get_geo_median(self):
+    def _geo_median(self):
         geo_median_start = time.time()
 
         concatenated_gradients = None
@@ -420,6 +431,13 @@ class SyncReplicaMaster_NN(NN_Trainer):
         geo_median = np.array(hd.geomedian(np.array(concatenated_gradients), axis=0))
         self._grad_aggregate_buffer = np.split(geo_median,separator[:len(separator)-1])
 
+        print("Master Step: {} Found Geo Median Cost: {:.4f}".format(self.cur_step, time.time()-geo_median_start))
+
+    def _geo_median_splited(self):
+        geo_median_start = time.time()
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            geo_median = np.array(hd.geomedian(np.array(grads), axis=0))
+            self._grad_aggregate_buffer[g_idx] = geo_median
         print("Master Step: {} Found Geo Median Cost: {:.4f}".format(self.cur_step, time.time()-geo_median_start))
 
     def _krum(self):
@@ -508,7 +526,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         print("Master Step: {} Multi-Krum cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
-    def _krum_multi_parts(self):
+    def _krum_splited(self):
         # The version trivially treat different parts of gradients separately
         def __krum(grad_list, s):
             """
@@ -532,7 +550,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._grad_aggregate_buffer[g_idx] = krum_median
         print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
-    def _multi_krum_multi_parts(self, m):
+    def _multi_krum_splited(self, m):
         # The version trivially treat different parts of gradients separately
         def __krum(grad_list, grad_idxs, s):
             """
@@ -582,6 +600,23 @@ class SyncReplicaMaster_NN(NN_Trainer):
     """
 
     def _median_of_means(self):
+        concatenated_gradients = None
+        separator = []
+        #print('concatenation')
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            #print('#',g_idx,':',np.array(grads).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+            separator.append(len(concatenated_gradients[0]))
+
+        b = math.floor(self.num_workers / (2*self._s+0.5))
+
+        median = np.array(hd.geomedian(np.array([np.mean(np.array(concatenated_gradients[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0))
+        self._grad_aggregate_buffer = np.split(median,separator[:len(separator)-1])
+
+    def _median_of_means_splited(self):
         b = math.floor(self.num_workers / (2*self._s+0.5))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             median = np.array(hd.geomedian(np.array([np.mean(np.array(grads[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0))
