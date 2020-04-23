@@ -442,7 +442,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             return grad_list[i_star]
         
         krum_median = __krum(concatenated_gradients, self._s)
-        self._grad_aggregate_buffer = np.split(concatenated_gradients,separator[:len(separator)-1])
+        self._grad_aggregate_buffer = np.split(krum_median,separator[:len(separator)-1])
 
         print('new shape after krum')
         for idx, grads in enumerate(self._grad_aggregate_buffer):
