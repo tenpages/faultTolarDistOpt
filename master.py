@@ -443,6 +443,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
         
         krum_median = __krum(concatenated_gradients, self._s)
         self._grad_aggregate_buffer = np.split(concatenated_gradients,separator[:len(separator)-1])
+
+        print('new shape after krum')
+        for idx, grads in enumerate(self._grad_aggregate_buffer):
+            print('#',idx,':',grads.shape)
+
         print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
     def _multi_krum(self, m):
