@@ -89,7 +89,7 @@ def add_fit_args(parser):
                         help='decide if when using gradient norm clipping, keep all gradients (True) or throw away the largest ones (False)')
     parser.add_argument('--grad-norm-clip-n', type=int, default=1, metavar='N',
                         help='specifying parameter n when using gradient norm clipping (multi-parts) with n piece')
-    parser.add_argument('--calculate-cosine', type=ast.literal_eval, default=True, metavar='N',
+    parser.add_argument('--calculate-cosine', type=ast.literal_eval, default=False, metavar='N',
                         help='calculate or not the cosine distance between received gradients and the filtered gradient')
     args = parser.parse_args()
     return args
