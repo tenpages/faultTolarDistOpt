@@ -411,13 +411,16 @@ class SyncReplicaMaster_NN(NN_Trainer):
         print("Master Step: {} Found Geo Median Cost: {:.4f}".format(self.cur_step, time.time()-geo_median_start))
 
     def _krum(self):
+        # Concatenate parts of krum gradients into a vector;
+        # Then Calculate Krum function accordingly, choose the gradient;
+        # Finally, break down the gradient into original piece that fits the model
         krum_start = time.time()
 
         concatenated_gradients = None
         separator = []
-        print('concatenation')
+        #print('concatenation')
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            print('#',g_idx,':',np.array(grads).shape)
+            #print('#',g_idx,':',np.array(grads).shape)
             if g_idx == 0:
                 concatenated_gradients = np.array(grads)
             else:
@@ -444,13 +447,25 @@ class SyncReplicaMaster_NN(NN_Trainer):
         krum_median = __krum(concatenated_gradients, self._s)
         self._grad_aggregate_buffer = np.split(krum_median,separator[:len(separator)-1])
 
-        print('new shape after krum')
-        for idx, grads in enumerate(self._grad_aggregate_buffer):
-            print('#',idx,':',grads.shape)
-
         print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
     def _multi_krum(self, m):
+        # Concatenate parts of krum gradients into a vector;
+        # Then Calculate Krum function accordingly, choose the gradient;
+        # Finally, break down the gradient into original piece that fits the model
+        krum_start = time.time()
+
+        concatenated_gradients = None
+        separator = []
+        #print('concatenation')
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            #print('#',g_idx,':',np.array(grads).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+            separator.append(len(concatenated_gradients[0]))
+
         def __krum(grad_list, grad_idxs, s):
             """
             Krum function.
@@ -468,16 +483,17 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-s-2]))
             i_star = score.index(min(score))
             return grad_idxs[i_star], grad_list[grad_idxs[i_star]]
-        krum_start = time.time()
-        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            grads_in_consideration = []
-            current_list = list(range(self.num_workers))
-            for rnd in range(m):
-                print("Round:",rnd)
-                i, grad = __krum(grads, current_list, self._s)
-                grads_in_consideration.append(grad)
-                current_list.remove(i)
-            self._grad_aggregate_buffer[g_idx] = np.mean(np.array(grads_in_consideration), axis=0)
+
+        grads_in_consideration = []
+        current_list = list(range(self.num_workers))
+        for rnd in range(m):
+            print("Round:",rnd)
+            i, grad = __krum(concatenated_gradients, current_list, self._s)
+            grads_in_consideration.append(grad)
+            current_list.remove(i)
+        multi_krum_median = np.mean(np.array(grads_in_consideration), axis=0)
+        self._grad_aggregate_buffer = np.split(multi_krum_median,separator[:len(separator)-1])
+
         print("Master Step: {} Multi-Krum cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
     def _coor_wise_median(self):
