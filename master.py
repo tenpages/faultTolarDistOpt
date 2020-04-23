@@ -417,7 +417,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             print(np.array(grads).shape)
             shapes.append(np.array(grads).shape[1:])
-            self._grad_aggregate_buffer[g_idx] = np.array(grads).reshape(grads.shape[0],-1)
+            self._grad_aggregate_buffer[g_idx] = np.array(grads).reshape(np.array(grads).shape[0],-1)
 
         concatenated_gradients = None
         separator = []
