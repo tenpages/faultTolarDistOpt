@@ -405,9 +405,21 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def _get_geo_median(self):
         geo_median_start = time.time()
+
+        concatenated_gradients = None
+        separator = []
+        #print('concatenation')
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            geo_median = np.array(hd.geomedian(np.array(grads), axis=0))
-            self._grad_aggregate_buffer[g_idx] = geo_median
+            #print('#',g_idx,':',np.array(grads).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+            separator.append(len(concatenated_gradients[0]))
+
+        geo_median = np.array(hd.geomedian(np.array(concatenated_gradients), axis=0))
+        self._grad_aggregate_buffer = np.split(krum_median,separator[:len(separator)-1])
+
         print("Master Step: {} Found Geo Median Cost: {:.4f}".format(self.cur_step, time.time()-geo_median_start))
 
     def _krum(self):
@@ -494,6 +506,61 @@ class SyncReplicaMaster_NN(NN_Trainer):
         multi_krum_median = np.mean(np.array(grads_in_consideration), axis=0)
         self._grad_aggregate_buffer = np.split(multi_krum_median,separator[:len(separator)-1])
 
+        print("Master Step: {} Multi-Krum cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
+
+    def _krum_multi_parts(self):
+        # The version trivially treat different parts of gradients separately
+        def __krum(grad_list, s):
+            """
+            Krum function in https://arxiv.org/abs/1703.02757
+            :param grad_list: gradients from all workers
+            :param s: number of faulty workers
+            :return: gradient from worker i that minimizes Krum score
+            """
+            score = []
+            for i, g_i in enumerate(grad_list):
+                neighbor_distances = []
+                for j, g_j in enumerate(grad_list):
+                    if i!=j:
+                        neighbor_distances.append(np.linalg.norm(g_i-g_j)**2)
+                score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-s-2]))
+            i_star = score.index(min(score))
+            return grad_list[i_star]
+        krum_start = time.time()
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            krum_median = __krum(grads, self._s)
+            self._grad_aggregate_buffer[g_idx] = krum_median
+        print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
+
+    def _multi_krum_multi_parts(self, m):
+        # The version trivially treat different parts of gradients separately
+        def __krum(grad_list, grad_idxs, s):
+            """
+            Krum function.
+            :param grad_list: gradients from all workers
+            :param grad_idxs: list of indexes under consideration
+            :param s: number of faulty workers
+            :return: i, gradient from worker i that minimizes Krum score
+            """
+            score = []
+            for i, idx_i in enumerate(grad_idxs):
+                neighbor_distances = []
+                for j, idx_j in enumerate(grad_idxs):
+                    if i!=j:
+                        neighbor_distances.append(np.linalg.norm(grad_list[idx_i]-grad_list[idx_j])**2)
+                score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-s-2]))
+            i_star = score.index(min(score))
+            return grad_idxs[i_star], grad_list[grad_idxs[i_star]]
+        krum_start = time.time()
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            grads_in_consideration = []
+            current_list = list(range(self.num_workers))
+            for rnd in range(m):
+                print("Round:",rnd)
+                i, grad = __krum(grads, current_list, self._s)
+                grads_in_consideration.append(grad)
+                current_list.remove(i)
+            self._grad_aggregate_buffer[g_idx] = np.mean(np.array(grads_in_consideration), axis=0)
         print("Master Step: {} Multi-Krum cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
     def _coor_wise_median(self):
