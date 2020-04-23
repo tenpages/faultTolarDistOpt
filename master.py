@@ -448,7 +448,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             i_star = score.index(min(score))
             return grad_list[i_star]
         
-        krum_median = __krum(self._grad_aggregate_buffer, self._s)
+        krum_median = __krum(concatenated_gradients, self._s)
         self._grad_aggregate_buffer = np.split(concatenated_gradients,separator[:len(separator)-1])
 
         print('splitting and reshape')
