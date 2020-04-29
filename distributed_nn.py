@@ -108,15 +108,28 @@ class MNISTSubLoader(datasets.MNIST):
 
 
 class CIFAR10SubLoader(datasets.CIFAR10):
-    def __init__(self, *args, group_size=0, start_from=0, **kwargs):
+    def __init__(self, *args, group_size=0, start_from=0, ovlp=False, **kwargs):
         super(CIFAR10SubLoader, self).__init__(*args, **kwargs)
         if group_size == 0:
             return
         if self.train:
             #print(self.train_data.shape)
             #print(self.train_labels.shape)
-            self.data = self.data[start_from:start_from + group_size]
-            self.targets = self.targets[start_from:start_from + group_size]
+            if ovlp:
+                all_labels = torch.tensor(self.targets)
+                original_data = torch.tensor(self.data).clone()
+                original_targets = all_labels.clone()
+                for i in range(0,10):
+                    i_idx = (all_labels == i)
+                    if i==0:
+                        self.data = torch.cat((original_data[i_idx][:int(start_from/10)], original_data[i_idx][int((start_from+group_size)/10):]))
+                        self.targets = torch.cat((original_targets[i_idx][:int(start_from/10)], original_targets[i_idx][int((start_from+group_size)/10):]))
+                    else:
+                        self.data = torch.cat((self.data, original_data[i_idx][:int(start_from/10)], original_data[i_idx][int((start_from+group_size)/10):]))
+                        self.targets = torch.cat((self.targets, original_targets[i_idx][:int(start_from/10)], original_targets[i_idx][int((start_from+group_size)/10):]))
+            else:
+                self.data = self.data[start_from:start_from + group_size]
+                self.targets = self.targets[start_from:start_from + group_size]
 
 
 def load_data(dataset, seed, args, rank, world_size):
@@ -165,6 +178,15 @@ def load_data(dataset, seed, args, rank, world_size):
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                 ]), group_size=group_size, start_from=group_size*(rank-1))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'overlapping':
+                if (50000 % (world_size-1))!=0:
+                    raise ValueError("The number of agents should divide the number of data samples (50000)")
+                group_size = int(50000 / (world_size - 1))
+                training_set = CIFAR10SubLoader('./cifar10_data_sub_ovlp/'+str(rank), train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ]), group_size=group_size, start_from=group_size*(rank-1), ovlp=True)
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
                 torch.manual_seed(TORCH_SEED_+rank)
