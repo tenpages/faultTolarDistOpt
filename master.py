@@ -429,10 +429,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
             separator.append(len(concatenated_gradients[0]))
 
+        aggregation_finish_time = time.time()
+
         geo_median = np.array(hd.geomedian(np.array(concatenated_gradients), axis=0))
         self._grad_aggregate_buffer = np.split(geo_median,separator[:len(separator)-1])
 
-        print("Master Step: {} Found Geo Median Cost: {:.4f}".format(self.cur_step, time.time()-geo_median_start))
+        print("Master Step: {} Concatenation Cost: {:.4f} Found Geo Median Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-geo_median_start, time.time()-aggregation_finish_time))
 
     def _geo_median_splited(self):
         geo_median_start = time.time()
