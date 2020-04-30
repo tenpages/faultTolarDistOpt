@@ -51,6 +51,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._compress_grad = kwargs['compress_grad']
         self._checkpoint_step = kwargs['checkpoint_step']
         self._s = kwargs['worker_fail']
+        self._full_grad = kwargs['full_grad']
         self._total_size = kwargs['total_size']
         self._channel = kwargs['channel']
         self._size = kwargs['1d_size']

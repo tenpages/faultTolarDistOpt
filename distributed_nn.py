@@ -79,6 +79,8 @@ def add_fit_args(parser):
                         help='compress/None indicate if we compress the gradient matrix before communication')
     parser.add_argument('--checkpoint-step', type=int, default=0, metavar='N',
                         help='which step to proceed the training process')
+    parser.add_argument('--full-grad', type=ast.literal_eval, default=True, metavar='N',
+                        help='to decide if the filter uses concatenated gradients (True) or natural pieces from networks (False)')
     parser.add_argument('--faulty-pattern', type=str, default='fixed', metavar='N',
                         help='decide faulty gradients are send from "fixed" workers or "changing" workers each step')
     parser.add_argument('--data-distribution', type=str, default='same', metavar='N',
@@ -209,6 +211,11 @@ def _generate_adversarial_nodes(args, world_size):
     elif args.faulty_pattern == 'changing':
         return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
                 range(args.max_steps + 1)]
+    elif faulty_pattern == 'median_of_means':
+        b = math.floor((world_size - 1) / (2*args.worker_fail+0.5))
+        adversaries = [i*b for i in range(args.worker_fail)]
+        assert len(adversaries) == args.worker_fail
+        return adversaries
 
 
 def prepare(args, rank, world_size):
@@ -237,13 +244,16 @@ def prepare(args, rank, world_size):
             'update_mode': args.mode,
             'compress_grad': args.compress_grad,
             'checkpoint_step': args.checkpoint_step,
+            'full_grad': args.full_grad,
             'total_size': data_shape,
             'channel': training_set[0][0].size()[0],
             '1d_size': training_set[0][0].size()[1],
             'multi_krum_m': args.multi_krum_m,
             'grad_norm_keep_all': args.grad_norm_keep_all,
             'grad_norm_clip_n': args.grad_norm_clip_n,
-            'calculate_cosine': args.calculate_cosine
+            'calculate_cosine': args.calculate_cosine,
+            # the following information is only used for simulating fault agents, filters do not use them.
+            'adversaries': adversaries,
         }
         kwargs_worker = {
             'batch_size': args.batch_size,
