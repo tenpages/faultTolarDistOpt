@@ -587,14 +587,18 @@ class SyncReplicaMaster_NN(NN_Trainer):
         print("Master Step: {} Multi-Krum cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
     def _coor_wise_median(self):
+        cw_median_start = time.time()
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             median = np.median(np.array(grads), axis=0)
             self._grad_aggregate_buffer[g_idx] = median
+        print("Master Step: {} Coor wise median cost: {:.4f}".format(self.cur_step, time.time()-cw_median_start))
 
     def _coor_wise_trimmed_mean(self):
+        cwtm_start = time.time()
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            trimed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._s:self.num_workers-self._s], axis=0)
-            self._grad_aggregate_buffer[g_idx] = trimed_mean
+            trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._s:self.num_workers-self._s], axis=0)
+            self._grad_aggregate_buffer[g_idx] = trimmed_mean
+        print("Master Step: {} Coor wise trimmed mean cost: {:.4f}".format(self.cur_step, time.time()-cwtm_start))
 
     """
     def _median_of_means(self):
