@@ -241,6 +241,11 @@ def _generate_adversarial_nodes(args, world_size):
     elif args.faulty_pattern == 'changing':
         return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
                 range(args.max_steps + 1)]
+    elif faulty_pattern == 'median_of_means':
+        b = math.floor((world_size - 1) / (2*args.worker_fail+0.5))
+        adversaries = [i*b for i in range(args.worker_fail)]
+        assert len(adversaries) == args.worker_fail
+        return adversaries
 
 
 def prepare(args, rank, world_size):
