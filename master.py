@@ -609,6 +609,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     """
 
     def _median_of_means(self):
+        medofmeans_start = time.time()
         concatenated_gradients = None
         separator = []
         #print('concatenation')
@@ -619,11 +620,15 @@ class SyncReplicaMaster_NN(NN_Trainer):
             else:
                 concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
             separator.append(len(concatenated_gradients[0]))
+        aggregation_finish_time = time.time()
 
         b = math.floor(self.num_workers / (2*self._s+0.5))
 
         median = np.array(hd.geomedian(np.array([np.mean(np.array(concatenated_gradients[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0))
+        filter_finish_time = time.time()
+
         self._grad_aggregate_buffer = np.split(median,separator[:len(separator)-1])
+        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-medofmeans_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
     def _median_of_means_splited(self):
         b = math.floor(self.num_workers / (2*self._s+0.5))
