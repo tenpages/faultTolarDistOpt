@@ -244,6 +244,7 @@ def _generate_adversarial_nodes(args, world_size):
     elif args.faulty_pattern == 'median_of_means':
         b = math.floor((world_size - 1) / (2*args.worker_fail+0.5))
         adversaries = [i*b for i in range(args.worker_fail)]
+        print(b, adversaries)
         assert len(adversaries) == args.worker_fail
         return adversaries
 
