@@ -414,7 +414,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     """
 
     def _median_of_means(self):
-        b = math.floor(self.num_workers / (2*self._s+0.5))
+        b = math.ceil(self.num_workers / (2*self._s+0.5))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             median = np.array(hd.geomedian(np.array([np.mean(np.array(grads[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0))
             self._grad_aggregate_buffer[g_idx] = median
