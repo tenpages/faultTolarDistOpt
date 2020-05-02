@@ -567,7 +567,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-s-2]))
             selected_idx = np.argsort(score)[:m]
             print(selected_idx)
-            return grad_list[i_star]
+            return grad_list[selected_idx]
         
         krum_median = np.mean(__krum(concatenated_gradients, self._s), axis=0)
         print(krum_median.shape)
