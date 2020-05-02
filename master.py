@@ -484,6 +484,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
+    """
     def _multi_krum(self, m):
         # Concatenate parts of krum gradients into a vector;
         # Then Calculate Krum function accordingly, choose the gradient;
@@ -503,13 +504,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
         aggregation_finish_time = time.time()
 
         def __krum(grad_list, grad_idxs, s):
-            """
-            Krum function.
-            :param grad_list: gradients from all workers
-            :param grad_idxs: list of indexes under consideration
-            :param s: number of faulty workers
-            :return: i, gradient from worker i that minimizes Krum score
-            """
+            # Krum function.
+            #:param grad_list: gradients from all workers
+            #:param grad_idxs: list of indexes under consideration
+            #:param s: number of faulty workers
+            # return: i, gradient from worker i that minimizes Krum score
             score = []
             for i, idx_i in enumerate(grad_idxs):
                 neighbor_distances = []
@@ -531,6 +530,50 @@ class SyncReplicaMaster_NN(NN_Trainer):
         filter_finish_time = time.time()
 
         self._grad_aggregate_buffer = np.split(multi_krum_median,separator[:len(separator)-1])
+
+        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-krum_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
+    """
+    def _multi_krum(self, m=1):
+        # Concatenate parts of krum gradients into a vector;
+        # Then Calculate Krum function accordingly, choose the gradient;
+        # Finally, break down the gradient into original piece that fits the model
+        krum_start = time.time()
+
+        concatenated_gradients = None
+        separator = []
+        #print('concatenation')
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            #print('#',g_idx,':',np.array(grads).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+            separator.append(len(concatenated_gradients[0]))
+        aggregation_finish_time = time.time()
+
+        def __krum(grad_list, s):
+            """
+            Krum function in https://arxiv.org/abs/1703.02757
+            :param grad_list: gradients from all workers
+            :param s: number of faulty workers
+            :return: gradient from worker i that minimizes Krum score
+            """
+            score = []
+            for i, g_i in enumerate(grad_list):
+                neighbor_distances = []
+                for j, g_j in enumerate(grad_list):
+                    if i!=j:
+                        neighbor_distances.append(np.linalg.norm(g_i-g_j)**2)
+                score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-s-2]))
+            selected_idx = np.argsort(score)[:m]
+            print(selected_idx)
+            return grad_list[i_star]
+        
+        krum_median = np.mean(__krum(concatenated_gradients, self._s), axis=0)
+        print(krum_median.shape)
+        filter_finish_time = time.time()
+
+        self._grad_aggregate_buffer = np.split(krum_median,separator[:len(separator)-1])
 
         print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-krum_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
