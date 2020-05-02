@@ -500,6 +500,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             else:
                 concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
             separator.append(len(concatenated_gradients[0]))
+        aggregation_finish_time = time.time()
 
         def __krum(grad_list, grad_idxs, s):
             """
@@ -527,9 +528,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
             grads_in_consideration.append(grad)
             current_list.remove(i)
         multi_krum_median = np.mean(np.array(grads_in_consideration), axis=0)
+        filter_finish_time = time.time()
+
         self._grad_aggregate_buffer = np.split(multi_krum_median,separator[:len(separator)-1])
 
-        print("Master Step: {} Multi-Krum cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
+        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-krum_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
     def _krum_splited(self):
         # The version trivially treat different parts of gradients separately
