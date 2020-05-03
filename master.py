@@ -741,6 +741,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_aggregate_buffer = np.split(concatenated_gradients,separator[:len(separator)-1])
 
     def _grad_norm_full_grad(self):
+        norm_filter_start = time.time()
         concatenated_gradients = None
         separator = []
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
@@ -750,6 +751,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             else:
                 concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
             separator.append(len(concatenated_gradients[0]))
+        aggregation_finish_time = time.time()
         # print(concatenated_gradients.shape)
         # print(separator)
         ranks = np.argsort(np.linalg.norm(np.array(concatenated_gradients), axis=1))
@@ -758,21 +760,23 @@ class SyncReplicaMaster_NN(NN_Trainer):
         print(np.linalg.norm(concatenated_gradients, axis=1))
         print(np.mean(np.linalg.norm(concatenated_gradients, axis=1)))
         print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
-        for i in range(self.num_workers-self._s, self.num_workers):
-            concatenated_gradients[ranks[i]] = concatenated_gradients[ranks[i]]*norm/np.linalg.norm(concatenated_gradients[ranks[i]])
-        print(np.linalg.norm(concatenated_gradients, axis=1))
-        print(concatenated_gradients[0].shape)
-        if self._grad_norm_keep_all == True:
+
+        if self.grad_norm_keep_all == True:
+            for i in range(self.num_workers-self._s, self.num_workers):
+                concatenated_gradients[ranks[i]] = concatenated_gradients[ranks[i]]*norm/np.linalg.norm(concatenated_gradients[ranks[i]])
+            print(np.linalg.norm(concatenated_gradients, axis=1))
+            print(concatenated_gradients[0].shape)
             sum_gradient = np.mean(concatenated_gradients, axis=0)
         else:
             print(ranks[:(self.num_workers-self._s)])
             sum_gradient = np.mean(np.array(concatenated_gradients)[ranks[:(self.num_workers-self._s)]], axis=0)
+        filter_finish_time = time.time()
+
         print(sum_gradient.shape)
         print(np.linalg.norm(sum_gradient))
         self._grad_aggregate_buffer=np.split(sum_gradient,separator[:len(separator)-1])
-        # print(len(self._grad_aggregate_buffer))
-        # for i in self._grad_aggregate_buffer:
-        #     print(i.shape)
+
+        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-norm_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
 
 class GradientAccumulator(object):
