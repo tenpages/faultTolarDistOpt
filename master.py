@@ -745,7 +745,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         concatenated_gradients = None
         separator = []
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            print(np.array(grads).shape)
+            #print(np.array(grads).shape)
             if g_idx == 0:
                 concatenated_gradients = np.array(grads)
             else:
@@ -756,16 +756,16 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # print(separator)
         ranks = np.argsort(np.linalg.norm(np.array(concatenated_gradients), axis=1))
         norm = np.linalg.norm(concatenated_gradients[ranks[self.num_workers-self._s-1]])
-        print(np.sqrt(np.sum(np.square([np.linalg.norm(self._grad_aggregate_buffer[i], axis=1) for i in range(len(self._grad_aggregate_buffer))]), axis=0)))
-        print(np.linalg.norm(concatenated_gradients, axis=1))
-        print(np.mean(np.linalg.norm(concatenated_gradients, axis=1)))
-        print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
+        #print(np.sqrt(np.sum(np.square([np.linalg.norm(self._grad_aggregate_buffer[i], axis=1) for i in range(len(self._grad_aggregate_buffer))]), axis=0)))
+        #print(np.linalg.norm(concatenated_gradients, axis=1))
+        #print(np.mean(np.linalg.norm(concatenated_gradients, axis=1)))
+        #print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
 
-        if self.grad_norm_keep_all == True:
+        if self._grad_norm_keep_all == True:
             for i in range(self.num_workers-self._s, self.num_workers):
                 concatenated_gradients[ranks[i]] = concatenated_gradients[ranks[i]]*norm/np.linalg.norm(concatenated_gradients[ranks[i]])
-            print(np.linalg.norm(concatenated_gradients, axis=1))
-            print(concatenated_gradients[0].shape)
+            #print(np.linalg.norm(concatenated_gradients, axis=1))
+            #print(concatenated_gradients[0].shape)
             sum_gradient = np.mean(concatenated_gradients, axis=0)
         else:
             print(ranks[:(self.num_workers-self._s)])
@@ -773,7 +773,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         filter_finish_time = time.time()
 
         print(sum_gradient.shape)
-        print(np.linalg.norm(sum_gradient))
+        #print(np.linalg.norm(sum_gradient))
         self._grad_aggregate_buffer=np.split(sum_gradient,separator[:len(separator)-1])
 
         print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-norm_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
