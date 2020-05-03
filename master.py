@@ -755,24 +755,24 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # print(concatenated_gradients.shape)
         # print(separator)
         ranks = np.argsort(np.linalg.norm(np.array(concatenated_gradients), axis=1))
-        norm = np.linalg.norm(concatenated_gradients[ranks[self.num_workers-self._s-1]])
         #print(np.sqrt(np.sum(np.square([np.linalg.norm(self._grad_aggregate_buffer[i], axis=1) for i in range(len(self._grad_aggregate_buffer))]), axis=0)))
         #print(np.linalg.norm(concatenated_gradients, axis=1))
         #print(np.mean(np.linalg.norm(concatenated_gradients, axis=1)))
         #print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
 
         if self._grad_norm_keep_all == True:
+            norm = np.linalg.norm(concatenated_gradients[ranks[self.num_workers-self._s-1]])
             for i in range(self.num_workers-self._s, self.num_workers):
                 concatenated_gradients[ranks[i]] = concatenated_gradients[ranks[i]]*norm/np.linalg.norm(concatenated_gradients[ranks[i]])
             #print(np.linalg.norm(concatenated_gradients, axis=1))
             #print(concatenated_gradients[0].shape)
             sum_gradient = np.mean(concatenated_gradients, axis=0)
         else:
-            print(ranks[:(self.num_workers-self._s)])
+            # print(ranks[:(self.num_workers-self._s)])
             sum_gradient = np.mean(np.array(concatenated_gradients)[ranks[:(self.num_workers-self._s)]], axis=0)
         filter_finish_time = time.time()
 
-        print(sum_gradient.shape)
+        # print(sum_gradient.shape)
         #print(np.linalg.norm(sum_gradient))
         self._grad_aggregate_buffer=np.split(sum_gradient,separator[:len(separator)-1])
 
