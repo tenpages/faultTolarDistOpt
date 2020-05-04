@@ -10,6 +10,7 @@ import numpy as np
 
 from model_ops.fc import Full_Connected
 from model_ops.lenet import LeNet
+from model_ops.resnet import ResNet18
 from nn_ops import NN_Trainer
 
 import torch
@@ -74,6 +75,8 @@ class DistributedEvaluator(object):
             self.network = Full_Connected(kwargs['input_size'])
         elif self.network_config == 'LeNet':
             self.network = LeNet(kwargs['channel'], kwargs['1d_size'])
+        elif self.network_config == 'ResNet18':
+            self.network = ResNet18(kwargs['channel'])
 
     def evaluate(self, validation_loader):
         # init objective to fetch at the begining
