@@ -194,6 +194,8 @@ class DistributedWorker(NN_Trainer):
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
 
                     prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))
+                    with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
+                        f.write('{:.8f}\n'.format(time.time()-iter_start_time))
                     print(
                         'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.8f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@3: {}'.format(
                             self.rank,
@@ -202,8 +204,6 @@ class DistributedWorker(NN_Trainer):
                                                       time.time() - iter_start_time, computation_time,
                                                       c_duration + fetch_weight_duration,
                             prec1.numpy()[0], prec3.numpy()[0]))
-                    with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
-                        f.write('{:.8f}\n'.format(time.time()-computation_time))
 
                     if self.cur_step % self._eval_freq == 0 and self.rank == 1:
                         # save snapshots
