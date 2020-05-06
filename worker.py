@@ -202,7 +202,7 @@ class DistributedWorker(NN_Trainer):
                                                       time.time() - iter_start_time, computation_time,
                                                       c_duration + fetch_weight_duration,
                             prec1.numpy()[0], prec3.numpy()[0]))
-                    with open(self._train_dir+"logs-worker-"+self.rank, "a") as f:
+                    with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
                         f.write('{:.8f}\n'.format(time.time()-computation_time))
 
                     if self.cur_step % self._eval_freq == 0 and self.rank == 1:
