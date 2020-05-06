@@ -37,7 +37,7 @@ def add_fit_args(parser):
                         help='the maximum number of iterations')
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 10)')
-    parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
+    parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
                         help='learning rate (default: 0.01)')
     parser.add_argument('--diminishing-lr', type=ast.literal_eval, default=False, metavar='N',
                         help='set diminishing learning rate (default: False)')
