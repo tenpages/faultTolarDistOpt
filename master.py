@@ -287,7 +287,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     torch.save(self.scheduler.state_dict(), open(self._train_dir+"scheduler_"+str(self.cur_step),"wb"))
             print("Master Step: {}, Method Time Cost: {}, Update Time Cost: {}".format(self.cur_step, method_duration,
                                                                                        update_duration))
-            with open(self._train_dir+"logs-master",'a'):
+            with open(self._train_dir+"logs-master",'a') as f:
                 f.write('{:.8f},{:.8f}\n'.format(method_duration,update_duration))
             self.cur_step += 1
 
@@ -439,7 +439,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_aggregate_buffer = np.split(geo_median,separator[:len(separator)-1])
 
         print("Master Step: {} Concatenation Cost: {:.4f} Found Geo Median Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-geo_median_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
-        with open(self._train_dir+"logs-master",'a'):
+        with open(self._train_dir+"logs-master",'a') as f:
             f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-geo_median_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
     def _geo_median_splited(self):
@@ -578,7 +578,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_aggregate_buffer = np.split(krum_median,separator[:len(separator)-1])
 
         print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-krum_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
-        with open(self._train_dir+"logs-master",'a'):
+        with open(self._train_dir+"logs-master",'a') as f:
             f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-krum_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
     def _krum_splited(self):
@@ -642,7 +642,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             median = np.median(np.array(grads), axis=0)
             self._grad_aggregate_buffer[g_idx] = median
         print("Master Step: {} Coor wise median cost: {:.4f}".format(self.cur_step, time.time()-cw_median_start))
-        with open(self._train_dir+"logs-master",'a'):
+        with open(self._train_dir+"logs-master",'a') as f:
             f.write('{:.8f},'.format(time.time()-cw_median_start))
 
     def _coor_wise_trimmed_mean(self):
@@ -651,7 +651,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._s:self.num_workers-self._s], axis=0)
             self._grad_aggregate_buffer[g_idx] = trimmed_mean
         print("Master Step: {} Coor wise trimmed mean cost: {:.4f}".format(self.cur_step, time.time()-cwtm_start))
-        with open(self._train_dir+"logs-master",'a'):
+        with open(self._train_dir+"logs-master",'a') as f:
             f.write('{:.8f},'.format(time.time()-cwtm_start))
 
     """
@@ -683,7 +683,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         self._grad_aggregate_buffer = np.split(median,separator[:len(separator)-1])
         print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-medofmeans_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
-        with open(self._train_dir+"logs-master",'a'):
+        with open(self._train_dir+"logs-master",'a') as f:
             f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-medofmeans_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
     def _median_of_means_splited(self):
@@ -789,7 +789,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_aggregate_buffer=np.split(sum_gradient,separator[:len(separator)-1])
 
         print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-norm_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
-        with open(self._train_dir+"logs-master",'a'):
+        with open(self._train_dir+"logs-master",'a') as f:
             f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-norm_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
 
