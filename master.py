@@ -656,7 +656,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     """
     def _median_of_means(self):
-        b = math.floor(self.num_workers / (2*self._s+0.5))
+        b = math.ceil(self.num_workers / (2*self._s+0.5))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             median = np.median(np.array([np.mean(np.array(grads[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0)
             self._grad_aggregate_buffer[g_idx] = median
@@ -676,7 +676,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             separator.append(len(concatenated_gradients[0]))
         aggregation_finish_time = time.time()
 
-        b = math.floor(self.num_workers / (2*self._s+0.5))
+        b = math.ceil(self.num_workers / (2*self._s+0.5))
 
         median = np.array(hd.geomedian(np.array([np.mean(np.array(concatenated_gradients[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0))
         filter_finish_time = time.time()
@@ -687,7 +687,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-medofmeans_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
     def _median_of_means_splited(self):
-        b = math.floor(self.num_workers / (2*self._s+0.5))
+        b = math.ceil(self.num_workers / (2*self._s+0.5))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             median = np.array(hd.geomedian(np.array([np.mean(np.array(grads[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0))
             self._grad_aggregate_buffer[g_idx] = median
