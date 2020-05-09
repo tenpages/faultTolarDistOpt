@@ -215,7 +215,7 @@ def _generate_adversarial_nodes(args, world_size):
         b = math.ceil((world_size - 1) / (2*args.worker_fail+0.5))
         adversaries = [i*b for i in range(args.worker_fail)]
         assert len(adversaries) == args.worker_fail
-        return adversaries
+        return [adversaries] * (args.max_steps + 1)
 
 
 def prepare(args, rank, world_size):
