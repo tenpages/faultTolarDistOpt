@@ -252,8 +252,9 @@ def prepare(args, rank, world_size):
             'grad_norm_keep_all': args.grad_norm_keep_all,
             'grad_norm_clip_n': args.grad_norm_clip_n,
             'calculate_cosine': args.calculate_cosine,
-            # the following information is only used for simulating fault agents, filters do not use them.
+            # the following information is only used for simulating fault agents and not used by filters.
             'adversaries': adversaries,
+            'err_mode': args.err_mode,
         }
         kwargs_worker = {
             'batch_size': args.batch_size,

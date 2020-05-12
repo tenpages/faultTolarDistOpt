@@ -14,7 +14,7 @@ from compress_gradient import decompress
 from model_ops.lenet import LeNet_Split
 from model_ops.fc import Full_Connected_Split
 from model_ops.resnet import ResNet18
-from model_ops.vgg import VGG19
+from model_ops.vgg import VGG16, VGG19
 from nn_ops import NN_Trainer, accuracy
 from optim.sgd_modified import SGDModified
 
@@ -61,6 +61,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
         self._calculate_cosine = kwargs['calculate_cosine']
 
+        # the following information is only used for simulating fault agents and not used by filters.
+        self._adversaries = kwargs['adversaries']
+        self._err_mode = kwargs['err_mode']
+
     def build_model(self) :
         # print("building model, self._size ", self._size)
         if self.network_config == "FC":
@@ -69,6 +73,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.network = LeNet_Split(self._channel,self._size)
         elif self.network_config == "ResNet18":
             self.network = ResNet18(self._channel)
+        elif self.network_config == 'VGG16':
+            self.network = VGG16(self._channel)
         elif self.network_config == 'VGG19':
             self.network = VGG19(self._channel)
 
@@ -157,6 +163,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 enough_gradients_received = True
                 for j in self.grad_accumulator.gradient_aggregate_counter:
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
+
+            if self._err_mode in ['cwtm']:
+                self._err_simulation()
 
             """
             if self.cur_step >= 8:
@@ -386,6 +395,16 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
                                        'grad_norm_multi_parts'):
                 self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
+
+    def _err_simulator(self):
+        if self._err_mode == 'cwtm':
+            for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+                trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._s:self.num_workers-self._s], axis=0)
+                self._grad_aggregate_buffer[g_idx] = trimmed_mean
+
+                for agent in self._adversaries[self.cur_step]:
+                    continue
+
 
     def _generate_model_path(self):
         return self._train_dir + "model_step_" + str(self.cur_step)
