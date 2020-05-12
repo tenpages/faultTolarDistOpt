@@ -26,7 +26,7 @@ class VGG(nn.Module):
             nn.Linear(4096,num_classes),
         )
         if init_weights:
-            self.__initialize_weights()
+            self._initialize_weights()
 
     def forward(self, x):
         x = self.features(x)
