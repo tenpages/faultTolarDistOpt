@@ -181,7 +181,7 @@ class DistributedWorker(NN_Trainer):
                         loss = self.criterion(logits, y_batch)
                     elif "ResNet" in self.network_config:
                         loss = self.criterion(logits, y_batch)
-                    elif "VGG" self.network_config:
+                    elif "VGG" in self.network_config:
                         loss = self.criterion(logtis, y_batch)
                     else:
                         raise Exception("No such network as "+self.network_config)
