@@ -54,7 +54,7 @@ def make_layers(cfg, in_channels=3):
         else:
             conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
             layers += [conv2d, nn.ReLU(inplace=True)]
-        in_channels = v
+            in_channels = v
     return nn.Sequential(*layers)
 
 def _vgg(cfg, in_channels):
