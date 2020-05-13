@@ -208,6 +208,13 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 else:
                     self._multi_krum_splited(self._multi_krum_m)
                 method_duration = time.time() - method_start
+            elif self._update_mode == 'multi_krum_multi_rounds':
+                method_start = time.time()
+                if self._full_grad == True:
+                    self._multi_krum_multi_rounds(self._multi_krum_m)
+                else:
+                    self._multi_krum_splited(self._multi_krum_m)
+                method_duration = time.time() - method_start
             elif self._update_mode == 'coor_wise_median':
                 method_start = time.time()
                 self._coor_wise_median()
@@ -313,7 +320,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._model_shapes.append(param.size())
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer.append(np.zeros(param.size()))
-            elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
+            elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
                                        'grad_norm_multi_parts'):
                 self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
@@ -365,7 +372,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def aggregate_gradient(self, gradient, layer_idx, source):
         if self._update_mode == 'normal':
             self._grad_aggregate_buffer[layer_idx] += gradient
-        elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
+        elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
                                    'grad_norm_multi_parts'):
             # print(self._grad_aggregate_buffer[layer_idx][source].shape, gradient.shape)
@@ -396,7 +403,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for i in range(len(self._grad_aggregate_buffer)):
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
-            elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
+            elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
                                        'grad_norm_multi_parts'):
                 self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
@@ -515,8 +522,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
-    """
-    def _multi_krum(self, m):
+
+    def _multi_krum_multi_rounds(self, m):
         # Concatenate parts of krum gradients into a vector;
         # Then Calculate Krum function accordingly, choose the gradient;
         # Finally, break down the gradient into original piece that fits the model
@@ -563,7 +570,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_aggregate_buffer = np.split(multi_krum_median,separator[:len(separator)-1])
 
         print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-krum_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
-    """
+
     def _multi_krum(self, m=1):
         # Concatenate parts of krum gradients into a vector;
         # Then Calculate Krum function accordingly, choose the gradient;

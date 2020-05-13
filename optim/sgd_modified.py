@@ -31,6 +31,7 @@ class SGDModified(Optimizer):
                 if mode=='normal':
                     d_p=torch.from_numpy(grads[i]).float()
                 elif mode=='geometric_median' or mode=='maj_vote' or mode=='cyclic' or mode=='krum' or mode=='multi_krum'\
+                        or mode=='multi_krum_multi_rounds'\
                         or mode=='median_of_means' or mode=='grad_norm' or mode=='coor_wise_median'\
                         or mode=='coor_wise_trimmed_mean' or mode=='grad_norm_coor_wise' or mode=='grad_norm_full_grad'\
                         or mode=='grad_norm_multi_parts':
