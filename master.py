@@ -14,6 +14,7 @@ from compress_gradient import decompress
 from model_ops.lenet import LeNet_Split
 from model_ops.fc import Full_Connected_Split
 from model_ops.resnet import ResNet18
+from model_ops.resnetn import ResNet18N
 from model_ops.vgg import VGG13, VGG16, VGG19
 from nn_ops import NN_Trainer, accuracy
 from optim.sgd_modified import SGDModified
@@ -73,6 +74,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.network = LeNet_Split(self._channel,self._size)
         elif self.network_config == "ResNet18":
             self.network = ResNet18(self._channel)
+        elif self.network_config == "ResNet18N":
+            self.network = ResNet18N(self._channel)
         elif self.network_config == 'VGG13':
             self.network = VGG13(self._channel)
         elif self.network_config == 'VGG16':
