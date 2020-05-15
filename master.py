@@ -170,7 +170,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
 
             if self._err_mode in ['cwtm']:
-                self._err_simulation()
+                self._err_simulator()
 
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
                 self._received_grads = self._grad_aggregate_buffer.copy()
