@@ -145,7 +145,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     np.array(grads).dump("layer_"+str(idx)+"_of_step_"+str(self.cur_step)+"_"+str(self._checkpoint_step))
             """
             if self._err_mode in ['cwtm']:
-                self._err_simulation()
+                self._err_simulator()
 
             # update by given gradient filter
             if self._update_mode == 'normal':
