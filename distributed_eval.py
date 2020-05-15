@@ -87,6 +87,7 @@ class DistributedEvaluator(object):
             self.network = VGG16(kwargs['channel'])
         elif self.network_config == 'VGG19':
             self.network = VGG19(kwargs['channel'])
+        self.results = np.array([[1.,2.,3.]], dytpe=np.float64)
 
     def evaluate(self, validation_loader):
         # init objective to fetch at the begining
@@ -106,6 +107,7 @@ class DistributedEvaluator(object):
                 break
                 # TODO(hwang): sleep appropriate period of time make sure to tune this parameter
                 # time.sleep(10)
+        np.save(self._model_dir+"results.npy",self.results)
         print("finished evaluation.")
 
     def _evaluate_model(self, test_loader):
@@ -127,6 +129,7 @@ class DistributedEvaluator(object):
         prec3 = prec3_counter_ / batch_counter_
         test_loss /= len(test_loader.dataset)
         print('Test set: Average loss: {:.8f}, Prec@1: {} Prec@3: {}'.format(test_loss, prec1, prec3))
+        self.results = np.insert(self.results,len(self.results),[[test_loss, prec1, prec3]],0)
 
     def _load_model(self, file_path):
         with open(file_path, "rb") as f_:
