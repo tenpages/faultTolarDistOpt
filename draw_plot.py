@@ -96,7 +96,7 @@ for model_name in model_names:
     loss = results[1]
     prec1 = results[2]
     prec3 = results[3]
-    plt.plot(step,loss,label=model_name,linewidth=.1)
+    plt.plot(step,prec3,label=model_name,linewidth=.1)
     losses.append(loss)
 
 plt.legend(loc="right")
