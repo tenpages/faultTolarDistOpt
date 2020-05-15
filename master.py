@@ -316,7 +316,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 coor_wise_sorted = np.sort(np.array(grads)[_honest], axis=0)
                 fault_gradient = coor_wise_sorted[min(self._s, len(_honest)-1)]
                 print(type(fault_gradient))
-                print(type(self._grad_aggregate_buffer[g_idx][i]))
+                print(type(self._grad_aggregate_buffer[g_idx][0]))
                 for i in self._adversaries[self.cur_step]:
                     self._grad_aggregate_buffer[g_idx][i] = fault_gradient
 
