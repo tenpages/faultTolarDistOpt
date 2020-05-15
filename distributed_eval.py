@@ -87,7 +87,7 @@ class DistributedEvaluator(object):
             self.network = VGG16(kwargs['channel'])
         elif self.network_config == 'VGG19':
             self.network = VGG19(kwargs['channel'])
-        self.results = np.array([[1.,2.,3.]], dytpe=np.float64)
+        self.results = np.array([[1.,2.,3.]], dtype=np.float64)
 
     def evaluate(self, validation_loader):
         # init objective to fetch at the begining
