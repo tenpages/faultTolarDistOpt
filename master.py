@@ -399,9 +399,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
             _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
 
             for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-                trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._s:self.num_workers-self._s], axis=0)
-                self._grad_aggregate_buffer[g_idx] = trimmed_mean
-
                 coor_wise_sorted = np.sort(np.array(grads)[_honest], axis=0)
                 fault_gradient = coor_wise_sorted[min(self._s, len(_honest)-1)]
                 for i in self._adversaries[self.cur_step]:
