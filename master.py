@@ -50,6 +50,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_norm_keep_all = kwargs['grad_norm_keep_all']
         self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
 
+        # the following information is only used for simulating fault agents and not used by filters.
+        self._adversaries = kwargs['adversaries']
+        self._err_mode = kwargs['err_mode']
+
     def build_model(self) :
         # print("building model, self._size ", self._size)
         if self.network_config == "FC":
