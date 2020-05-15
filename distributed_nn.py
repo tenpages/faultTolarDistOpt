@@ -278,7 +278,10 @@ def prepare(args, rank, world_size):
             'data_size': data_shape,
             'multi_krum_m': args.multi_krum_m,
             'grad_norm_keep_all': args.grad_norm_keep_all,
-            'grad_norm_clip_n': args.grad_norm_clip_n
+            'grad_norm_clip_n': args.grad_norm_clip_n,
+            # the following information is only used for simulating fault agents and not used by filters.
+            'adversaries': adversaries,
+            'err_mode': args.err_mode,
         }
         kwargs_worker = {
             'batch_size': args.batch_size,

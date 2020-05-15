@@ -140,6 +140,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     print(np.array(grads).shape)
                     np.array(grads).dump("layer_"+str(idx)+"_of_step_"+str(self.cur_step)+"_"+str(self._checkpoint_step))
             """
+            if self._err_mode in ['cwtm']:
+                self._err_simulation()
 
             # update by given gradient filter
             if self._update_mode == 'normal':
@@ -301,6 +303,19 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
                                        'grad_norm_multi_parts'):
                 self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
+
+    def _err_simulator(self):
+        if self._err_mode == 'cwtm':
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+
+            for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+                trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._s:self.num_workers-self._s], axis=0)
+                self._grad_aggregate_buffer[g_idx] = trimmed_mean
+
+                coor_wise_sorted = np.sort(np.array(grads)[_honest], axis=0)
+                fault_gradient = coor_wise_sorted[min(self._s, len(_honest)-1)]
+                for i in self._adversaries[self.cur_step]:
+                    self._grad_aggregate_buffer[g_idx][i] = fault_gradient
 
     def _generate_model_path(self):
         return self._train_dir + "model_step_" + str(self.cur_step)
