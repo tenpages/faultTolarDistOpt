@@ -101,7 +101,7 @@ class DistributedEvaluator(object):
             if os.path.isfile(model_dir_):
                 self._load_model(model_dir_)
                 print("Evaluator evaluating results on step {}".format(self._next_step_to_fetch))
-                metrics = self._evaluate_model(validation_loader)
+                test_loss, prec1, prec3 = self._evaluate_model(validation_loader)
                 self.results = np.insert(self.results,len(self.results[0]),[self._next_step_to_fetch, test_loss, prec1, prec3],1)
                 self._next_step_to_fetch += self._eval_freq
             else:
@@ -130,7 +130,7 @@ class DistributedEvaluator(object):
         prec3 = prec3_counter_ / batch_counter_
         test_loss /= len(test_loader.dataset)
         print('Test set: Average loss: {:.8f}, Prec@1: {} Prec@3: {}'.format(test_loss, prec1, prec3))
-        return [[test_loss, prec1, prec3]]
+        return test_loss, prec1, prec3
 
     def _load_model(self, file_path):
         with open(file_path, "rb") as f_:
