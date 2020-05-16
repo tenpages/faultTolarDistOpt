@@ -431,8 +431,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         if i!=j:
                             neighbor_distances.append(np.linalg.norm(g_i-g_j)**2)
                     score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-2]))
-                selected_idx = np.argsort(score)[:m]
-                return grad_list[selected_idx]
+                i_star = score.index(min(score))
+                return grad_list[i_star]
 
             krum_median = __krum(concatenated_gradients, self._s)
             fault_gradient = np.split(-krum_median,separator[:len(separator)-1])
