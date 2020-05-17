@@ -169,7 +169,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for j in self.grad_accumulator.gradient_aggregate_counter:
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
 
-            if self._err_mode in ['cwtm', 'krum']:
+            if self._err_mode in ['cwtm', 'krum', 'normfilter']:
                 self._err_simulator()
 
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
@@ -440,6 +440,26 @@ class SyncReplicaMaster_NN(NN_Trainer):
             for g_idx, grads in enumerate(self._grad_aggregate_buffer):
                 for i in self._adversaries[self.cur_step]:
                     self._grad_aggregate_buffer[g_idx][i] = fault_gradient[g_idx]
+        if self._err_mode == 'normfilter':
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+
+            concatenated_gradients = None
+            separator = []
+            #print('concatenation')
+            for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+                #print('#',g_idx,':',np.array(grads).shape)
+                if g_idx == 0:
+                    concatenated_gradients = np.array(grads)
+                else:
+                    concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+                separator.append(len(concatenated_gradients[0]))
+
+            fault_norm = np.sort(np.linalg.norm(concatenated_gradients[_honest], axis=1))[max(0,len(concatenated_gradients)-self._s-1)]
+
+            for i in self._adversaries[self.cur_step]:
+                fault_gradient = np.split(concatenated_gradients[i] * fault_norm / np.linalg.norm(concatenated_gradients[i]), separator[:len(separator)-1])
+                for g_idx in range(len(self._grad_aggregate_buffer)):
+                    self._grad_aggregate_buffer[g_idx][i] = fault_gradient[g_idx]gix
 
     def _generate_model_path(self):
         return self._train_dir + "model_step_" + str(self.cur_step)
