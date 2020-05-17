@@ -395,6 +395,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
 
     def _err_simulator(self):
+        print(self._err_mode)
         if self._err_mode == 'cwtm':
             _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
 
@@ -403,6 +404,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 fault_gradient = coor_wise_sorted[min(self._s, len(_honest)-1)]
                 for i in self._adversaries[self.cur_step]:
                     self._grad_aggregate_buffer[g_idx][i] = fault_gradient
+            print(self._err_mode,"err sim finished")
         if self._err_mode == 'krum':
             _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
 
@@ -440,6 +442,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             for g_idx, grads in enumerate(self._grad_aggregate_buffer):
                 for i in self._adversaries[self.cur_step]:
                     self._grad_aggregate_buffer[g_idx][i] = fault_gradient[g_idx]
+            print(self._err_mode,"err sim finished")
         if self._err_mode == 'normfilter':
             _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
 
@@ -460,6 +463,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 fault_gradient = np.split(concatenated_gradients[i] * fault_norm / np.linalg.norm(concatenated_gradients[i]), separator[:len(separator)-1])
                 for g_idx in range(len(self._grad_aggregate_buffer)):
                     self._grad_aggregate_buffer[g_idx][i] = fault_gradient[g_idx]
+            print(self._err_mode,"err sim finished")
 
     def _generate_model_path(self):
         return self._train_dir + "model_step_" + str(self.cur_step)
