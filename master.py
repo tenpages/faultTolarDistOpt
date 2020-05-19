@@ -457,7 +457,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
                 separator.append(len(concatenated_gradients[0]))
 
-            fault_norm = np.sort(np.linalg.norm(concatenated_gradients[_honest], axis=1))[max(0,len(concatenated_gradients)-self._s-1)]
+            fault_norm = np.sort(np.linalg.norm(concatenated_gradients[_honest], axis=1))[max(0,len(_honest)-self._s-1)]
 
             # note that reverse direction is done in err_simulation() in worker.py. Only need to adjust norm here.
             for i in self._adversaries[self.cur_step]:
