@@ -169,7 +169,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for j in self.grad_accumulator.gradient_aggregate_counter:
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
 
-            if self._err_mode in ['cwtm', 'krum', 'normfilter']:
+            if self._err_mode in ['cwtm', 'krum', 'krum2', 'normfilter']:
                 self._err_simulator()
 
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
@@ -438,6 +438,44 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
             krum_median = __krum(concatenated_gradients, self._s)
             fault_gradient = np.split(-krum_median,separator[:len(separator)-1])
+
+            for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+                for i in self._adversaries[self.cur_step]:
+                    self._grad_aggregate_buffer[g_idx][i] = fault_gradient[g_idx]
+            print(self._err_mode,"err sim finished")
+        if self._err_mode == 'krum2':
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+
+            concatenated_gradients = None
+            separator = []
+            #print('concatenation')
+            for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+                #print('#',g_idx,':',np.array(grads).shape)
+                if g_idx == 0:
+                    concatenated_gradients = np.array(grads)[_honest]
+                else:
+                    concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)[_honest]), axis=1)
+                separator.append(len(concatenated_gradients[0]))
+
+            def __krum(grad_list, s):
+                """
+                Krum function in https://arxiv.org/abs/1703.02757
+                :param grad_list: gradients from all workers
+                :param s: number of faulty workers
+                :return: gradient from worker i that minimizes Krum score
+                """
+                score = []
+                for i, g_i in enumerate(grad_list):
+                    neighbor_distances = []
+                    for j, g_j in enumerate(grad_list):
+                        if i!=j:
+                            neighbor_distances.append(np.linalg.norm(g_i-g_j)**2)
+                    score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-2]))
+                i_star = score.index(max(score))
+                return grad_list[i_star]
+
+            worst_krum_median = __krum(concatenated_gradients, self._s)
+            fault_gradient = np.split(worst_krum_median,separator[:len(separator)-1])
 
             for g_idx, grads in enumerate(self._grad_aggregate_buffer):
                 for i in self._adversaries[self.cur_step]:
