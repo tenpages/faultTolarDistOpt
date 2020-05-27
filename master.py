@@ -966,9 +966,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         self._grad_aggregate_buffer = np.split(multi_krum_median,separator[:len(separator)-1])
 
-        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-norm_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
+        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
         with open(self._train_dir+"logs-master",'a') as f:
-            f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-norm_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
+            f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
 
 class GradientAccumulator(object):
