@@ -955,7 +955,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             return grad_idxs[i_star], grad_list[grad_idxs[i_star]]
 
         grads_in_consideration = []
-        current_list = list(range(self.num_workers))
+        current_list = list(range(len(filtered_gradients)))
         for rnd in range(m):
             print("Round:",rnd)
             i, grad = __krum(filtered_gradients, current_list, self._s)
