@@ -53,6 +53,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._compress_grad = kwargs['compress_grad']
         self._checkpoint_step = kwargs['checkpoint_step']
         self._s = kwargs['worker_fail']
+        self._t = kwargs['fault-thrshld']
         self._full_grad = kwargs['full_grad']
         self._total_size = kwargs['total_size']
         self._channel = kwargs['channel']
@@ -607,7 +608,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             i_star = score.index(min(score))
             return grad_list[i_star]
         
-        krum_median = __krum(concatenated_gradients, self._s)
+        krum_median = __krum(concatenated_gradients, self._t)
         self._grad_aggregate_buffer = np.split(krum_median,separator[:len(separator)-1])
 
         print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
@@ -651,7 +652,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         current_list = list(range(self.num_workers))
         for rnd in range(m):
             print("Round:",rnd)
-            i, grad = __krum(concatenated_gradients, current_list, self._s)
+            i, grad = __krum(concatenated_gradients, current_list, self._t)
             grads_in_consideration.append(grad)
             current_list.remove(i)
         multi_krum_median = np.mean(np.array(grads_in_consideration), axis=0)
@@ -696,7 +697,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             selected_idx = np.argsort(score)[:m]
             return grad_list[selected_idx]
         
-        krum_median = np.mean(__krum(concatenated_gradients, self._s), axis=0)
+        krum_median = np.mean(__krum(concatenated_gradients, self._t), axis=0)
         filter_finish_time = time.time()
 
         self._grad_aggregate_buffer = np.split(krum_median,separator[:len(separator)-1])
@@ -725,7 +726,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             return grad_list[i_star]
         krum_start = time.time()
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            krum_median = __krum(grads, self._s)
+            krum_median = __krum(grads, self._t)
             self._grad_aggregate_buffer[g_idx] = krum_median
         print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
@@ -754,7 +755,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             current_list = list(range(self.num_workers))
             for rnd in range(m):
                 print("Round:",rnd)
-                i, grad = __krum(grads, current_list, self._s)
+                i, grad = __krum(grads, current_list, self._t)
                 grads_in_consideration.append(grad)
                 current_list.remove(i)
             self._grad_aggregate_buffer[g_idx] = np.mean(np.array(grads_in_consideration), axis=0)
@@ -772,7 +773,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def _coor_wise_trimmed_mean(self):
         cwtm_start = time.time()
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._s:self.num_workers-self._s], axis=0)
+            trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._t:self.num_workers-self._t], axis=0)
             self._grad_aggregate_buffer[g_idx] = trimmed_mean
         print("Master Step: {} Coor wise trimmed mean cost: {:.4f}".format(self.cur_step, time.time()-cwtm_start))
         with open(self._train_dir+"logs-master",'a') as f:
@@ -780,7 +781,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     """
     def _median_of_means(self):
-        b = math.ceil(self.num_workers / (2*self._s+0.5))
+        b = math.ceil(self.num_workers / (2*self._t+0.5))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             median = np.median(np.array([np.mean(np.array(grads[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0)
             self._grad_aggregate_buffer[g_idx] = median
@@ -800,7 +801,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             separator.append(len(concatenated_gradients[0]))
         aggregation_finish_time = time.time()
 
-        b = math.ceil(self.num_workers / (2*self._s+0.5))
+        b = math.ceil(self.num_workers / (2*self._t+0.5))
 
         median = np.array(hd.geomedian(np.array([np.mean(np.array(concatenated_gradients[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0))
         filter_finish_time = time.time()
@@ -811,7 +812,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-medofmeans_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
     def _median_of_means_splited(self):
-        b = math.ceil(self.num_workers / (2*self._s+0.5))
+        b = math.ceil(self.num_workers / (2*self._t+0.5))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             median = np.array(hd.geomedian(np.array([np.mean(np.array(grads[i:i+b]), axis=0) for i in range(0,self.num_workers,b)]), axis=0))
             self._grad_aggregate_buffer[g_idx] = median
@@ -819,13 +820,13 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def _grad_norm(self):
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             ranks = np.argsort(np.linalg.norm(np.array(grads), axis=1))
-            norm = np.linalg.norm(grads[ranks[self.num_workers-self._s-1]])
-            for i in range(self.num_workers-self._s, self.num_workers):
+            norm = np.linalg.norm(grads[ranks[self.num_workers-self._t-1]])
+            for i in range(self.num_workers-self._t, self.num_workers):
                 grads[ranks[i]]=grads[ranks[i]]*norm/np.linalg.norm(grads[ranks[i]])
             if self._grad_norm_keep_all == True:
                 self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads), axis=0)/self.num_workers
             else:
-                self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads)[ranks[:(self.num_workers-self._s)]], axis=0)/(self.num_workers-self._s)
+                self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads)[ranks[:(self.num_workers-self._t)]], axis=0)/(self.num_workers-self._t)
 
     def _grad_norm_coor_wise(self):
         print("size of buffer",len(self._grad_aggregate_buffer))
@@ -837,8 +838,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             calculated_grad = grads[0]
             ranks = np.argsort(grads, axis=0)
             for i in range(len(grads[0])):
-                norm = np.abs(grads[ranks[self.num_workers-self._s-1][i]][i])
-                for j in range(self.num_workers-self._s, self.num_workers):
+                norm = np.abs(grads[ranks[self.num_workers-self._t-1][i]][i])
+                for j in range(self.num_workers-self._t, self.num_workers):
                     grads[ranks[j][i]][i] = grads[ranks[j][i]][i]*norm/np.abs(grads[ranks[j][i]][i])
                 summation = 0
                 for j in range(self.num_workers):
@@ -860,13 +861,13 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for g_idx, grads in enumerate(gradient_parts):
             print(np.array(grads).shape)
             ranks = np.argsort(np.linalg.norm(np.array(grads), axis=1))
-            norm = np.linalg.norm(grads[ranks[self.num_workers-self._s-1]])
-            for i in range(self.num_workers-self._s, self.num_workers):
+            norm = np.linalg.norm(grads[ranks[self.num_workers-self._t-1]])
+            for i in range(self.num_workers-self._t, self.num_workers):
                 grads[ranks[i]]=grads[ranks[i]]*norm/np.linalg.norm(grads[ranks[i]])
             if self._grad_norm_keep_all == True:
                 gradient_parts[g_idx] = np.sum(np.array(grads), axis=0)/self.num_workers
             else:
-                gradient_parts[g_idx] = np.sum(np.array(grads)[ranks[:(self.num_workers-self._s)]], axis=0)/(self.num_workers-self._s)
+                gradient_parts[g_idx] = np.sum(np.array(grads)[ranks[:(self.num_workers-self._t)]], axis=0)/(self.num_workers-self._t)
         concatenated_gradients = None
         for g_idx, grad in enumerate(gradient_parts):
             print(np.array(grad).shape)
@@ -897,15 +898,15 @@ class SyncReplicaMaster_NN(NN_Trainer):
         #print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
 
         if self._grad_norm_keep_all == True:
-            norm = np.linalg.norm(concatenated_gradients[ranks[self.num_workers-self._s-1]])
-            for i in range(self.num_workers-self._s, self.num_workers):
+            norm = np.linalg.norm(concatenated_gradients[ranks[self.num_workers-self._t-1]])
+            for i in range(self.num_workers-self._t, self.num_workers):
                 concatenated_gradients[ranks[i]] = concatenated_gradients[ranks[i]]*norm/np.linalg.norm(concatenated_gradients[ranks[i]])
             #print(np.linalg.norm(concatenated_gradients, axis=1))
             #print(concatenated_gradients[0].shape)
             sum_gradient = np.mean(concatenated_gradients, axis=0)
         else:
-            # print(ranks[:(self.num_workers-self._s)])
-            sum_gradient = np.mean(np.array(concatenated_gradients)[ranks[:(self.num_workers-self._s)]], axis=0)
+            # print(ranks[:(self.num_workers-self._t)])
+            sum_gradient = np.mean(np.array(concatenated_gradients)[ranks[:(self.num_workers-self._t)]], axis=0)
         filter_finish_time = time.time()
 
         # print(sum_gradient.shape)
@@ -936,7 +937,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         #print(np.mean(np.linalg.norm(concatenated_gradients, axis=1)))
         #print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
 
-        filtered_gradients = np.array(concatenated_gradients)[ranks[:(self.num_workers-self._s)]]
+        filtered_gradients = np.array(concatenated_gradients)[ranks[:(self.num_workers-self._t)]]
 
         def __krum(grad_list, grad_idxs, s):
             # Krum function.
@@ -950,7 +951,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for j, idx_j in enumerate(grad_idxs):
                     if i!=j:
                         neighbor_distances.append(np.linalg.norm(grad_list[idx_i]-grad_list[idx_j])**2)
-                score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-self._s-s-2]))
+                score.append(sum(np.sort(neighbor_distances)[0:self.num_workers-self._t-s-2]))
             i_star = score.index(min(score))
             return grad_idxs[i_star], grad_list[grad_idxs[i_star]]
 
@@ -958,7 +959,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         current_list = list(range(len(filtered_gradients)))
         for rnd in range(m):
             print("Round:",rnd)
-            i, grad = __krum(filtered_gradients, current_list, self._s)
+            i, grad = __krum(filtered_gradients, current_list, self._t)
             grads_in_consideration.append(grad)
             current_list.remove(i)
         multi_krum_median = np.mean(np.array(grads_in_consideration), axis=0)

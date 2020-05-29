@@ -73,6 +73,8 @@ def add_fit_args(parser):
                         help='how much adversary we want to add to a certain worker')
     parser.add_argument('--worker-fail', type=int, default=2, metavar='N',
                         help='how many number of worker nodes we want to simulate byzantine error on')
+    parser.add_argument('--fault-thrshld', type=int, default=2, metavar='N',
+                        help='how many number of worker nodes we want our filter to tolerate')
     parser.add_argument('--group-size', type=int, default=5, metavar='N',
                         help='in majority vote how many worker nodes are in a certain group')
     parser.add_argument('--compress-grad', type=str, default='compress', metavar='N',
@@ -239,6 +241,7 @@ def prepare(args, rank, world_size):
             'network': args.network,
             'comm_method': args.comm_type,
             'worker_fail': args.worker_fail,
+            'fault-thrshld': args.fault_thrshld,
             'eval_freq': args.eval_freq,
             'train_dir': args.train_dir,
             'update_mode': args.mode,
