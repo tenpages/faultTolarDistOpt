@@ -243,6 +243,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_start = time.time()
                 self._ensemble_normfilter_multikrum(self._multi_krum_m)
                 method_duration = time.time() - method_start
+            elif self._update_mode == 'ensemble_normfilter_cwtm':
+                method_start = time.time()
+                self._ensemble_normfilter_cwtm()
+                method_duration = time.time() - method_start
 
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
                 self._filtered_grad = self._grad_aggregate_buffer.copy()
@@ -313,7 +317,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer.append(np.zeros(param.size()))
             elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
-                                       'grad_norm_multi_parts', 'ensemble_normfilter_multikrum'):
+                                       'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm'):
                 self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
 
     def async_bcast_step(self):
@@ -365,7 +369,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._grad_aggregate_buffer[layer_idx] += gradient
         elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
-                                   'grad_norm_multi_parts', 'ensemble_normfilter_multikrum'):
+                                   'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm'):
             # print(self._grad_aggregate_buffer[layer_idx][source].shape, gradient.shape)
             # print(self._grad_aggregate_buffer[layer_idx][source].dtype, gradient.dtype)
             self._grad_aggregate_buffer[layer_idx][source] = gradient.reshape(-1)
@@ -396,7 +400,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
             elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
-                                       'grad_norm_multi_parts', 'ensemble_normfilter_multikrum'):
+                                       'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm'):
                 self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
 
     def _err_simulator(self):
@@ -966,6 +970,40 @@ class SyncReplicaMaster_NN(NN_Trainer):
         filter_finish_time = time.time()
 
         self._grad_aggregate_buffer = np.split(multi_krum_median,separator[:len(separator)-1])
+
+        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
+        with open(self._train_dir+"logs-master",'a') as f:
+            f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
+
+    def _ensemble_normfilter_cwtm(self):
+        ensemble_filter_start = time.time()
+        concatenated_gradients = None
+        separator = []
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            #print(np.array(grads).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+            separator.append(len(concatenated_gradients[0]))
+        aggregation_finish_time = time.time()
+        # print(concatenated_gradients.shape)
+        # print(separator)
+        ranks = np.argsort(np.linalg.norm(np.array(concatenated_gradients), axis=1))
+        #print(np.sqrt(np.sum(np.square([np.linalg.norm(self._grad_aggregate_buffer[i], axis=1) for i in range(len(self._grad_aggregate_buffer))]), axis=0)))
+        #print(np.linalg.norm(concatenated_gradients, axis=1))
+        #print(np.mean(np.linalg.norm(concatenated_gradients, axis=1)))
+        #print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
+
+        filtered_gradients = np.array(concatenated_gradients)[ranks[:(self.num_workers-self._t)]]
+
+        cwtm_start = time.time()
+        for g_idx, grads in enumerate(filtered_gradients):
+            trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._t:self.num_workers-self._t], axis=0)
+            filtered_gradients[g_idx] = trimmed_mean
+        filter_finish_time = time.time()
+
+        self._grad_aggregate_buffer = np.split(filtered_gradients,separator[:len(separator)-1])
 
         print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
         with open(self._train_dir+"logs-master",'a') as f:

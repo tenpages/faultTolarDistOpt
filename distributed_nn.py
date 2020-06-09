@@ -222,7 +222,9 @@ def _generate_adversarial_nodes(args, world_size):
 
 def prepare(args, rank, world_size):
     if args.mode=='multi_krum' and (args.multi_krum_m<=0 or args.multi_krum_m>world_size-args.worker_fail-1):
-        raise Exception("Wrong number for multi-krum parameter m.")
+        raise Exception("multi-krum-m: Wrong number for multi-krum parameter m.")
+    if args.fault_thrshld == None:
+        raise Exception("fault-thrshld: Did not specify number of fault to be tolerated.")
 
     if args.approach == "baseline":
         # randomly select adversarial nodes
