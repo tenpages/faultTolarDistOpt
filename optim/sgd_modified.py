@@ -35,7 +35,8 @@ class SGDModified(Optimizer):
                         or mode=='median_of_means' or mode=='grad_norm' or mode=='coor_wise_median'\
                         or mode=='coor_wise_trimmed_mean' or mode=='grad_norm_coor_wise' or mode=='grad_norm_full_grad'\
                         or mode=='grad_norm_multi_parts'\
-                        or mode=='ensemble_normfilter_multikrum' or mode=='ensemble_normfilter_cwtm':
+                        or mode=='ensemble_normfilter_multikrum' or mode=='ensemble_normfilter_cwtm'
+                        or mode=='ensemble_normfilter_medofmeans':
                     d_p=torch.from_numpy(grads[i].reshape(p.size())).float()
                 if weight_decay != 0:
                     d_p.add_(weight_decay, p.data)
