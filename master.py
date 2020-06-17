@@ -63,6 +63,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
         self._calculate_cosine = kwargs['calculate_cosine']
 
+        self._accumulative = kwargs['accumulative']
+
         # the following information is only used for simulating fault agents and not used by filters.
         self._adversaries = kwargs['adversaries']
         self._err_mode = kwargs['err_mode']
@@ -175,6 +177,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
                 self._received_grads = self._grad_aggregate_buffer.copy()
+
+            if self._accumulative == True:
+                for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+                    self._historical_buffer[g_idx] = self._historical_buffer[g_idx] + grads
+                    self._grad_aggregate_buffer[g_idx] = self._historical_buffer[g_idx] / self.cur_step
 
             # update by given gradient filter
             if self._update_mode == 'normal':
@@ -319,10 +326,14 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._model_shapes.append(param.size())
             if self._update_mode == 'normal':
                 self._grad_aggregate_buffer.append(np.zeros(param.size()))
+                if self._accumulative == True:
+                    self._historical_buffer.append(np.zeros(param.size()))
             elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
                                        'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
                 self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
+                if self._accumulative == True:
+                    self._historical_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
 
     def async_bcast_step(self):
         """

@@ -81,6 +81,8 @@ def add_fit_args(parser):
                         help='compress/None indicate if we compress the gradient matrix before communication')
     parser.add_argument('--checkpoint-step', type=int, default=0, metavar='N',
                         help='which step to proceed the training process')
+    parser.add_argument('--accumulative', type=ast.literal_eval, default=True, metavar='N',
+                        help='to decide if use accumulative SGD')
     parser.add_argument('--full-grad', type=ast.literal_eval, default=True, metavar='N',
                         help='to decide if the filter uses concatenated gradients (True) or natural pieces from networks (False)')
     parser.add_argument('--faulty-pattern', type=str, default='fixed', metavar='N',
@@ -257,6 +259,7 @@ def prepare(args, rank, world_size):
             'grad_norm_keep_all': args.grad_norm_keep_all,
             'grad_norm_clip_n': args.grad_norm_clip_n,
             'calculate_cosine': args.calculate_cosine,
+            'accumulative': args.accumulative,
             # the following information is only used for simulating fault agents and not used by filters.
             'adversaries': adversaries,
             'err_mode': args.err_mode,
