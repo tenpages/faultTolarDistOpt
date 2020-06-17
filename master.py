@@ -44,6 +44,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         self._num_grad_to_collect = self.world_size - 1
         self._grad_aggregate_buffer = []
+        self._historical_buffer = []
         self._model_shapes = []
         self._first_grad_received = False
         self._eval_freq = kwargs['eval_freq']

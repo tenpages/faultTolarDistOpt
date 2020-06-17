@@ -81,7 +81,7 @@ def add_fit_args(parser):
                         help='compress/None indicate if we compress the gradient matrix before communication')
     parser.add_argument('--checkpoint-step', type=int, default=0, metavar='N',
                         help='which step to proceed the training process')
-    parser.add_argument('--accumulative', type=ast.literal_eval, default=True, metavar='N',
+    parser.add_argument('--accumulative', type=ast.literal_eval, default=False, metavar='N',
                         help='to decide if use accumulative SGD')
     parser.add_argument('--full-grad', type=ast.literal_eval, default=True, metavar='N',
                         help='to decide if the filter uses concatenated gradients (True) or natural pieces from networks (False)')
