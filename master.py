@@ -173,7 +173,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for j in self.grad_accumulator.gradient_aggregate_counter:
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
 
-            if self._err_mode in ['cwtm', 'krum', 'krum2', 'normfilter']:
+            if self._err_mode in ['cwtm', 'krum', 'krum2', 'normfilter', 'normfilter2', 'normfilter3']:
                 self._err_simulator()
 
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
