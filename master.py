@@ -507,6 +507,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     self._grad_aggregate_buffer[g_idx][i-1] = fault_gradient[g_idx]
             print(self._err_mode,"err sim finished")
         if self._err_mode == 'normfilter':
+            # Reversing direction and being the (n-f) largest norm
             _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
 
             concatenated_gradients = None
@@ -521,6 +522,53 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 separator.append(len(concatenated_gradients[0]))
 
             fault_norm = np.sort(np.linalg.norm(concatenated_gradients[_honest], axis=1))[max(0,len(_honest)-self._s-1)]
+
+            # note that reverse direction is done in err_simulation() in worker.py. Only need to adjust norm here.
+            for i in self._adversaries[self.cur_step]:
+                fault_gradient = np.split(concatenated_gradients[i-1] * fault_norm / np.linalg.norm(concatenated_gradients[i-1]), separator[:len(separator)-1])
+                for g_idx in range(len(self._grad_aggregate_buffer)):
+                    self._grad_aggregate_buffer[g_idx][i-1] = fault_gradient[g_idx]
+            print(self._err_mode,"err sim finished")
+        if self._err_mode == 'normfilter2':
+            # Reversing direction of honest average and being the (n-f) largest norm
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+
+            concatenated_gradients = None
+            separator = []
+            #print('concatenation')
+            for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+                #print('#',g_idx,':',np.array(grads).shape)
+                if g_idx == 0:
+                    concatenated_gradients = np.array(grads)
+                else:
+                    concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+                separator.append(len(concatenated_gradients[0]))
+
+            fault_norm = np.sort(np.linalg.norm(concatenated_gradients[_honest], axis=1))[max(0,len(_honest)-self._s-1)]
+            fault_gradient = np.sum(concatenated_gradients[_honest], axis=0) / len(_honest)
+            fault_gradient = np.split(fault_gradient * fault_norm / np.linalg.norm(fault_gradient), separator[:len(separator)-1])
+
+            # note that reverse direction is done in err_simulation() in worker.py. Only need to adjust norm here.
+            for i in self._adversaries[self.cur_step]:
+                for g_idx in range(len(self._grad_aggregate_buffer)):
+                    self._grad_aggregate_buffer[g_idx][i-1] = fault_gradient[g_idx]
+            print(self._err_mode,"err sim finished")
+        if self._err_mode == 'normfilter3':
+            # Reversing direction and being the largest norm
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+
+            concatenated_gradients = None
+            separator = []
+            #print('concatenation')
+            for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+                #print('#',g_idx,':',np.array(grads).shape)
+                if g_idx == 0:
+                    concatenated_gradients = np.array(grads)
+                else:
+                    concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+                separator.append(len(concatenated_gradients[0]))
+
+            fault_norm = np.sort(np.linalg.norm(concatenated_gradients[_honest], axis=1))[max(0,len(_honest))]
 
             # note that reverse direction is done in err_simulation() in worker.py. Only need to adjust norm here.
             for i in self._adversaries[self.cur_step]:
