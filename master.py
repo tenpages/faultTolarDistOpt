@@ -184,9 +184,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for g_idx, grads in enumerate(self._grad_aggregate_buffer):
                     if self._accumulative_alpha == 0:
                         self._historical_buffer[g_idx] = self._historical_buffer[g_idx] + np.array(grads)
+                        self._grad_aggregate_buffer[g_idx] = self._historical_buffer[g_idx] / self.cur_step
                     else:
                         self._historical_buffer[g_idx] = self._accumulative_alpha * self._historical_buffer[g_idx] + (1-self._accumulative_alpha) * np.array(grads)
-                    self._grad_aggregate_buffer[g_idx] = self._historical_buffer[g_idx] / self.cur_step
+                        self._grad_aggregate_buffer[g_idx] = self._historical_buffer[g_idx]
 
             # update by given gradient filter
             if self._update_mode == 'normal':
