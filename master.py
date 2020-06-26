@@ -338,7 +338,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                        'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
                 self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
                 if self._accumulative == True:
-                    self._historical_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
+                    self._historical_buffer.append(np.array([np.zeros(param.size()).reshape(-1)]*self.num_workers))
 
     def async_bcast_step(self):
         """
