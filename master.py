@@ -65,6 +65,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._calculate_cosine = kwargs['calculate_cosine']
 
         self._accumulative = kwargs['accumulative']
+        self._accumulative_alpha = kwargs['accumulative_alpha']
 
         # the following information is only used for simulating fault agents and not used by filters.
         self._adversaries = kwargs['adversaries']
@@ -181,7 +182,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
             if self._accumulative == True:
                 for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-                    self._historical_buffer[g_idx] = self._historical_buffer[g_idx] + np.array(grads)
+                    if self._accumulative_alpha == 0:
+                        self._historical_buffer[g_idx] = self._historical_buffer[g_idx] + np.array(grads)
+                    else:
+                        self._historical_buffer[g_idx] = self._accumulative_alpha * self._historical_buffer[g_idx] + (1-self._accumulative_alpha) * np.array(grads)
                     self._grad_aggregate_buffer[g_idx] = self._historical_buffer[g_idx] / self.cur_step
 
             # update by given gradient filter
@@ -682,7 +686,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         print("Master Step: {} Krum Cost: {:.4f}".format(self.cur_step, time.time()-krum_start))
 
 
-    def _multi_krum_multi_rounds(self, m):
+    def _multi_krum_multi_rounds(self, m=1):
         # Concatenate parts of krum gradients into a vector;
         # Then Calculate Krum function accordingly, choose the gradient;
         # Finally, break down the gradient into original piece that fits the model
