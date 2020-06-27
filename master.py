@@ -293,20 +293,25 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 print("concatenate filtered grad")
                 self._filtered_grad = concatenate(self._filtered_grad,True)
 
-                distances = []
-                ratio_norms = []
+                angles = []
+                norms = []
                 filtered_norm = np.linalg.norm(self._filtered_grad)
                 for agent_grad in self._received_grads:
-                    distances.append(cosine(agent_grad, self._filtered_grad))
-                    ratio_norms.append(np.linalg.norm(agent_grad)/filtered_norm)
+                    n1=agent_grad / np.linalg.norm(agent_grad)
+                    n2=self._filtered_grad / filtered_norm
+                    dot_product = np.dot(n1,n2)
+                    angles.append(np.arccos(dot_product))
+                    norms.append(np.linalg.norm(agent_grad))
 
-                with open(self._train_dir+"cosine.csv","a") as f:
+                norms.append(filtered_norm)
+
+                with open(self._train_dir+"angle.csv","a") as f:
                     csv_writer = csv.writer(f, delimiter=',')
-                    csv_writer.writerow([self.cur_step]+distances)
+                    csv_writer.writerow([self.cur_step]+angles)
 
                 with open(self._train_dir+"norm.csv","a") as f:
                     csv_writer = csv.writer(f, delimiter=',')
-                    csv_writer.writerow([self.cur_step]+ratio_norms)
+                    csv_writer.writerow([self.cur_step]+norms)
 
             update_start = time.time()
             self.optimizer.step(grads=self._grad_aggregate_buffer, mode=self._update_mode)
