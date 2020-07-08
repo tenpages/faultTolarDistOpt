@@ -172,7 +172,6 @@ def load_data(dataset, seed, args, rank, world_size):
                 ]))
                 if args.err_mode == 'labelflipping':
                     training_set.targets = 9 - training_set.targets
-                training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
         return train_loader, training_set, test_loader
