@@ -113,8 +113,6 @@ class MNISTSubLoader(datasets.MNIST):
             #print(self.train_labels.shape)
             self.data = self.data[start_from:start_from + group_size]
             self.targets = self.targets[start_from:start_from + group_size]
-            if err_mode == 'labelflipping':
-                self.targets = 9 - self.targets
 
 
 class CIFAR10SubLoader(datasets.CIFAR10):
@@ -142,7 +140,7 @@ class CIFAR10SubLoader(datasets.CIFAR10):
                 self.targets = self.targets[start_from:start_from + group_size]
 
 
-def load_data(dataset, seed, args, rank, world_size):
+def load_data(dataset, seed, args, rank, world_size, adversaries):
     #print("here")
     torch.manual_seed(TORCH_SEED_)
     if seed:
@@ -163,6 +161,8 @@ def load_data(dataset, seed, args, rank, world_size):
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]), group_size=group_size, start_from=group_size*(rank-1), err_mode=args.err_mode)
+                if args.err_mode == 'labelflipping' and rank in adversaries:
+                    training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
                 torch.manual_seed(TORCH_SEED_+rank)
@@ -170,7 +170,7 @@ def load_data(dataset, seed, args, rank, world_size):
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]))
-                if args.err_mode == 'labelflipping':
+                if args.err_mode == 'labelflipping' and rank in adversaries:
                     training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -239,7 +239,7 @@ def prepare(args, rank, world_size):
         adversaries = _generate_adversarial_nodes(args, world_size)
         print("Faulty agents:", adversaries[0], "Total:", len(adversaries[0]))
         train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank,
-                                                            world_size=world_size)
+                                                            world_size=world_size, adversaries=adversaries[0])
         data_shape = training_set[0][0].size()[0]*training_set[0][0].size()[1]*training_set[0][0].size()[2]
         kwargs_master = {
             'batch_size': args.batch_size,
