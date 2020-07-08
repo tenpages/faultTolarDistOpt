@@ -104,7 +104,7 @@ def add_fit_args(parser):
 
 
 class MNISTSubLoader(datasets.MNIST):
-    def __init__(self, *args, group_size=0, start_from=0, **kwargs):
+    def __init__(self, *args, group_size=0, start_from=0, err_mode="rev_grad", **kwargs):
         super(MNISTSubLoader, self).__init__(*args, **kwargs)
         if group_size == 0:
             return
@@ -113,6 +113,8 @@ class MNISTSubLoader(datasets.MNIST):
             #print(self.train_labels.shape)
             self.data = self.data[start_from:start_from + group_size]
             self.targets = self.targets[start_from:start_from + group_size]
+            if err_mode == 'labelflipping':
+                self.targets = 9 - self.targets
 
 
 class CIFAR10SubLoader(datasets.CIFAR10):
@@ -160,7 +162,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = MNISTSubLoader('./mnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
-                ]), group_size=group_size, start_from=group_size*(rank-1))
+                ]), group_size=group_size, start_from=group_size*(rank-1), err_mode=args.err_mode)
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
                 torch.manual_seed(TORCH_SEED_+rank)
@@ -168,6 +170,9 @@ def load_data(dataset, seed, args, rank, world_size):
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]))
+                if err_mode == 'labelflipping':
+                    self.targets = 9 - self.targets
+                training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
         return train_loader, training_set, test_loader
