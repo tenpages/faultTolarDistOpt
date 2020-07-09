@@ -403,6 +403,9 @@ def err_simulation(grad, mode, cyclic=False):
             return np.add(adv,grad)
         else:
             return np.ones(grad.shape, dtype=np.float64)*CONST_
+    elif mode == 'gaussian':
+        adv = np.random.normal(0,200,grad.shape)
+        return adv
     elif mode == 'labelflipping':
         return grad # error is introduced by wrong label, but calculation is correct
     else:
