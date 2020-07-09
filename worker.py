@@ -128,7 +128,16 @@ class DistributedWorker(NN_Trainer):
                 if self.cur_step == self._max_steps:
                     break
 
+                dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints())
+
                 X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
+
+                redundant_x_batch = torch.index_select(train_input_batch,0,dp_list) 
+                redundant_y_batch = torch.index_select(train_label_batch,0,dp_list) 
+
+                redundant_x_batch = Variable(redundant_x_batch)
+                redundant_y_batch = Variable(redundant_y_batch)
+                
                 while True:
                     self.async_fetch_step()
 
@@ -233,6 +242,11 @@ class DistributedWorker(NN_Trainer):
         req = self.comm.irecv(source=0, tag=10)
         self.next_step = req.wait()
         print('Worker {}: Worker {} just received next step: step={}'.format(self.rank, self.rank, self.next_step))
+
+    def async_bcast_fetch_datapoints(self):
+        req = self.comm.irecv(source=0, tag=9)
+        datapoints = req.wait()
+        return datapoints
 
     def async_fetch_weight_async(self):
         request_layers = []

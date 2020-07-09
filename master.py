@@ -4,6 +4,11 @@ import numpy as np
 import hdmedians as hd
 import torch
 from torch.autograd import Variable
+import random
+from random import randrange
+
+import math
+from math import ceil as ceil
 
 from mpi4py import MPI
 
@@ -70,6 +75,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # the following information is only used for simulating fault agents and not used by filters.
         self._adversaries = kwargs['adversaries']
         self._err_mode = kwargs['err_mode']
+        self.dataset_size = kwargs['dataset_size']
+        self.batch_size = kwargs['batch_size']
 
     def build_model(self) :
         # print("building model, self._size ", self._size)
@@ -123,6 +130,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             print("Master node is entering step: {}".format(i))
 
             self.async_bcast_step()
+            self.async_bcast_datapoints()
 
             if self.comm_type == 'Bcast':
                 self.async_bcast_layer_weights_bcast()
@@ -371,6 +379,28 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for req_l in request_layers:
             for req_worker in req_l:
                 req_worker.wait()
+
+    def async_bcast_datapoints(self):
+        """
+        broadcasting current step to workers
+        """
+        dp_list = [[] for each in range(self.world_size)]
+        req_list = []
+
+        avg_size = ceil((self.batch_size*(self._s + 1))/self.world_size)
+        for dp in range(self.batch_size):
+            for i in range(self._s + 1):
+                dst = randrange(1, self.world_size)
+                # need to distribute the points evenly
+                while dp in dp_list[dst]: 
+                    dst = randrange(1,self.world_size)
+                dp_list[dst].append(dp)
+
+        for i in range(self.world_size):
+            if i != 0:
+                req_list.append(self.comm.isend(dp_list[i], dest=i, tag=9))
+        for i in range(len(req_list)):
+            req_list[i].wait()
 
     def async_bcast_layer_weights_bcast(self):
         for layer_idx, layer in enumerate(self.network.parameters()):
