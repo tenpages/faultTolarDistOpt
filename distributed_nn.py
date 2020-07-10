@@ -208,7 +208,7 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                 ]))
-                if args.err_mode == 'labelflipping' and rank in adversaries：
+                if args.err_mode == 'labelflipping' and rank in adversaries:
                     training_set.targets = (9 - np.array(training_set.targets)).tolist()
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
