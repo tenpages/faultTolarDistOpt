@@ -199,6 +199,8 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                 ]), group_size=group_size, start_from=group_size*(rank-1), ovlp=True)
+                if args.err_mode == 'labelflipping' and rank in adversaries:
+                    training_set.targets = (9 - np.array(training_set.targets)).tolist()
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
                 torch.manual_seed(TORCH_SEED_+rank)
@@ -206,6 +208,8 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                 ]))
+                if args.err_mode == 'labelflipping' and rank in adversaries：
+                    training_set.targets = (9 - np.array(training_set.targets)).tolist()
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
         return train_loader, training_set, test_loader
