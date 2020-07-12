@@ -99,8 +99,8 @@ def add_fit_args(parser):
                         help='specifying parameter n when using gradient norm clipping (multi-parts) with n piece')
     parser.add_argument('--calculate-cosine', type=ast.literal_eval, default=False, metavar='N',
                         help='calculate or not the cosine distance between received gradients and the filtered gradient')
-    parser.add_argument('--no-shuffle', action='store_true', default=False,
-                        help='don\'t shuffle batches during training (only use for redundancy)')
+    parser.add_argument('--redundancy', action='store_true', default=False,
+                        help='use redundancy filtering of byzantine workers, distribute identical batches')
 
     args = parser.parse_args()
     return args
@@ -164,14 +164,14 @@ def load_data(dataset, seed, args, rank, world_size):
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]), group_size=group_size, start_from=group_size*(rank-1))
-                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(False if args.no_shuffle else True))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(False if args.redundancy else True))
             elif args.data_distribution == 'same':
                 torch.manual_seed(TORCH_SEED_+rank)
                 training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]))
-                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(False if args.no_shuffle else True))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(False if args.redundancy else True))
         test_loader = None
         return train_loader, training_set, test_loader
 
@@ -241,6 +241,7 @@ def prepare(args, rank, world_size):
                                                             world_size=world_size)
         data_shape = training_set[0][0].size()[0]*training_set[0][0].size()[1]*training_set[0][0].size()[2]
         kwargs_master = {
+            'redundancy': args.redundancy,
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
             'diminishing_lr': args.diminishing_lr,
@@ -272,6 +273,7 @@ def prepare(args, rank, world_size):
             'dataset_size': len(training_set),
         }
         kwargs_worker = {
+            'redundancy': args.redundancy,
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
             'max_epochs': args.epochs,
@@ -301,7 +303,6 @@ if __name__ == "__main__":
     rank = comm.Get_rank()
     world_size = comm.Get_size()
     args = add_fit_args(argparse.ArgumentParser(description="Draco"))
-    print("args.no_shuffle = ",args.no_shuffle)
     datum, kwargs_master, kwargs_worker = prepare(args, rank, world_size)
     if args.approach == 'baseline':
         train_loader, _, test_loader = datum

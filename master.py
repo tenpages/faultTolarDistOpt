@@ -47,6 +47,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self.network_config = kwargs['network']
         self.comm_type = kwargs['comm_method']
 
+        self._redundancy = kwargs['redundancy']
         self._num_grad_to_collect = self.world_size - 1
         self._grad_aggregate_buffer = []
         self._historical_buffer = []
@@ -130,7 +131,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             print("Master node is entering step: {}".format(i))
 
             self.async_bcast_step()
-            self.async_bcast_datapoints()
+            if self._redundancy:
+                self.async_bcast_datapoints()
 
             if self.comm_type == 'Bcast':
                 self.async_bcast_layer_weights_bcast()
@@ -198,7 +200,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         self._grad_aggregate_buffer[g_idx] = self._historical_buffer[g_idx]
 
             # update by given gradient filter
-            if self._update_mode == 'normal':
+            if self._redundancy :
+                method_start = time.time()
+                self._redundancy_filter()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'normal':
                 method_start = time.time()
                 self._avg_received_grads()
                 method_duration = time.time() - method_start
@@ -272,6 +278,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_start = time.time()
                 self._ensemble_normfilter_medofmeans()
                 method_duration = time.time() - method_start
+            #elif self.redundancy:
+            #    method_start=time.time()
+            #   
+            #    method_duration=time.time()-method_start
 
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
                 self._filtered_grad = self._grad_aggregate_buffer.copy()
@@ -398,6 +408,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         for i in range(self.world_size):
             if i != 0:
+                print(f"{len(dp_list[i])} points to worker {i}")
                 req_list.append(self.comm.isend(dp_list[i], dest=i, tag=9))
         for i in range(len(req_list)):
             req_list[i].wait()
@@ -649,6 +660,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def _avg_received_grads(self):
         for i in range(len(self._grad_aggregate_buffer)):
             self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
+
+    def _redundancy_filter(self):
+        for i in range(len(self._grad_aggregate_buffer)):
+            print(f"[{i}] grad length {len(self._grad_aggregate_buffer[i])}")
 
     def _geo_median(self):
         geo_median_start = time.time()

@@ -27,6 +27,7 @@ class DistributedWorker(NN_Trainer):
         self.cur_step = 0
         self.next_step = 0
 
+        self.redundancy = kwargs['redundancy']
         self.batch_size = kwargs['batch_size']
         self.max_epochs = kwargs['max_epochs']
         self.momentum = kwargs['momentum']
@@ -128,16 +129,21 @@ class DistributedWorker(NN_Trainer):
                 if self.cur_step == self._max_steps:
                     break
 
-                dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints())
+                if self.redundancy:
+                        dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints())
+                        print(f"[{self.rank}] datapoints {dp_list.tolist()}")
 
                 X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
-
-                redundant_x_batch = torch.index_select(train_input_batch,0,dp_list) 
-                redundant_y_batch = torch.index_select(train_label_batch,0,dp_list) 
-
-                redundant_x_batch = Variable(redundant_x_batch)
-                redundant_y_batch = Variable(redundant_y_batch)
                 
+                if self.redundancy :
+                        print(f"original type of x batch {type(X_batch)} {type(X_batch[0])} {len(X_batch)}")
+                        X_batch = torch.index_select(train_input_batch,0,dp_list) 
+                        print(f"new type of x batch {type(X_batch)} {type(X_batch[0])} {len(X_batch)}")
+                        y_batch = torch.index_select(train_label_batch,0,dp_list) 
+
+                        X_batch = Variable(X_batch)
+                        y_batch = Variable(y_batch)
+                        
                 while True:
                     self.async_fetch_step()
 
@@ -213,7 +219,8 @@ class DistributedWorker(NN_Trainer):
                     elif "VGG" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
 
-                    prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))
+                    # prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))
+                    prec1, prec3 = accuracy(logits.data, y_batch.long(), topk=(1, 3))
                     with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
                         f.write('{:.8f}\n'.format(time.time()-iter_start_time))
                     print(
@@ -316,6 +323,10 @@ class DistributedWorker(NN_Trainer):
         printNorms = []
         for param_idx, param in enumerate(self.network.parameters()):
             grad = param.grad.data.numpy().astype(np.float64)
+            if self.rank == 1:
+                    file = open("gradient_test_redundancy.txt","a")
+                    file.write(f"Worker #{self.rank} gradient #{param_idx} (length {len(grad)}) {type(grad)} {type(grad[0])}\n\t{grad}\n")
+                    file.close()
             """
             print(grad.shape)
             _shape = grad.shape
