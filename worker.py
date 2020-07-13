@@ -131,16 +131,13 @@ class DistributedWorker(NN_Trainer):
 
                 if self.redundancy:
                         dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints())
-                        print(f"[{self.rank}] datapoints {dp_list.tolist()}")
+                        print(f"Worker [{self.rank}] datapoints {dp_list.tolist()}")
 
                 X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
                 
                 if self.redundancy :
-                        print(f"original type of x batch {type(X_batch)} {type(X_batch[0])} {len(X_batch)}")
                         X_batch = torch.index_select(train_input_batch,0,dp_list) 
-                        print(f"new type of x batch {type(X_batch)} {type(X_batch[0])} {len(X_batch)}")
                         y_batch = torch.index_select(train_label_batch,0,dp_list) 
-
                         X_batch = Variable(X_batch)
                         y_batch = Variable(y_batch)
                         
@@ -193,6 +190,12 @@ class DistributedWorker(NN_Trainer):
                     self.network.train()
                     self.optimizer.zero_grad()
 
+                   # if self.redundancy and self.rank == 1:
+                   #     logit_list = []
+                   #     for i in range(len(X_batch)):
+                   #         temp = torch.index_select(X_batch,0,torch.tensor([i])) 
+                   #         logit_list.append(self.network(temp))
+                            
                     forward_start_time = time.time()
                     logits = self.network(X_batch)
                     if "FC" in self.network_config:
@@ -378,6 +381,7 @@ class DistributedWorker(NN_Trainer):
             print("Normal node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenated),
                   "Gradients:",printNorms)
         """
+        print(f"Worker [{self.rank}] sending {len(req_send_check)} gradients)")
         req_send_check[-1].wait()
 
     def _load_model(self, file_path):

@@ -119,6 +119,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if self._diminishing_lr == True:
                 self.scheduler.load_state_dict(torch.load(self._train_dir+"scheduler_"+str(self._checkpoint_step)))
         
+        collected_gradients = []
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
             if self._diminishing_lr == True:
                 self.scheduler.step()
@@ -133,6 +134,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.async_bcast_step()
             if self._redundancy:
                 self.async_bcast_datapoints()
+                print("Master node datapoint broadcast success")
 
             if self.comm_type == 'Bcast':
                 self.async_bcast_layer_weights_bcast()
@@ -140,6 +142,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self.async_bcast_layer_weights_async()
 
             gradient_fetch_requests = self.async_fetch_gradient_start()
+            print(len(gradient_fetch_requests), "gradient requests")
 
             while not enough_gradients_received:
                 status = MPI.Status()
@@ -203,6 +206,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if self._redundancy :
                 method_start = time.time()
                 self._redundancy_filter()
+                collected_gradients.append(self._grad_aggregate_buffer)
                 method_duration = time.time() - method_start
             elif self._update_mode == 'normal':
                 method_start = time.time()
@@ -331,6 +335,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     csv_writer = csv.writer(f, delimiter=',')
                     csv_writer.writerow([self.cur_step]+norms)
 
+            print("grad aggregate buffer before update",len(self._grad_aggregate_buffer),"\n\t",self._grad_aggregate_buffer)
             update_start = time.time()
             self.optimizer.step(grads=self._grad_aggregate_buffer, mode=self._update_mode)
             update_duration = time.time() - update_start
@@ -390,25 +395,41 @@ class SyncReplicaMaster_NN(NN_Trainer):
             for req_worker in req_l:
                 req_worker.wait()
 
+    def is_empty_element(grad_buff):
+        res = True
+        for g_list in grad_buff:
+            if len(g_list) == 0:
+                res = False
+                break
+        return res 
+
     def async_bcast_datapoints(self):
         """
         broadcasting current step to workers
         """
         dp_list = [[] for each in range(self.world_size)]
         req_list = []
-
         avg_size = ceil((self.batch_size*(self._s + 1))/self.world_size)
-        for dp in range(self.batch_size):
+        avail = [i for i in range(1,self.world_size)]
+        print("world size vs workers", self.world_size, len(avail))
+        count=0
+        for dp in range(self.batch_size):   
             for i in range(self._s + 1):
-                dst = randrange(1, self.world_size)
-                # need to distribute the points evenly
+                if count < self.world_size-1 :
+                    dst = avail[count]
+                    count = count + 1
+                else :
+                    dst = random.choice(avail)
                 while dp in dp_list[dst]: 
-                    dst = randrange(1,self.world_size)
+                    dst = random.choice(avail)
                 dp_list[dst].append(dp)
+                
+                if len(dp_list[dst]) >= avg_size :
+                    avail.remove(dst)
 
         for i in range(self.world_size):
             if i != 0:
-                print(f"{len(dp_list[i])} points to worker {i}")
+                print(f"W{i}\t{(dp_list[i])}")
                 req_list.append(self.comm.isend(dp_list[i], dest=i, tag=9))
         for i in range(len(req_list)):
             req_list[i].wait()
@@ -662,8 +683,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
 
     def _redundancy_filter(self):
-        for i in range(len(self._grad_aggregate_buffer)):
-            print(f"[{i}] grad length {len(self._grad_aggregate_buffer[i])}")
+        for i, grad in enumerate(self._grad_aggregate_buffer):
+            print(f"grad #{i}\t{grad.tolist()}")
 
     def _geo_median(self):
         geo_median_start = time.time()
