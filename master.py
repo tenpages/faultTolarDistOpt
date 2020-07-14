@@ -142,7 +142,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self.async_bcast_layer_weights_async()
 
             gradient_fetch_requests = self.async_fetch_gradient_start()
-            print(len(gradient_fetch_requests), "gradient requests")
 
             while not enough_gradients_received:
                 status = MPI.Status()
@@ -335,7 +334,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     csv_writer = csv.writer(f, delimiter=',')
                     csv_writer.writerow([self.cur_step]+norms)
 
-            print("grad aggregate buffer before update",len(self._grad_aggregate_buffer),"\n\t",self._grad_aggregate_buffer)
+            #print("grad aggregate buffer before update",len(self._grad_aggregate_buffer),"\n\t",self._grad_aggregate_buffer)
             update_start = time.time()
             self.optimizer.step(grads=self._grad_aggregate_buffer, mode=self._update_mode)
             update_duration = time.time() - update_start
@@ -411,7 +410,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
         req_list = []
         avg_size = ceil((self.batch_size*(self._s + 1))/self.world_size)
         avail = [i for i in range(1,self.world_size)]
-        print("world size vs workers", self.world_size, len(avail))
         count=0
         for dp in range(self.batch_size):   
             for i in range(self._s + 1):
@@ -429,8 +427,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         for i in range(self.world_size):
             if i != 0:
-                print(f"W{i}\t{(dp_list[i])}")
-                req_list.append(self.comm.isend(dp_list[i], dest=i, tag=9))
+                # print(f"W{i}\t{(dp_list[i])}")
+                # req_list.append(self.comm.isend(dp_list[i], dest=i, tag=9))
+                """ send same datapoints to all workers to compare grads """
+                req_list.append(self.comm.isend(dp_list[1], dest=i, tag=9))
         for i in range(len(req_list)):
             req_list[i].wait()
 

@@ -5,6 +5,7 @@ import torch
 from mpi4py import MPI
 from torch import nn
 from torch.autograd import Variable
+from statistics import mean
 
 import numpy as np
 
@@ -196,6 +197,7 @@ class DistributedWorker(NN_Trainer):
                    #         temp = torch.index_select(X_batch,0,torch.tensor([i])) 
                    #         logit_list.append(self.network(temp))
                             
+                    loss_list = []
                     forward_start_time = time.time()
                     logits = self.network(X_batch)
                     if "FC" in self.network_config:
@@ -212,6 +214,25 @@ class DistributedWorker(NN_Trainer):
                         raise Exception("No such network as "+self.network_config)
                     epoch_avg_loss += loss.item()
                     forward_duration = time.time() - forward_start_time
+
+                    if self.rank == 1 or self.rank == 2:
+                        """
+                        testing individual loss values and gradients
+                        """
+                        for idx, log in enumerate(logits):
+                            temp1 = torch.index_select(logits,0,torch.tensor(idx))
+                            temp2 = torch.index_select(y_batch,0,torch.tensor(idx))
+                            loss_list.append(self.criterion(temp1,temp2))
+
+                            #    for idx, log in enumerate(logits):
+                            #        print(f"[{self.rank}]\tlogit #{idx}\t{log}")
+                            #    print(f"[{self.rank}]\t loss_list = ", loss_list)
+                            #    print(f"[{self.rank}]\t loss = ", loss)
+                            #    print(f"[{self.rank}]\t averaged loss = ",mean(loss_list)) 
+
+                    """ testing backward() on individual loss values """
+                    if self.redundancy and self.rank < 3:
+                        self._multi_backward(loss_list)
 
                     if "FC" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
@@ -307,10 +328,18 @@ class DistributedWorker(NN_Trainer):
             new_state_dict.update(tmp_dict)
         self.network.load_state_dict(new_state_dict)
 
+
+    def _multi_backward(self, losses):
+        for loss in losses:
+            loss.backward(retain_graph=True)
+            self._print_grads()
+
     def _backward(self, loss, logits_1=None, computation_time=None):
         #print('in _backward',self.network_config)
         b_start = time.time()
+
         loss.backward()
+
         b_duration = time.time()-b_start
 
         computation_time += b_duration
@@ -318,6 +347,13 @@ class DistributedWorker(NN_Trainer):
         self._send_grads()
         c_duration = time.time() - c_start
         return computation_time, c_duration
+
+    def _print_grads(self):
+        grads = []
+        for param_idx, param in enumerate(self.network.parameters()):
+            grad = param.grad.data.numpy().astype(np.float64)
+            grads.append(grad)
+        #print(f"[{self.rank}] printing gradients: {grads}")
 
     def _send_grads(self):
         req_send_check = []
@@ -373,10 +409,10 @@ class DistributedWorker(NN_Trainer):
                     #    f.write(str(self.rank)+" is sending grads to master on step "+str(self.cur_step)+" for parameter "+str(param_idx)+" in shape "+str(grad.shape)+"which has the value\n"+str(grad)+"\n")
                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+param_idx)
                     req_send_check.append(req_isend)
-        """
-        if self.rank in self._fail_workers[self.cur_step]:
-            print("Faulty node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenatedWrong),"which should have been",np.linalg.norm(concatenated),
-                  "Gradients:",printNorms)
+                """
+                if self.rank in self._fail_workers[self.cur_step]:
+                    print("Faulty node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenatedWrong),"which should have been",np.linalg.norm(concatenated),
+                          "Gradients:",printNorms)
         else:
             print("Normal node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenated),
                   "Gradients:",printNorms)
