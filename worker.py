@@ -215,7 +215,7 @@ class DistributedWorker(NN_Trainer):
                     epoch_avg_loss += loss.item()
                     forward_duration = time.time() - forward_start_time
 
-                    if self.rank == 1 or self.rank == 2:
+                    if self.redundancy:
                         """
                         testing individual loss values and gradients
                         """
@@ -224,17 +224,10 @@ class DistributedWorker(NN_Trainer):
                             temp2 = torch.index_select(y_batch,0,torch.tensor(idx))
                             loss_list.append(self.criterion(temp1,temp2))
 
-                            #    for idx, log in enumerate(logits):
-                            #        print(f"[{self.rank}]\tlogit #{idx}\t{log}")
-                            #    print(f"[{self.rank}]\t loss_list = ", loss_list)
-                            #    print(f"[{self.rank}]\t loss = ", loss)
-                            #    print(f"[{self.rank}]\t averaged loss = ",mean(loss_list)) 
-
                     """ testing backward() on individual loss values """
-                    if self.redundancy and self.rank < 3:
-                        self._multi_backward(loss_list)
-
-                    if "FC" in self.network_config:
+                    if self.redundancy:
+                        computation_time, c_duration = self._multi_backward(loss_list,computation_time=forward_duration)
+                    elif "FC" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
                     elif "LeNet" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
@@ -328,11 +321,42 @@ class DistributedWorker(NN_Trainer):
             new_state_dict.update(tmp_dict)
         self.network.load_state_dict(new_state_dict)
 
+    """
+    NEEDS ERROR SIMULATION HANDLING
+    """
+    def _multi_backward(self, losses, computation_time=None):
+        send_check_requests = []
 
-    def _multi_backward(self, losses):
-        for loss in losses:
+        b_start = time.time()
+
+        numlayers = 0
+        for _ in self.network.parameters():
+            numlayers = numlayers + 1
+
+        for idx, loss in enumerate(losses):
             loss.backward(retain_graph=True)
-            self._print_grads()
+            # self._print_grads()
+            for param_idx, param in enumerate(self.network.parameters()):
+                grad = param.grad.data.numpy().astype(np.float64)
+                # print(f"gradient of dp {idx} layer {param_idx}\n\t{grad}")
+                if self.rank==1:
+                    file = open("temp.txt", "a")
+                    file.write(f"Worker 1 {grad}\n")
+                    file.close()
+                req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(idx*numlayers)+param_idx)
+                send_check_requests.append(req_isend)
+
+        b_duration = time.time()-b_start
+        
+        computation_time += b_duration
+        c_start = time.time()
+
+        for req in send_check_requests:
+            req.wait()
+
+        c_duration = time.time() - c_start
+        print("done sending grads for all points of worker",self.rank)
+        return computation_time, c_duration
 
     def _backward(self, loss, logits_1=None, computation_time=None):
         #print('in _backward',self.network_config)
@@ -362,10 +386,10 @@ class DistributedWorker(NN_Trainer):
         printNorms = []
         for param_idx, param in enumerate(self.network.parameters()):
             grad = param.grad.data.numpy().astype(np.float64)
-            if self.rank == 1:
-                    file = open("gradient_test_redundancy.txt","a")
-                    file.write(f"Worker #{self.rank} gradient #{param_idx} (length {len(grad)}) {type(grad)} {type(grad[0])}\n\t{grad}\n")
-                    file.close()
+            # if self.rank == 1:
+            #         file = open("gradient_test_redundancy.txt","a")
+            #         file.write(f"Worker #{self.rank} gradient #{param_idx} (length {len(grad)}) {type(grad)} {type(grad[0])}\n\t{grad}\n")
+            #         file.close()
             """
             print(grad.shape)
             _shape = grad.shape
@@ -417,7 +441,7 @@ class DistributedWorker(NN_Trainer):
             print("Normal node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenated),
                   "Gradients:",printNorms)
         """
-        print(f"Worker [{self.rank}] sending {len(req_send_check)} gradients)")
+        # print(f"Worker [{self.rank}] sending {len(req_send_check)} gradients)")
         req_send_check[-1].wait()
 
     def _load_model(self, file_path):

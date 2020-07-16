@@ -1,4 +1,5 @@
 import time
+import sys
 from sys import getsizeof
 import numpy as np
 import hdmedians as hd
@@ -40,6 +41,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self.comm = comm  # get MPI communicator object
         self.world_size = comm.Get_size()
         self.num_workers = self.world_size - 1
+        self.coded_buffer = []
         self.cur_step = STEP_START_
         self.lr = kwargs['learning_rate']
         self._diminishing_lr = kwargs['diminishing_lr']
@@ -132,16 +134,33 @@ class SyncReplicaMaster_NN(NN_Trainer):
             print("Master node is entering step: {}".format(i))
 
             self.async_bcast_step()
-            if self._redundancy:
-                self.async_bcast_datapoints()
-                print("Master node datapoint broadcast success")
 
+            if self._redundancy:
+                dp_list = self.async_bcast_datapoints()
+                print("Master node datapoint broadcast success",dp_list)
+                self.set_coded_buffer(dp_list)
+                #temp_requests = self.fetch_coded_gradients_start(dp_list)
+                #print(len(temp_requests),"requests created")
+
+            
             if self.comm_type == 'Bcast':
                 self.async_bcast_layer_weights_bcast()
             elif self.comm_type == 'Async':
                 self.async_bcast_layer_weights_async()
 
-            gradient_fetch_requests = self.async_fetch_gradient_start()
+            if self._redundancy:
+                gradient_fetch_requests = self.fetch_coded_gradients_start(dp_list)
+                statuses = [MPI.Status() for _ in gradient_fetch_requests]
+                #print(len(gradient_fetch_requests),"fetch requests created")
+                # data = MPI.Request.Waitall(requests=gradient_fetch_requests)
+                MPI.Request.Waitall(requests=gradient_fetch_requests, statuses=statuses)
+                file = open("temp.txt",'a')
+                file.write(f"[Master] worker 1 gradient(s):\n\t{self.coded_buffer[0]}\n")
+                file.close() 
+                x = input("paused here")
+
+            else:
+                gradient_fetch_requests = self.async_fetch_gradient_start()
 
             while not enough_gradients_received:
                 status = MPI.Status()
@@ -406,7 +425,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         """
         broadcasting current step to workers
         """
-        dp_list = [[] for each in range(self.world_size)]
+        dp_list = [[] for _ in range(self.world_size)]
         req_list = []
         avg_size = ceil((self.batch_size*(self._s + 1))/self.world_size)
         avail = [i for i in range(1,self.world_size)]
@@ -428,16 +447,55 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for i in range(self.world_size):
             if i != 0:
                 # print(f"W{i}\t{(dp_list[i])}")
-                # req_list.append(self.comm.isend(dp_list[i], dest=i, tag=9))
+                req_list.append(self.comm.isend(dp_list[i], dest=i, tag=9))
                 """ send same datapoints to all workers to compare grads """
-                req_list.append(self.comm.isend(dp_list[1], dest=i, tag=9))
+                # req_list.append(self.comm.isend(dp_list[1], dest=i, tag=9))
         for i in range(len(req_list)):
             req_list[i].wait()
+        print("dp list",dp_list)    
+        return dp_list
 
     def async_bcast_layer_weights_bcast(self):
         for layer_idx, layer in enumerate(self.network.parameters()):
             layer_to_send = layer.data.numpy().astype(np.float64)
             self.comm.Bcast([layer_to_send, MPI.DOUBLE], root=0)
+
+    def fetch_coded_gradients_start(self, datapoints):
+        requests = []
+        numlayers = 0
+        for _ in self.network.parameters():
+            numlayers = numlayers+1
+
+        for widx, points in enumerate(datapoints):
+            # req = self.comm.irecv(self.coded_buffer[idx],source=idx+1,tag=400+idx)
+            if widx != 0:
+                # req = self.comm.irecv(source=idx,tag=400+idx)
+                # requests.append(req)
+                for dpidx, dp in enumerate(points):
+                    for layer_idx, layer in enumerate(self.network.parameters()):
+                        curtag=88+(dpidx*numlayers)+layer_idx
+                        # print(f"\trequest for layer {layer_idx}, datapoint {dpidx}, worker {widx}--> tag = {curtag}")
+                        req = self.comm.Irecv([self.coded_buffer[widx-1][dpidx][layer_idx], MPI.DOUBLE], source=widx, tag=88+(dpidx*numlayers)+layer_idx)
+                        requests.append(req)
+        return requests
+    
+    def set_coded_buffer(self, datapoints):
+        self.coded_buffer = [None for _ in range(self.num_workers)]
+
+        for widx, worker_list in enumerate(datapoints):
+            if widx != 0:
+                temp_worker = []
+                for dp in worker_list:
+                    temp_dp = []
+                    for param_idx, param in enumerate(self.network.parameters()):
+                        temp_dp.append(np.zeros((param.size())))
+                    # temp_dp contains list of zeros for each parameter
+                    # ^ should fit the entire gradient for this point for this worker
+                    temp_worker.append(temp_dp)
+                # temp_worker now contains a list for each datapoint
+                # each of these inner lists contains a list of zeros for each parameter
+                self.coded_buffer[widx-1] = temp_worker
+        # print(f"\tcoded buffer contains {len(self.coded_buffer)} lists\n\tthe first worker has {len(self.coded_buffer[0])} datapoints")
 
     def async_fetch_gradient_start(self):
         gradient_fetch_requests = []
