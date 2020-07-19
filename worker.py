@@ -1,5 +1,6 @@
 import time
 from functools import reduce
+import sys
 
 import torch
 from mpi4py import MPI
@@ -200,7 +201,35 @@ class DistributedWorker(NN_Trainer):
                     loss_list = []
                     forward_start_time = time.time()
                     logits = self.network(X_batch)
-                    if "FC" in self.network_config:
+                    if self.redundancy:
+                        """
+                        testing individual loss values and gradients
+                        """
+                        numlayers = 0
+                        for _ in self.network.parameters():
+                            numlayers = numlayers + 1
+                        send_check_requests=[]
+                        for idx, log in enumerate(logits):
+                            self.optimizer.zero_grad()
+                            temp1 = torch.index_select(logits,0,torch.tensor(idx))
+                            temp2 = torch.index_select(y_batch,0,torch.tensor(idx))
+                            # loss_list.append(self.criterion(temp1,temp2))
+                            loss = self.criterion(temp1,temp2)
+                 
+                            loss.backward(retain_graph=True)
+                            for param_idx, param in enumerate(self.network.parameters()):
+                                grad = param.grad.data.numpy().astype(np.float64)
+                                # error simulation
+                                if self.rank in self._fail_workers[self.cur_step]:
+                                    grad = err_simulation(grad, self._err_mode)
+                                req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(dp_list[idx]*numlayers)+param_idx)
+                                send_check_requests.append(req_isend)
+        
+                        for req in send_check_requests:
+                            req.wait()
+                        sys.exit()
+                    
+                    elif "FC" in self.network_config:
                         #print("loss calculation", X_batch.shape, logits.shape, y_batch.shape)
                         loss = self.criterion(logits, y_batch)
                         #print(loss)
@@ -216,17 +245,15 @@ class DistributedWorker(NN_Trainer):
                     forward_duration = time.time() - forward_start_time
 
                     if self.redundancy:
-                        """
-                        testing individual loss values and gradients
-                        """
-                        for idx, log in enumerate(logits):
-                            temp1 = torch.index_select(logits,0,torch.tensor(idx))
-                            temp2 = torch.index_select(y_batch,0,torch.tensor(idx))
-                            loss_list.append(self.criterion(temp1,temp2))
+                        computation_time, c_duration = (0.0,0.0)
+                        # wait for another message for redundant calculations
 
-                    """ testing backward() on individual loss values """
-                    if self.redundancy:
-                        computation_time, c_duration = self._multi_backward(loss_list,computation_time=forward_duration)
+                        # if master sending more datapoints
+
+                        #       receive datapoints, run through network, and report gradients (lines 212-226)
+
+                        #       continue
+
                     elif "FC" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
                     elif "LeNet" in self.network_config:
@@ -324,7 +351,7 @@ class DistributedWorker(NN_Trainer):
     """
     NEEDS ERROR SIMULATION HANDLING
     """
-    def _multi_backward(self, losses, computation_time=None):
+    def _multi_backward(self, losses, datapoints, computation_time=None):
         send_check_requests = []
 
         b_start = time.time()
@@ -332,20 +359,17 @@ class DistributedWorker(NN_Trainer):
         numlayers = 0
         for _ in self.network.parameters():
             numlayers = numlayers + 1
-
+        
+        #testing tags for gradient messages
         for idx, loss in enumerate(losses):
             loss.backward(retain_graph=True)
             # self._print_grads()
             for param_idx, param in enumerate(self.network.parameters()):
                 grad = param.grad.data.numpy().astype(np.float64)
-                # print(f"gradient of dp {idx} layer {param_idx}\n\t{grad}")
-                if self.rank==1:
-                    file = open("temp.txt", "a")
-                    file.write(f"Worker 1 {grad}\n")
-                    file.close()
-                req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(idx*numlayers)+param_idx)
+                curtag=88+(datapoints[idx]*numlayers)+param_idx
+                req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(datapoints[idx]*numlayers)+param_idx)
                 send_check_requests.append(req_isend)
-
+        
         b_duration = time.time()-b_start
         
         computation_time += b_duration
@@ -355,7 +379,7 @@ class DistributedWorker(NN_Trainer):
             req.wait()
 
         c_duration = time.time() - c_start
-        print("done sending grads for all points of worker",self.rank)
+        # print("done sending grads for all points of worker",self.rank)
         return computation_time, c_duration
 
     def _backward(self, loss, logits_1=None, computation_time=None):

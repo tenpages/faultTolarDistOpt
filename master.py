@@ -135,13 +135,18 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
             self.async_bcast_step()
 
-            if self._redundancy:
-                dp_list = self.async_bcast_datapoints()
-                print("Master node datapoint broadcast success",dp_list)
-                self.set_coded_buffer(dp_list)
-                #temp_requests = self.fetch_coded_gradients_start(dp_list)
-                #print(len(temp_requests),"requests created")
 
+            if self._redundancy:
+                dp_list, worker_list = self.async_bcast_datapoints()
+                print("Master node datapoint broadcast success",dp_list,"\n",worker_list)
+                self.set_coded_buffer(worker_list)
+                templist=[]
+                for idx, dps in enumerate(dp_list):
+                    if idx in self._adversaries[0]:
+                        for dp in dps:
+                            if dp not in templist:
+                                templist.append(dp)
+                print(f"Datapoints sent to faulty workers: {templist}")
             
             if self.comm_type == 'Bcast':
                 self.async_bcast_layer_weights_bcast()
@@ -149,61 +154,84 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self.async_bcast_layer_weights_async()
 
             if self._redundancy:
-                gradient_fetch_requests = self.fetch_coded_gradients_start(dp_list)
+                gradient_fetch_requests = self.fetch_coded_gradients_start(worker_list)
                 statuses = [MPI.Status() for _ in gradient_fetch_requests]
-                #print(len(gradient_fetch_requests),"fetch requests created")
-                # data = MPI.Request.Waitall(requests=gradient_fetch_requests)
                 MPI.Request.Waitall(requests=gradient_fetch_requests, statuses=statuses)
-                file = open("temp.txt",'a')
-                file.write(f"[Master] worker 1 gradient(s):\n\t{self.coded_buffer[0]}\n")
-                file.close() 
-                x = input("paused here")
+                faulty_grad_datapoints=[]
+                for dpidx, dp_buffer in enumerate(self.coded_buffer):
+                    dp_flag = True
+                    first=dp_buffer[0]
+                    print(len(dp_buffer),"::",len(worker_list[dpidx]))
+                    for widx, worker_buffer in enumerate(dp_buffer):
+                        for layer_idx, param in enumerate(worker_buffer):
+                            # print(f"layer ({len(self.coded_buffer[dpidx][widx][layer_idx])}) {type(self.coded_buffer[dpidx][widx][layer_idx])}\n", 
+                            #         self.coded_buffer[dpidx][widx][layer_idx])
+                            # print("using np.array_equal(): ", np.array_equal(self.coded_buffer[dpidx][widx][layer_idx],first[layer_idx]))
+                            # print("using all(): ",(self.coded_buffer[dpidx][widx][layer_idx]==first[layer_idx]).all())
+                            if not np.allclose(worker_buffer[layer_idx],first[layer_idx]) :
+                               faulty_grad_datapoints.append(dpidx)
+                               print(f"dp={dpidx} {widx}-th grad, layer {layer_idx} : {np.mean(worker_buffer[layer_idx])} {np.mean(first[layer_idx])}")
+                               dp_flag=False
+                               break
+                        if not dp_flag:
+                            break
+                redundancy_requests=[]
+                if faulty_grad_datapoints:
+                    # print("faulty_grad_datapoints ",faulty_grad_datapoints) 
+                    # redistribute datapoints for second round 
+                else :
+                    for rank in range(1,self.world_size):
+                        # send an empty list to each worker with tag=9
+                        redundancy_requests.append(self.comm.isend([], dest=rank, tag=9))
+                for i in len(redundancy_requests):
+                    redundancy_request[i].wait()
 
+                sys.exit()
             else:
                 gradient_fetch_requests = self.async_fetch_gradient_start()
 
-            while not enough_gradients_received:
-                status = MPI.Status()
-                if self._compress_grad == 'None':
-                    MPI.Request.Waitany(requests=gradient_fetch_requests, status=status)
-                elif self._compress_grad == "compress":
-                    t, received_msg = MPI.Request.waitany(requests=gradient_fetch_requests, status=status)
-                    # print(t)
-                    # print("Master just received compressed message in length ", len(received_msg), "tag=",status.tag - 88)
-                    received_grad = decompress(received_msg)
+                while not enough_gradients_received:
+                    status = MPI.Status()
+                    if self._compress_grad == 'None':
+                        MPI.Request.Waitany(requests=gradient_fetch_requests, status=status)
+                    elif self._compress_grad == "compress":
+                        t, received_msg = MPI.Request.waitany(requests=gradient_fetch_requests, status=status)
+                        # print(t)
+                        # print("Master just received compressed message in length ", len(received_msg), "tag=",status.tag - 88)
+                        received_grad = decompress(received_msg)
 
-                if status.tag - 88 in self.grad_accumulator.model_index_range:
-                    if not self._first_grad_received:
-                        self._first_grad_received = True
-                        grad_gather_start_time = time.time()
+                    if status.tag - 88 in self.grad_accumulator.model_index_range:
+                        if not self._first_grad_received:
+                            self._first_grad_received = True
+                            grad_gather_start_time = time.time()
 
-                    layer_index = status.tag - 88
+                        layer_index = status.tag - 88
 
-                    if self._compress_grad == "None":
-                        received_grad = self.grad_accumulator.gradient_aggregator[layer_index][status.source - 1]
-                        # with open("masterlog.txt","a+") as f:
-                        #    # f.write("Master received grad in shape: ", type(received_grad), received_grad.shape, " with source=",status.source," and tag=",status.tag-88,"which has the value\n",received_grad,"\n")
-                        #    # f.write("The shape should be ", self._model_shapes[layer_index]," for layer idx ",layer_index,"\n")
-                        #    f.write("Master received grad in shape: "+str(type(received_grad))+str(received_grad.shape)+
-                        #            " with source="+str(status.source)+" and tag="+str(status.tag - 88)+"which has the value\n"+
-                        #            str(received_grad)+"\n")
-                        #    f.write("The shape should be "+str(self._model_shapes[layer_index])+" for layer idx "+str(layer_index)+
-                        #            "\n")
-                        #    f.write("The shape used to be "+str(self.grad_accumulator._shape_counter[layer_index][status.source-1]))
-                    # check gradient shape
-                    # print(received_grad.shape)
-                    # print("Received from worker ",status.source-1,": gradient with norm",np.linalg.norm(received_grad.reshape(-1)))
-                    assert (received_grad.shape == self._model_shapes[layer_index])
+                        if self._compress_grad == "None":
+                            received_grad = self.grad_accumulator.gradient_aggregator[layer_index][status.source - 1]
+                            # with open("masterlog.txt","a+") as f:
+                            #    # f.write("Master received grad in shape: ", type(received_grad), received_grad.shape, " with source=",status.source," and tag=",status.tag-88,"which has the value\n",received_grad,"\n")
+                            #    # f.write("The shape should be ", self._model_shapes[layer_index]," for layer idx ",layer_index,"\n")
+                            #    f.write("Master received grad in shape: "+str(type(received_grad))+str(received_grad.shape)+
+                            #            " with source="+str(status.source)+" and tag="+str(status.tag - 88)+"which has the value\n"+
+                            #            str(received_grad)+"\n")
+                            #    f.write("The shape should be "+str(self._model_shapes[layer_index])+" for layer idx "+str(layer_index)+
+                            #            "\n")
+                            #    f.write("The shape used to be "+str(self.grad_accumulator._shape_counter[layer_index][status.source-1]))
+                        # check gradient shape
+                        # print(received_grad.shape)
+                        # print("Received from worker ",status.source-1,": gradient with norm",np.linalg.norm(received_grad.reshape(-1)))
+                        assert (received_grad.shape == self._model_shapes[layer_index])
 
-                    # aggregate the gradient
-                    if self.grad_accumulator.gradient_aggregate_counter[layer_index] <= self._num_grad_to_collect:
-                        self.aggregate_gradient(gradient=received_grad, layer_idx=layer_index, source=status.source-1)
+                        # aggregate the gradient
+                        if self.grad_accumulator.gradient_aggregate_counter[layer_index] <= self._num_grad_to_collect:
+                            self.aggregate_gradient(gradient=received_grad, layer_idx=layer_index, source=status.source-1)
 
-                    self.grad_accumulator.gradient_aggregate_counter[layer_index] += 1
+                        self.grad_accumulator.gradient_aggregate_counter[layer_index] += 1
 
-                enough_gradients_received = True
-                for j in self.grad_accumulator.gradient_aggregate_counter:
-                    enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
+                    enough_gradients_received = True
+                    for j in self.grad_accumulator.gradient_aggregate_counter:
+                        enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
 
             if self._err_mode in ['cwtm', 'krum', 'krum2', 'normfilter', 'normfilter2', 'normfilter3']:
                 self._err_simulator()
@@ -221,12 +249,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         self._grad_aggregate_buffer[g_idx] = self._historical_buffer[g_idx]
 
             # update by given gradient filter
-            if self._redundancy :
-                method_start = time.time()
-                self._redundancy_filter()
-                collected_gradients.append(self._grad_aggregate_buffer)
-                method_duration = time.time() - method_start
-            elif self._update_mode == 'normal':
+            if self._update_mode == 'normal':
                 method_start = time.time()
                 self._avg_received_grads()
                 method_duration = time.time() - method_start
@@ -425,7 +448,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
         """
         broadcasting current step to workers
         """
-        dp_list = [[] for _ in range(self.world_size)]
+        dp_list = [[] for _ in range(self.world_size)]      # list of datapoints (indices) for each worker
+                                                            # dp_list[i] = datapoints for ith worker
+        worker_list = [[] for _ in range(self.batch_size)]  # list of workers (ranks) for each datapoint index 
+                                                            # worker_list[i] = ranks of workers for ith datapoint
         req_list = []
         avg_size = ceil((self.batch_size*(self._s + 1))/self.world_size)
         avail = [i for i in range(1,self.world_size)]
@@ -439,21 +465,20 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     dst = random.choice(avail)
                 while dp in dp_list[dst]: 
                     dst = random.choice(avail)
+
                 dp_list[dst].append(dp)
+                worker_list[dp].append(dst)
                 
                 if len(dp_list[dst]) >= avg_size :
                     avail.remove(dst)
 
         for i in range(self.world_size):
             if i != 0:
-                # print(f"W{i}\t{(dp_list[i])}")
                 req_list.append(self.comm.isend(dp_list[i], dest=i, tag=9))
-                """ send same datapoints to all workers to compare grads """
-                # req_list.append(self.comm.isend(dp_list[1], dest=i, tag=9))
         for i in range(len(req_list)):
             req_list[i].wait()
-        print("dp list",dp_list)    
-        return dp_list
+
+        return dp_list, worker_list
 
     def async_bcast_layer_weights_bcast(self):
         for layer_idx, layer in enumerate(self.network.parameters()):
@@ -461,41 +486,36 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.comm.Bcast([layer_to_send, MPI.DOUBLE], root=0)
 
     def fetch_coded_gradients_start(self, datapoints):
+        # datapoints[i] should be a list of worker ranks receiving datapoint the ith datapoint
         requests = []
         numlayers = 0
         for _ in self.network.parameters():
             numlayers = numlayers+1
-
-        for widx, points in enumerate(datapoints):
-            # req = self.comm.irecv(self.coded_buffer[idx],source=idx+1,tag=400+idx)
-            if widx != 0:
-                # req = self.comm.irecv(source=idx,tag=400+idx)
-                # requests.append(req)
-                for dpidx, dp in enumerate(points):
-                    for layer_idx, layer in enumerate(self.network.parameters()):
-                        curtag=88+(dpidx*numlayers)+layer_idx
-                        # print(f"\trequest for layer {layer_idx}, datapoint {dpidx}, worker {widx}--> tag = {curtag}")
-                        req = self.comm.Irecv([self.coded_buffer[widx-1][dpidx][layer_idx], MPI.DOUBLE], source=widx, tag=88+(dpidx*numlayers)+layer_idx)
-                        requests.append(req)
+        # file = open("temp.txt","a")
+        for dpidx, dp in enumerate(datapoints):
+            # dp is a list of ranks for the dpidx-th datapoint in this batch
+            for widx, rank in enumerate(dp):
+                for layer_idx, layer in enumerate(self.network.parameters()):
+                    curtag=88+(dpidx*numlayers)+layer_idx
+                    # file.write(f"M,{rank},{dpidx},{layer_idx},{curtag}\n")
+                    # print(f"\trequest for layer {layer_idx}, datapoint {dpidx}, worker {rank}--> tag = {curtag}")
+                    req = self.comm.Irecv([self.coded_buffer[dpidx][widx][layer_idx], MPI.DOUBLE], source=rank, tag=88+(dpidx*numlayers)+layer_idx)
+                    requests.append(req)
+        # file.close()
         return requests
     
     def set_coded_buffer(self, datapoints):
-        self.coded_buffer = [None for _ in range(self.num_workers)]
+        # datapoints[i] should be a list of worker ranks receiving datapoint the ith datapoint
+        self.coded_buffer = [None for _ in range(self.batch_size)]
 
-        for widx, worker_list in enumerate(datapoints):
-            if widx != 0:
-                temp_worker = []
-                for dp in worker_list:
-                    temp_dp = []
-                    for param_idx, param in enumerate(self.network.parameters()):
-                        temp_dp.append(np.zeros((param.size())))
-                    # temp_dp contains list of zeros for each parameter
-                    # ^ should fit the entire gradient for this point for this worker
-                    temp_worker.append(temp_dp)
-                # temp_worker now contains a list for each datapoint
-                # each of these inner lists contains a list of zeros for each parameter
-                self.coded_buffer[widx-1] = temp_worker
-        # print(f"\tcoded buffer contains {len(self.coded_buffer)} lists\n\tthe first worker has {len(self.coded_buffer[0])} datapoints")
+        for dpidx, dp in enumerate(datapoints):
+            temp1 = []
+            for widx, worker_rank in enumerate(dp):
+                temp2 = []
+                for param_idx, param in enumerate(self.network.parameters()):
+                    temp2.append(np.zeros((param.size())))
+                temp1.append(temp2)
+            self.coded_buffer[dpidx] = temp1
 
     def async_fetch_gradient_start(self):
         gradient_fetch_requests = []
