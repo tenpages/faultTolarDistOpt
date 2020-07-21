@@ -140,13 +140,13 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 dp_list, worker_list = self.async_bcast_datapoints()
                 print("Master node datapoint broadcast success",dp_list,"\n",worker_list)
                 self.set_coded_buffer(worker_list)
-                templist=[]
-                for idx, dps in enumerate(dp_list):
-                    if idx in self._adversaries[0]:
-                        for dp in dps:
-                            if dp not in templist:
-                                templist.append(dp)
-                print(f"Datapoints sent to faulty workers: {templist}")
+                # templist=[]
+                # for idx, dps in enumerate(dp_list):
+                #     if idx in self._adversaries[0]:
+                #         for dp in dps:
+                #             if dp not in templist:
+                #                 templist.append(dp)
+                # print(f"Datapoints sent to faulty workers: {templist}")
             
             if self.comm_type == 'Bcast':
                 self.async_bcast_layer_weights_bcast()
@@ -161,7 +161,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for dpidx, dp_buffer in enumerate(self.coded_buffer):
                     dp_flag = True
                     first=dp_buffer[0]
-                    print(len(dp_buffer),"::",len(worker_list[dpidx]))
                     for widx, worker_buffer in enumerate(dp_buffer):
                         for layer_idx, param in enumerate(worker_buffer):
                             # print(f"layer ({len(self.coded_buffer[dpidx][widx][layer_idx])}) {type(self.coded_buffer[dpidx][widx][layer_idx])}\n", 
@@ -170,21 +169,111 @@ class SyncReplicaMaster_NN(NN_Trainer):
                             # print("using all(): ",(self.coded_buffer[dpidx][widx][layer_idx]==first[layer_idx]).all())
                             if not np.allclose(worker_buffer[layer_idx],first[layer_idx]) :
                                faulty_grad_datapoints.append(dpidx)
-                               print(f"dp={dpidx} {widx}-th grad, layer {layer_idx} : {np.mean(worker_buffer[layer_idx])} {np.mean(first[layer_idx])}")
                                dp_flag=False
                                break
                         if not dp_flag:
                             break
-                redundancy_requests=[]
                 if faulty_grad_datapoints:
-                    # print("faulty_grad_datapoints ",faulty_grad_datapoints) 
+                    print("faulty_grad_datapoints ",faulty_grad_datapoints) 
                     # redistribute datapoints for second round 
+                    # rule: datapoints must go to different workers than before
+                    new_dp_list, new_worker_list = self.async_bcast_redundant_datapoints(dp_list, faulty_grad_datapoints)
+                    print(f"\told list: {dp_list}\n\tnew list: {new_dp_list}")
+                    combined_list = [[] for _ in new_worker_list]
+                    for dp in range(len(worker_list)):
+                        for rank in worker_list[dp]:
+                            combined_list[dp].append(rank)
+                        for rank in new_worker_list[dp]:
+                            combined_list[dp].append(rank)
+
+                    # create requests for redundant gradients and wait for messages
+                    redundant_fetch_requests = self.fetch_coded_gradients_redundant(new_worker_list, worker_list)
+                    statuses = [MPI.Status() for _ in redundant_fetch_requests]
+                    MPI.Request.Waitall(requests=redundant_fetch_requests, statuses=statuses)
+                    
+                    # determine the correct grad via majority vote
+                    print("\tredundant gradients received...\n\tfind majority values...")    
+                    for idx, dp_ranks in enumerate(combined_list):
+                        if idx in faulty_grad_datapoints:
+                            print(f"DP {idx} {dp_ranks}")
+                    faulty_worker_ranks = []
+                    for dpidx in range(self.batch_size):
+                        # only consider buffers if dpidx in faulty_grad_datapoints
+                        # use indexes to avoid storing entire gradients multiple times
+                        curr_faulty_workers = []
+                        if dpidx in faulty_grad_datapoints:
+                            grad_dict = {}  # key = widx (index of worker in self.coded_buffer[dpidx]
+                                            # value = list of ranks with the key-th worker's gradient
+                            for widx, grads in enumerate(self.coded_buffer[dpidx]):
+                                if  len(grad_dict) == 0 :
+                                    grad_dict[widx] = [widx]
+                                else :
+                                    grad_match = False
+                                    for key in grad_dict:
+                                        params_match = True
+                                        for pidx, param in enumerate(self.network.parameters()) :
+                                            """
+                                            requires more absolute tolerance (atol=...) than default
+                                            is this an issue?
+                                            """
+                                            if not np.allclose(self.coded_buffer[dpidx][widx][pidx], self.coded_buffer[dpidx][key][pidx],rtol=1e-05,atol=1e-05) :
+                                                params_match = False
+                                                # break
+                                        if params_match :
+                                            grad_dict[key].append(widx)
+                                            grad_match = True
+                                            # break
+                                    if not grad_match :
+                                        grad_dict[widx] = [widx]
+                                        
+                            # grad_dict maps indexes of some workers to list of all workers with same gradient (including itself)
+                            max_size=-1
+                            max_size_key=-1
+                            for key in grad_dict :
+                                if len(grad_dict[key]) > max_size :
+                                    max_size = len(grad_dict[key])
+                                    max_size_key = key
+                            # print(f"Datapoint [{dpidx}] {max_size}/{len(self.coded_buffer[dpidx])} workers agree")
+                            correct_param_means=[]
+                            for layer_idx, param in enumerate(self.network.parameters()):
+                                correct_param_means.append(np.mean(self.coded_buffer[dpidx][max_size_key][layer_idx]))
+                            #print(f"dp {dpidx} correct layer mean: {correct_param_means}")
+                            for key in grad_dict :
+                                if key != max_size_key :
+                                    for widx in grad_dict[key] :
+                                        faulty_means = []
+                                        for layer_idx, param in enumerate(self.network.parameters()):
+                                            faulty_means.append(np.mean(self.coded_buffer[dpidx][widx][layer_idx]))
+                                        print(f"\t\t{combined_list[dpidx][widx]} faulty layer  mean: {faulty_means}")
+                                        curr_faulty_workers.append(combined_list[dpidx][widx])
+                                        # rank = combined_list[dpidx][widx]
+                                        if widx >= len(worker_list[dpidx]):
+                                            rank = new_worker_list[dpidx][widx-len(worker_list[dpidx])]
+                                        else :
+                                            rank = worker_list[dpidx][widx]
+                                        
+                                        if rank not in faulty_worker_ranks:
+                                            faulty_worker_ranks.append(rank)
+                                            # print(f"identifying worker {rank} at datapoint {dpidx}")
+                                            # if len(faulty_worker_ranks) > self._s:
+                                            #     print(f"\tgrad dict: {grad_dict}")
+                            print(f"faulty workers from dp {dpidx} : {curr_faulty_workers}")
+
+                    print("Master: step {self.cur_step} faulty worker ranks: ",faulty_worker_ranks)
+
+                    # aggregate the gradients
+                    # correct gradients (one for each layer) are the majority values for each datapoint
+                    # each non-faulty worker has sent a gradient for many datapoints
+                    # aggregate all grads of all non-faulty workers
+
                 else :
+                    print(f"[Master] no faulty gradients in step {self.cur_step}")
+                    redundancy_requests=[]
                     for rank in range(1,self.world_size):
                         # send an empty list to each worker with tag=9
                         redundancy_requests.append(self.comm.isend([], dest=rank, tag=9))
-                for i in len(redundancy_requests):
-                    redundancy_request[i].wait()
+                    for i in len(redundancy_requests):
+                        redundancy_request[i].wait()
 
                 sys.exit()
             else:
@@ -444,6 +533,33 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 break
         return res 
 
+    def async_bcast_redundant_datapoints(self, old_dp_list, datapoints):
+        print('distributing new datapoints')
+        new_dp_list = [[] for _ in range(self.world_size)]      
+        new_worker_list = [[] for _ in range(self.batch_size)]
+        req_list = []
+        avg_size = ceil((len(datapoints)*(self._s))/self.world_size)
+        avail = [i for i in range(1,self.world_size)]
+
+        for dp in datapoints:   
+            count = 0
+            for i in range(self._s):
+                dst = random.choice(avail)
+                count = count + 1
+                while dp in new_dp_list[dst] or dp in old_dp_list[dst]: 
+                    count = count + 1
+                    dst = random.choice(avail)
+                new_dp_list[dst].append(dp)
+                new_worker_list[dp].append(dst)
+                # print(f"dp {dp} --> {count} attempts to distribute")
+
+        for i in range(self.world_size):
+            if i != 0:
+                req_list.append(self.comm.isend(new_dp_list[i], dest=i, tag=9))
+        for i in range(len(req_list)):
+            req_list[i].wait()
+        return new_dp_list, new_worker_list
+
     def async_bcast_datapoints(self):
         """
         broadcasting current step to workers
@@ -455,7 +571,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         req_list = []
         avg_size = ceil((self.batch_size*(self._s + 1))/self.world_size)
         avail = [i for i in range(1,self.world_size)]
-        count=0
+        count = 0
         for dp in range(self.batch_size):   
             for i in range(self._s + 1):
                 if count < self.world_size-1 :
@@ -485,30 +601,53 @@ class SyncReplicaMaster_NN(NN_Trainer):
             layer_to_send = layer.data.numpy().astype(np.float64)
             self.comm.Bcast([layer_to_send, MPI.DOUBLE], root=0)
 
-    def fetch_coded_gradients_start(self, datapoints):
-        # datapoints[i] should be a list of worker ranks receiving datapoint the ith datapoint
+    def fetch_coded_gradients_redundant(self, new_worker_list, old_worker_list):
         requests = []
         numlayers = 0
         for _ in self.network.parameters():
             numlayers = numlayers+1
-        # file = open("temp.txt","a")
-        for dpidx, dp in enumerate(datapoints):
-            # dp is a list of ranks for the dpidx-th datapoint in this batch
+
+        # expand self.coded_buffer for datapoints being re-broadcasted
+        for dpidx, dp in enumerate(new_worker_list):
+            if dp:
+                # append to self.coded_buffer[dpidx] to accomadate the new gradients
+                for _ in dp :
+                    temp2=[]
+                    for layer_idx, param in enumerate(self.network.parameters()):
+                        temp2.append(np.zeros(param.size()))
+                    self.coded_buffer[dpidx].append(temp2)
+                # print(f"added {len(dp)} slots to dp {dpidx}--> {len(old_worker_list[dpidx])} + {len(new_worker_list[dpidx])} == {len(self.coded_buffer[dpidx])}")
+
+        for dpidx, dp in enumerate(new_worker_list):
+            if dp:
+                for widx, rank in enumerate(dp):
+                    # print(f"dp {dpidx}: Worker [{rank}] to self.coded_buffer[{dpidx}][{len(old_worker_list[dpidx])+widx}]")
+                    # print(f"\t\t\t {old_worker_list[dpidx]} {new_worker_list[dpidx]}")
+                    for layer_idx, layer in enumerate(self.network.parameters()):
+                        req = self.comm.Irecv([self.coded_buffer[dpidx][len(old_worker_list[dpidx])+widx][layer_idx], MPI.DOUBLE],
+                                                source=rank, tag=88+(dpidx*numlayers)+layer_idx)
+                        requests.append(req)
+        return requests
+
+    def fetch_coded_gradients_start(self, worker_list):
+        # worker_list[i] should be a list of worker ranks receiving datapoint the ith datapoint
+        requests = []
+        numlayers = 0
+        for _ in self.network.parameters():
+            numlayers = numlayers+1
+        for dpidx, dp in enumerate(worker_list):
             for widx, rank in enumerate(dp):
                 for layer_idx, layer in enumerate(self.network.parameters()):
                     curtag=88+(dpidx*numlayers)+layer_idx
-                    # file.write(f"M,{rank},{dpidx},{layer_idx},{curtag}\n")
-                    # print(f"\trequest for layer {layer_idx}, datapoint {dpidx}, worker {rank}--> tag = {curtag}")
                     req = self.comm.Irecv([self.coded_buffer[dpidx][widx][layer_idx], MPI.DOUBLE], source=rank, tag=88+(dpidx*numlayers)+layer_idx)
                     requests.append(req)
-        # file.close()
         return requests
     
-    def set_coded_buffer(self, datapoints):
-        # datapoints[i] should be a list of worker ranks receiving datapoint the ith datapoint
+    def set_coded_buffer(self, worker_list):
+        # worker_list[i] should be a list of worker ranks receiving datapoint the ith datapoint
         self.coded_buffer = [None for _ in range(self.batch_size)]
 
-        for dpidx, dp in enumerate(datapoints):
+        for dpidx, dp in enumerate(worker_list):
             temp1 = []
             for widx, worker_rank in enumerate(dp):
                 temp2 = []

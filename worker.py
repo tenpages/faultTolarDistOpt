@@ -221,12 +221,61 @@ class DistributedWorker(NN_Trainer):
                                 grad = param.grad.data.numpy().astype(np.float64)
                                 # error simulation
                                 if self.rank in self._fail_workers[self.cur_step]:
+                                    # print(f"Error sent by worker {self.rank}")
                                     grad = err_simulation(grad, self._err_mode)
                                 req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(dp_list[idx]*numlayers)+param_idx)
                                 send_check_requests.append(req_isend)
         
                         for req in send_check_requests:
                             req.wait()
+
+                        # all gradients sent
+                        # now wait for a new list of datapoints
+                        #   if empty, continue 
+                        #   else, repeat lines 204-229 for with UNCHANGED network
+                        
+                        new_dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints())
+
+                        if new_dp_list.tolist():
+                            # self.network.train()
+                            self.optimizer.zero_grad()
+                            print(f"Worker [{self.rank}] redundant datapoints {new_dp_list.tolist()}")
+
+                            # get new inputs/targets the batch
+                            send_check_requests=[]
+
+                            X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
+                            X_batch = torch.index_select(train_input_batch,0,new_dp_list) 
+                            y_batch = torch.index_select(train_label_batch,0,new_dp_list) 
+                            X_batch = Variable(X_batch)
+                            y_batch = Variable(y_batch)
+
+                            # get new logits and new losses
+                            new_logits = self.network(X_batch)
+
+                            # send back gradients of new losses in PARALLEL to new_dp_list
+                            for idx, log in enumerate(new_logits):
+                                self.optimizer.zero_grad()
+                                temp1 = torch.index_select(new_logits,0,torch.tensor(idx))
+                                temp2 = torch.index_select(y_batch,0,torch.tensor(idx))
+                                loss = self.criterion(temp1,temp2)
+                     
+                                loss.backward(retain_graph=True)
+                                for param_idx, param in enumerate(self.network.parameters()):
+                                    grad = param.grad.data.numpy().astype(np.float64)
+                                    if self.rank in self._fail_workers[self.cur_step]:
+                                        # print(f"Error sent by worker {self.rank}")
+                                        grad = err_simulation(grad, self._err_mode)
+                                    req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(new_dp_list[idx]*numlayers)+param_idx)
+                                    send_check_requests.append(req_isend)
+            
+                            for req in send_check_requests:
+                                req.wait()
+
+                            # end if new_dp_list
+                        else :
+                            print(f"Worker {self.rank} received no redundant datapoints")
+
                         sys.exit()
                     
                     elif "FC" in self.network_config:
