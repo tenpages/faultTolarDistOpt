@@ -274,9 +274,10 @@ class DistributedWorker(NN_Trainer):
 
                             # end if new_dp_list
                         else :
-                            print(f"Worker {self.rank} received no redundant datapoints")
-
-                        sys.exit()
+                            print(f"Workr {self.rank} received no redundant datapoints")
+                        
+                        if self.cur_step > 1:
+                            sys.exit()
                     
                     elif "FC" in self.network_config:
                         #print("loss calculation", X_batch.shape, logits.shape, y_batch.shape)
@@ -290,40 +291,32 @@ class DistributedWorker(NN_Trainer):
                         loss = self.criterion(logits, y_batch)
                     else:
                         raise Exception("No such network as "+self.network_config)
-                    epoch_avg_loss += loss.item()
-                    forward_duration = time.time() - forward_start_time
 
-                    if self.redundancy:
-                        computation_time, c_duration = (0.0,0.0)
-                        # wait for another message for redundant calculations
+                    if not self.redundancy :
+                        epoch_avg_loss += loss.item()
+                        forward_duration = time.time() - forward_start_time
 
-                        # if master sending more datapoints
+                        if "FC" in self.network_config:
+                            computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                        elif "LeNet" in self.network_config:
+                            computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                        elif "ResNet" in self.network_config:
+                            computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                        elif "VGG" in self.network_config:
+                            computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
 
-                        #       receive datapoints, run through network, and report gradients (lines 212-226)
-
-                        #       continue
-
-                    elif "FC" in self.network_config:
-                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
-                    elif "LeNet" in self.network_config:
-                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
-                    elif "ResNet" in self.network_config:
-                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
-                    elif "VGG" in self.network_config:
-                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
-
-                    # prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))
-                    prec1, prec3 = accuracy(logits.data, y_batch.long(), topk=(1, 3))
-                    with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
-                        f.write('{:.8f}\n'.format(time.time()-iter_start_time))
-                    print(
-                        'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.8f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@3: {}'.format(
-                            self.rank,
-                            self.cur_step, num_epoch, batch_idx * self.batch_size, len(train_loader.dataset),
-                            (100. * (batch_idx * self.batch_size) / len(train_loader.dataset)), loss.item(),
-                                                      time.time() - iter_start_time, computation_time,
-                                                      c_duration + fetch_weight_duration,
-                            prec1.numpy()[0], prec3.numpy()[0]))
+                        # prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))
+                        prec1, prec3 = accuracy(logits.data, y_batch.long(), topk=(1, 3))
+                        with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
+                            f.write('{:.8f}\n'.format(time.time()-iter_start_time))
+                        print(
+                            'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.8f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@3: {}'.format(
+                                self.rank,
+                                self.cur_step, num_epoch, batch_idx * self.batch_size, len(train_loader.dataset),
+                                (100. * (batch_idx * self.batch_size) / len(train_loader.dataset)), loss.item(),
+                                                          time.time() - iter_start_time, computation_time,
+                                                          c_duration + fetch_weight_duration,
+                                prec1.numpy()[0], prec3.numpy()[0]))
 
                     if self.cur_step % self._eval_freq == 0 and self.rank == 1:
                         # save snapshots

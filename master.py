@@ -121,7 +121,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if self._diminishing_lr == True:
                 self.scheduler.load_state_dict(torch.load(self._train_dir+"scheduler_"+str(self._checkpoint_step)))
         
-        collected_gradients = []
+        byzantine_workers = []
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
             if self._diminishing_lr == True:
                 self.scheduler.step()
@@ -159,20 +159,21 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 MPI.Request.Waitall(requests=gradient_fetch_requests, statuses=statuses)
                 faulty_grad_datapoints=[]
                 for dpidx, dp_buffer in enumerate(self.coded_buffer):
-                    dp_flag = True
-                    first=dp_buffer[0]
-                    for widx, worker_buffer in enumerate(dp_buffer):
-                        for layer_idx, param in enumerate(worker_buffer):
-                            # print(f"layer ({len(self.coded_buffer[dpidx][widx][layer_idx])}) {type(self.coded_buffer[dpidx][widx][layer_idx])}\n", 
-                            #         self.coded_buffer[dpidx][widx][layer_idx])
-                            # print("using np.array_equal(): ", np.array_equal(self.coded_buffer[dpidx][widx][layer_idx],first[layer_idx]))
-                            # print("using all(): ",(self.coded_buffer[dpidx][widx][layer_idx]==first[layer_idx]).all())
-                            if not np.allclose(worker_buffer[layer_idx],first[layer_idx]) :
-                               faulty_grad_datapoints.append(dpidx)
-                               dp_flag=False
-                               break
-                        if not dp_flag:
-                            break
+                    if dpidx not in byzantine_workers:
+                        dp_flag = True
+                        first=dp_buffer[0]
+                        for widx, worker_buffer in enumerate(dp_buffer):
+                            for layer_idx, param in enumerate(worker_buffer):
+                                # print(f"layer ({len(self.coded_buffer[dpidx][widx][layer_idx])}) {type(self.coded_buffer[dpidx][widx][layer_idx])}\n", 
+                                #         self.coded_buffer[dpidx][widx][layer_idx])
+                                # print("using np.array_equal(): ", np.array_equal(self.coded_buffer[dpidx][widx][layer_idx],first[layer_idx]))
+                                # print("using all(): ",(self.coded_buffer[dpidx][widx][layer_idx]==first[layer_idx]).all())
+                                if not np.allclose(worker_buffer[layer_idx],first[layer_idx]) :
+                                   faulty_grad_datapoints.append(dpidx)
+                                   dp_flag=False
+                                   break
+                            if not dp_flag:
+                                break
                 if faulty_grad_datapoints:
                     print("faulty_grad_datapoints ",faulty_grad_datapoints) 
                     # redistribute datapoints for second round 
@@ -258,13 +259,29 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                             # if len(faulty_worker_ranks) > self._s:
                                             #     print(f"\tgrad dict: {grad_dict}")
                             print(f"faulty workers from dp {dpidx} : {curr_faulty_workers}")
-
+                            
                     print("Master: step {self.cur_step} faulty worker ranks: ",faulty_worker_ranks)
+                    for rank in faulty_worker_ranks:
+                        byzantine_workers.append(rank)
 
-                    # aggregate the gradients
-                    # correct gradients (one for each layer) are the majority values for each datapoint
-                    # each non-faulty worker has sent a gradient for many datapoints
-                    # aggregate all grads of all non-faulty workers
+                    # aggregate gradients of all non-faulty workers
+                    """ temporary: add correct grad once for each worker """
+                    total_grads = 0
+                    for dpidx, grad_list in enumerate(self.coded_buffer):
+                        for widx, grad in enumerate(grad_list):
+                            if combined_list[dpidx][widx] not in byzantine_workers:
+                                for _ in range(self._num_grad_to_collect) :
+                                    for layer_index, param in enumerate(self.network.parameters()):
+                                        self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=combined_list[dpidx][widx])
+                                        total_grads = total_grads + 1
+                                break
+                    print("total grads:",total_grads)
+                    # for dpidx, grad_list in enumerate(self.coded_buffer):
+                    #     for widx, grad in enumerate(grad_list):
+                    #         if combined_list[dpidx][widx] not in byzantine_workers:
+                    #             for layer_index, param in enumerate(self.network.parameters()):
+                    #                 self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=combined_list[dpidx][widx])
+                            
 
                 else :
                     print(f"[Master] no faulty gradients in step {self.cur_step}")
@@ -274,8 +291,19 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         redundancy_requests.append(self.comm.isend([], dest=rank, tag=9))
                     for i in len(redundancy_requests):
                         redundancy_request[i].wait()
+                    for dpidx, grad_list in enumerate(self.coded_buffer):
+                        for widx, grad in enumerate(grad_list):
+                            if combined_list[dpidx][widx] not in byzantine_workers:
+                                for _ in range(self._num_grad_to_collect) :
+                                    for layer_index, param in enumerate(self.network.parameters()):
+                                        self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=combined_list[dpidx][widx])
+                                        total_grads = total_grads + 1
 
-                sys.exit()
+
+                if self.cur_step > 1:
+                    sys.exit()
+
+            # end if self.redundancy
             else:
                 gradient_fetch_requests = self.async_fetch_gradient_start()
 
@@ -412,10 +440,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_start = time.time()
                 self._ensemble_normfilter_medofmeans()
                 method_duration = time.time() - method_start
-            #elif self.redundancy:
-            #    method_start=time.time()
-            #   
-            #    method_duration=time.time()-method_start
 
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
                 self._filtered_grad = self._grad_aggregate_buffer.copy()
