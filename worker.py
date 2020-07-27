@@ -1,6 +1,6 @@
 import time
 from functools import reduce
-import sys
+import sys, os
 
 import torch
 from mpi4py import MPI
@@ -107,12 +107,11 @@ class DistributedWorker(NN_Trainer):
         first = True
 
         print("Worker {}: starting training".format(self.rank))
-
         flag = True
         for num_epoch in range(loader_epoch, self.max_epochs):
             for batch_idx, (train_input_batch, train_label_batch) in enumerate(train_loader):
                 if self.rank == 1:
-                    print("batch_id=",batch_idx,"loader_step=",loader_step,"cur_step=",self.cur_step)
+                    print("batch_id=",batch_idx,"loader_step=",loader_step,"cur_step=",self.cur_step,"epoch=",num_epoch)
                 if loader_step<self.cur_step and flag:
                     loader_step += 1
                     if self.rank == 1:
@@ -133,7 +132,8 @@ class DistributedWorker(NN_Trainer):
 
                 if self.redundancy:
                         dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints())
-                        print(f"Worker [{self.rank}] datapoints {dp_list.tolist()}")
+                        # print(f"Worker [{self.rank}] datapoints {dp_list.tolist()}")
+                        # print(f"Worker {self.rank} step {self.cur_step} first datapoints received ")
 
                 X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
                 
@@ -205,6 +205,7 @@ class DistributedWorker(NN_Trainer):
                         """
                         testing individual loss values and gradients
                         """
+                        loss = self.criterion(logits,y_batch)
                         numlayers = 0
                         for _ in self.network.parameters():
                             numlayers = numlayers + 1
@@ -214,15 +215,17 @@ class DistributedWorker(NN_Trainer):
                             temp1 = torch.index_select(logits,0,torch.tensor(idx))
                             temp2 = torch.index_select(y_batch,0,torch.tensor(idx))
                             # loss_list.append(self.criterion(temp1,temp2))
-                            loss = self.criterion(temp1,temp2)
+                            red_loss = self.criterion(temp1,temp2)
                  
-                            loss.backward(retain_graph=True)
+                            red_loss.backward(retain_graph=True)
                             for param_idx, param in enumerate(self.network.parameters()):
                                 grad = param.grad.data.numpy().astype(np.float64)
-                                # error simulation
+
+                                """ implement randomized error generation based on prob(send_error) > q """
                                 if self.rank in self._fail_workers[self.cur_step]:
                                     # print(f"Error sent by worker {self.rank}")
                                     grad = err_simulation(grad, self._err_mode)
+
                                 req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(dp_list[idx]*numlayers)+param_idx)
                                 send_check_requests.append(req_isend)
         
@@ -233,39 +236,43 @@ class DistributedWorker(NN_Trainer):
                         # now wait for a new list of datapoints
                         #   if empty, continue 
                         #   else, repeat lines 204-229 for with UNCHANGED network
-                        
-                        new_dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints())
+                        # print(f"Worker {self.rank} step {self.cur_step} fetching second list")
+                        new_dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints_redundant())
 
                         if new_dp_list.tolist():
+                            print(f"Worker {self.rank} step {self.cur_step} second datapoints received {new_dp_list}")
                             # self.network.train()
                             self.optimizer.zero_grad()
-                            print(f"Worker [{self.rank}] redundant datapoints {new_dp_list.tolist()}")
+                            # print(f"Worker [{self.rank}] redundant datapoints {new_dp_list.tolist()}")
 
                             # get new inputs/targets the batch
                             send_check_requests=[]
 
-                            X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
-                            X_batch = torch.index_select(train_input_batch,0,new_dp_list) 
-                            y_batch = torch.index_select(train_label_batch,0,new_dp_list) 
-                            X_batch = Variable(X_batch)
-                            y_batch = Variable(y_batch)
+                            red_X_batch, red_y_batch = Variable(train_input_batch), Variable(train_label_batch)
+                            red_X_batch = torch.index_select(train_input_batch,0,new_dp_list) 
+                            red_y_batch = torch.index_select(train_label_batch,0,new_dp_list) 
+                            red_X_batch = Variable(red_X_batch)
+                            red_y_batch = Variable(red_y_batch)
 
                             # get new logits and new losses
-                            new_logits = self.network(X_batch)
+                            new_logits = self.network(red_X_batch)
 
                             # send back gradients of new losses in PARALLEL to new_dp_list
                             for idx, log in enumerate(new_logits):
                                 self.optimizer.zero_grad()
                                 temp1 = torch.index_select(new_logits,0,torch.tensor(idx))
-                                temp2 = torch.index_select(y_batch,0,torch.tensor(idx))
-                                loss = self.criterion(temp1,temp2)
+                                temp2 = torch.index_select(red_y_batch,0,torch.tensor(idx))
+                                red_loss = self.criterion(temp1,temp2)
                      
-                                loss.backward(retain_graph=True)
+                                red_loss.backward(retain_graph=True)
                                 for param_idx, param in enumerate(self.network.parameters()):
                                     grad = param.grad.data.numpy().astype(np.float64)
+
+                                    """ implement randomized error generation based on prob(send_error) > q """
                                     if self.rank in self._fail_workers[self.cur_step]:
                                         # print(f"Error sent by worker {self.rank}")
                                         grad = err_simulation(grad, self._err_mode)
+
                                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(new_dp_list[idx]*numlayers)+param_idx)
                                     send_check_requests.append(req_isend)
             
@@ -274,10 +281,8 @@ class DistributedWorker(NN_Trainer):
 
                             # end if new_dp_list
                         else :
-                            print(f"Workr {self.rank} received no redundant datapoints")
+                            print(f"Worker {self.rank} step {self.cur_step} received no redundant datapoints")
                         
-                        if self.cur_step > 1:
-                            sys.exit()
                     
                     elif "FC" in self.network_config:
                         #print("loss calculation", X_batch.shape, logits.shape, y_batch.shape)
@@ -292,31 +297,33 @@ class DistributedWorker(NN_Trainer):
                     else:
                         raise Exception("No such network as "+self.network_config)
 
-                    if not self.redundancy :
-                        epoch_avg_loss += loss.item()
-                        forward_duration = time.time() - forward_start_time
+                    epoch_avg_loss += loss.item()
+                    forward_duration = time.time() - forward_start_time
 
-                        if "FC" in self.network_config:
-                            computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
-                        elif "LeNet" in self.network_config:
-                            computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
-                        elif "ResNet" in self.network_config:
-                            computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
-                        elif "VGG" in self.network_config:
-                            computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                    if self.redundancy:
+                        ### dummy values for comp time and comp duration
+                        computation_time, c_duration = (0.0,0.0)
+                    elif "FC" in self.network_config:
+                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                    elif "LeNet" in self.network_config:
+                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                    elif "ResNet" in self.network_config:
+                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                    elif "VGG" in self.network_config:
+                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
 
-                        # prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))
-                        prec1, prec3 = accuracy(logits.data, y_batch.long(), topk=(1, 3))
-                        with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
-                            f.write('{:.8f}\n'.format(time.time()-iter_start_time))
-                        print(
-                            'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.8f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@3: {}'.format(
-                                self.rank,
-                                self.cur_step, num_epoch, batch_idx * self.batch_size, len(train_loader.dataset),
-                                (100. * (batch_idx * self.batch_size) / len(train_loader.dataset)), loss.item(),
-                                                          time.time() - iter_start_time, computation_time,
-                                                          c_duration + fetch_weight_duration,
-                                prec1.numpy()[0], prec3.numpy()[0]))
+                    # prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))
+                    prec1, prec3 = accuracy(logits.data, y_batch.long(), topk=(1, 3))
+                    with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
+                        f.write('{:.8f}\n'.format(time.time()-iter_start_time))
+                    print(
+                        'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.8f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@3: {}'.format(
+                            self.rank,
+                            self.cur_step, num_epoch, batch_idx * self.batch_size, len(train_loader.dataset),
+                            (100. * (batch_idx * self.batch_size) / len(train_loader.dataset)), loss.item(),
+                                                      time.time() - iter_start_time, computation_time,
+                                                      c_duration + fetch_weight_duration,
+                            prec1.numpy()[0], prec3.numpy()[0]))
 
                     if self.cur_step % self._eval_freq == 0 and self.rank == 1:
                         # save snapshots
@@ -335,6 +342,11 @@ class DistributedWorker(NN_Trainer):
         req = self.comm.irecv(source=0, tag=10)
         self.next_step = req.wait()
         print('Worker {}: Worker {} just received next step: step={}'.format(self.rank, self.rank, self.next_step))
+
+    def async_bcast_fetch_datapoints_redundant(self):
+        req = self.comm.irecv(source=0, tag=8)
+        datapoints = req.wait()
+        return datapoints
 
     def async_bcast_fetch_datapoints(self):
         req = self.comm.irecv(source=0, tag=9)
@@ -391,7 +403,9 @@ class DistributedWorker(NN_Trainer):
         self.network.load_state_dict(new_state_dict)
 
     """
-    NEEDS ERROR SIMULATION HANDLING
+    _multi_backward() no longer used
+        
+        intended for redundancy filtering
     """
     def _multi_backward(self, losses, datapoints, computation_time=None):
         send_check_requests = []

@@ -134,19 +134,15 @@ class SyncReplicaMaster_NN(NN_Trainer):
             print("Master node is entering step: {}".format(i))
 
             self.async_bcast_step()
-
-
+            #print("\tstep broadcasted")
+            total_grads_t = 0
+            used_grads_t = 0
+            
             if self._redundancy:
                 dp_list, worker_list = self.async_bcast_datapoints()
-                print("Master node datapoint broadcast success",dp_list,"\n",worker_list)
+                # print(f"Master {self.cur_step} datapoint broadcast success")
+                # print("Byzantines:",byzantine_workers)
                 self.set_coded_buffer(worker_list)
-                # templist=[]
-                # for idx, dps in enumerate(dp_list):
-                #     if idx in self._adversaries[0]:
-                #         for dp in dps:
-                #             if dp not in templist:
-                #                 templist.append(dp)
-                # print(f"Datapoints sent to faulty workers: {templist}")
             
             if self.comm_type == 'Bcast':
                 self.async_bcast_layer_weights_bcast()
@@ -154,32 +150,38 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self.async_bcast_layer_weights_async()
 
             if self._redundancy:
+                print(f"Master {self.cur_step} Byzantine Workers: {byzantine_workers}")
                 gradient_fetch_requests = self.fetch_coded_gradients_start(worker_list)
                 statuses = [MPI.Status() for _ in gradient_fetch_requests]
                 MPI.Request.Waitall(requests=gradient_fetch_requests, statuses=statuses)
                 faulty_grad_datapoints=[]
                 for dpidx, dp_buffer in enumerate(self.coded_buffer):
-                    if dpidx not in byzantine_workers:
-                        dp_flag = True
-                        first=dp_buffer[0]
-                        for widx, worker_buffer in enumerate(dp_buffer):
+                    dp_flag = True
+
+                    # this could be a faulty worker
+                    # will cause master to "detect" same byzantine workers multiple times
+                    first=dp_buffer[0] 
+                    if worker_list[dpidx][0] in byzantine_workers:
+                        f = 0
+                        while f < len(worker_list[dpidx])-1 and worker_list[dpidx][f] in byzantine_workers:
+                            f += 1
+                        first=dp_buffer[f]
+
+                    for widx, worker_buffer in enumerate(dp_buffer):
+                        if worker_list[dpidx][widx] not in byzantine_workers:
                             for layer_idx, param in enumerate(worker_buffer):
-                                # print(f"layer ({len(self.coded_buffer[dpidx][widx][layer_idx])}) {type(self.coded_buffer[dpidx][widx][layer_idx])}\n", 
-                                #         self.coded_buffer[dpidx][widx][layer_idx])
-                                # print("using np.array_equal(): ", np.array_equal(self.coded_buffer[dpidx][widx][layer_idx],first[layer_idx]))
-                                # print("using all(): ",(self.coded_buffer[dpidx][widx][layer_idx]==first[layer_idx]).all())
-                                if not np.allclose(worker_buffer[layer_idx],first[layer_idx]) :
+                                if not np.allclose(worker_buffer[layer_idx],first[layer_idx],rtol=1e-05,atol=1e-05) :
                                    faulty_grad_datapoints.append(dpidx)
                                    dp_flag=False
                                    break
                             if not dp_flag:
                                 break
                 if faulty_grad_datapoints:
-                    print("faulty_grad_datapoints ",faulty_grad_datapoints) 
+                    print(f"Master {self.cur_step} datapoints with faulty gradients: {faulty_grad_datapoints}") 
                     # redistribute datapoints for second round 
                     # rule: datapoints must go to different workers than before
                     new_dp_list, new_worker_list = self.async_bcast_redundant_datapoints(dp_list, faulty_grad_datapoints)
-                    print(f"\told list: {dp_list}\n\tnew list: {new_dp_list}")
+                    # print(f"\told list: {dp_list}\n\tnew list: {new_dp_list}")
                     combined_list = [[] for _ in new_worker_list]
                     for dp in range(len(worker_list)):
                         for rank in worker_list[dp]:
@@ -193,10 +195,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     MPI.Request.Waitall(requests=redundant_fetch_requests, statuses=statuses)
                     
                     # determine the correct grad via majority vote
-                    print("\tredundant gradients received...\n\tfind majority values...")    
-                    for idx, dp_ranks in enumerate(combined_list):
-                        if idx in faulty_grad_datapoints:
-                            print(f"DP {idx} {dp_ranks}")
+                    # print("\tredundant gradients received...\n\tfind majority values...")    
+                    # for idx, dp_ranks in enumerate(combined_list):
+                    #     if idx in faulty_grad_datapoints:
+                    #         print(f"DP {idx} {dp_ranks}")
                     faulty_worker_ranks = []
                     for dpidx in range(self.batch_size):
                         # only consider buffers if dpidx in faulty_grad_datapoints
@@ -219,11 +221,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                             """
                                             if not np.allclose(self.coded_buffer[dpidx][widx][pidx], self.coded_buffer[dpidx][key][pidx],rtol=1e-05,atol=1e-05) :
                                                 params_match = False
-                                                # break
+                                                break
                                         if params_match :
                                             grad_dict[key].append(widx)
                                             grad_match = True
-                                            # break
+                                            break
                                     if not grad_match :
                                         grad_dict[widx] = [widx]
                                         
@@ -236,22 +238,22 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                     max_size_key = key
                             # print(f"Datapoint [{dpidx}] {max_size}/{len(self.coded_buffer[dpidx])} workers agree")
                             correct_param_means=[]
-                            for layer_idx, param in enumerate(self.network.parameters()):
-                                correct_param_means.append(np.mean(self.coded_buffer[dpidx][max_size_key][layer_idx]))
-                            #print(f"dp {dpidx} correct layer mean: {correct_param_means}")
+                            # for layer_idx, param in enumerate(self.network.parameters()):
+                            #     correct_param_means.append(np.mean(self.coded_buffer[dpidx][max_size_key][layer_idx]))
+                            # print(f"dp {dpidx} correct layer mean: {correct_param_means}")
                             for key in grad_dict :
                                 if key != max_size_key :
                                     for widx in grad_dict[key] :
-                                        faulty_means = []
-                                        for layer_idx, param in enumerate(self.network.parameters()):
-                                            faulty_means.append(np.mean(self.coded_buffer[dpidx][widx][layer_idx]))
-                                        print(f"\t\t{combined_list[dpidx][widx]} faulty layer  mean: {faulty_means}")
+                                        # faulty_means = []
+                                        # for layer_idx, param in enumerate(self.network.parameters()):
+                                        #     faulty_means.append(np.mean(self.coded_buffer[dpidx][widx][layer_idx]))
+                                        # print(f"\t\t{combined_list[dpidx][widx]} faulty layer  mean: {faulty_means}")
                                         curr_faulty_workers.append(combined_list[dpidx][widx])
-                                        # rank = combined_list[dpidx][widx]
-                                        if widx >= len(worker_list[dpidx]):
-                                            rank = new_worker_list[dpidx][widx-len(worker_list[dpidx])]
-                                        else :
-                                            rank = worker_list[dpidx][widx]
+                                        rank = combined_list[dpidx][widx]
+                                        # if widx >= len(worker_list[dpidx]):
+                                        #     rank = new_worker_list[dpidx][widx-len(worker_list[dpidx])]
+                                        # else :
+                                        #     rank = worker_list[dpidx][widx]
                                         
                                         if rank not in faulty_worker_ranks:
                                             faulty_worker_ranks.append(rank)
@@ -260,48 +262,52 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                             #     print(f"\tgrad dict: {grad_dict}")
                             print(f"faulty workers from dp {dpidx} : {curr_faulty_workers}")
                             
-                    print("Master: step {self.cur_step} faulty worker ranks: ",faulty_worker_ranks)
+                    print(f"Master: step {self.cur_step} faulty worker ranks: ",faulty_worker_ranks)
                     for rank in faulty_worker_ranks:
                         byzantine_workers.append(rank)
 
+                    """ TO DO
+
+                    blacklist workers such that they receive no more datapoints, 
+                        adjust world size, num workers, etc
+
+                    currently, byzantine workers are used then ignored
+                    END TO DO """
+
                     # aggregate gradients of all non-faulty workers
-                    """ temporary: add correct grad once for each worker """
-                    total_grads = 0
                     for dpidx, grad_list in enumerate(self.coded_buffer):
                         for widx, grad in enumerate(grad_list):
                             if combined_list[dpidx][widx] not in byzantine_workers:
-                                for _ in range(self._num_grad_to_collect) :
-                                    for layer_index, param in enumerate(self.network.parameters()):
-                                        self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=combined_list[dpidx][widx])
-                                        total_grads = total_grads + 1
-                                break
-                    print("total grads:",total_grads)
-                    # for dpidx, grad_list in enumerate(self.coded_buffer):
-                    #     for widx, grad in enumerate(grad_list):
-                    #         if combined_list[dpidx][widx] not in byzantine_workers:
-                    #             for layer_index, param in enumerate(self.network.parameters()):
-                    #                 self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=combined_list[dpidx][widx])
+                                total_grads_t = total_grads_t + 1
+                                used_grads_t = used_grads_t + 1
+                                for layer_index, param in enumerate(self.network.parameters()):
+                                    self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=combined_list[dpidx][widx] - 1)
+                            else :
+                                # for layer_index, param in enumerate(self.network.parameters()):
+                                total_grads_t = total_grads_t + 1
                             
+                    print(f"Master {self.cur_step} used gradients: {used_grads_t}/{total_grads_t}")
 
                 else :
                     print(f"[Master] no faulty gradients in step {self.cur_step}")
                     redundancy_requests=[]
                     for rank in range(1,self.world_size):
                         # send an empty list to each worker with tag=9
-                        redundancy_requests.append(self.comm.isend([], dest=rank, tag=9))
-                    for i in len(redundancy_requests):
-                        redundancy_request[i].wait()
+                        redundancy_requests.append(self.comm.isend([], dest=rank, tag=8))
+                    for i in range(len(redundancy_requests)):
+                        redundancy_requests[i].wait()
+
                     for dpidx, grad_list in enumerate(self.coded_buffer):
                         for widx, grad in enumerate(grad_list):
-                            if combined_list[dpidx][widx] not in byzantine_workers:
-                                for _ in range(self._num_grad_to_collect) :
-                                    for layer_index, param in enumerate(self.network.parameters()):
-                                        self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=combined_list[dpidx][widx])
-                                        total_grads = total_grads + 1
-
-
-                if self.cur_step > 1:
-                    sys.exit()
+                            if worker_list[dpidx][widx] not in byzantine_workers:
+                                total_grads_t = total_grads_t + 1
+                                used_grads_t = used_grads_t + 1
+                                for layer_index, param in enumerate(self.network.parameters()):
+                                    self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][widx] - 1)
+                            else :
+                                # for layer_index, param in enumerate(self.network.parameters()):
+                                total_grads_t = total_grads_t + 1
+                    print(f"Master {self.cur_step} used gradients: {used_grads_t}/{total_grads_t}")
 
             # end if self.redundancy
             else:
@@ -366,7 +372,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         self._grad_aggregate_buffer[g_idx] = self._historical_buffer[g_idx]
 
             # update by given gradient filter
-            if self._update_mode == 'normal':
+            if self._redundancy:
+                """ TEMPORARY: average gradients """
+                method_start = time.time()
+                self._avg_received_grads_n(used_grads_t)
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'normal':
                 method_start = time.time()
                 self._avg_received_grads()
                 method_duration = time.time() - method_start
@@ -558,7 +569,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
         return res 
 
     def async_bcast_redundant_datapoints(self, old_dp_list, datapoints):
-        print('distributing new datapoints')
         new_dp_list = [[] for _ in range(self.world_size)]      
         new_worker_list = [[] for _ in range(self.batch_size)]
         req_list = []
@@ -575,11 +585,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     dst = random.choice(avail)
                 new_dp_list[dst].append(dp)
                 new_worker_list[dp].append(dst)
-                # print(f"dp {dp} --> {count} attempts to distribute")
 
         for i in range(self.world_size):
             if i != 0:
-                req_list.append(self.comm.isend(new_dp_list[i], dest=i, tag=9))
+                req_list.append(self.comm.isend(new_dp_list[i], dest=i, tag=8))
         for i in range(len(req_list)):
             req_list[i].wait()
         return new_dp_list, new_worker_list
@@ -588,6 +597,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         """
         broadcasting current step to workers
         """
+        print(f"Master {self.cur_step} begin sending datapoints")
         dp_list = [[] for _ in range(self.world_size)]      # list of datapoints (indices) for each worker
                                                             # dp_list[i] = datapoints for ith worker
         worker_list = [[] for _ in range(self.batch_size)]  # list of workers (ranks) for each datapoint index 
@@ -609,14 +619,16 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 dp_list[dst].append(dp)
                 worker_list[dp].append(dst)
                 
-                if len(dp_list[dst]) >= avg_size :
-                    avail.remove(dst)
+                # if len(dp_list[dst]) >= avg_size :
+                #    avail.remove(dst)
 
         for i in range(self.world_size):
             if i != 0:
                 req_list.append(self.comm.isend(dp_list[i], dest=i, tag=9))
         for i in range(len(req_list)):
             req_list[i].wait()
+   
+        print(f"Master {self.cur_step} done sending datapoints")
 
         return dp_list, worker_list
 
@@ -922,6 +934,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def _avg_received_grads(self):
         for i in range(len(self._grad_aggregate_buffer)):
             self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
+
+    def _avg_received_grads_n(self, n):
+        # print("\t\taveraging",n,"gradients...")
+        if n > 0:
+            for i in range(len(self._grad_aggregate_buffer)):
+                self._grad_aggregate_buffer[i] /= n
 
     def _redundancy_filter(self):
         for i, grad in enumerate(self._grad_aggregate_buffer):
