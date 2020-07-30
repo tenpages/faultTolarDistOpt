@@ -7,6 +7,7 @@ from mpi4py import MPI
 from torch import nn
 from torch.autograd import Variable
 from statistics import mean
+import random
 
 import numpy as np
 
@@ -30,6 +31,7 @@ class DistributedWorker(NN_Trainer):
         self.next_step = 0
 
         self.redundancy = kwargs['redundancy']
+        self._p = kwargs['p']
         self.batch_size = kwargs['batch_size']
         self.max_epochs = kwargs['max_epochs']
         self.momentum = kwargs['momentum']
@@ -130,14 +132,20 @@ class DistributedWorker(NN_Trainer):
                 if self.cur_step == self._max_steps:
                     break
 
+                red_flag = False
                 if self.redundancy:
                         dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints())
-                        # print(f"Worker [{self.rank}] datapoints {dp_list.tolist()}")
-                        # print(f"Worker {self.rank} step {self.cur_step} first datapoints received ")
+
+                        # receive empty list if  blacklisted
+                        if not dp_list.tolist():
+                            print("Worker {} step {} received no datapoints".format(self.rank,self.cur_step))
+                            red_flag = True
+                        else :
+                            print(f"Worker {self.rank} step {self.cur_step} datapoints {dp_list.tolist()}")
 
                 X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
                 
-                if self.redundancy :
+                if self.redundancy and not red_flag:
                         X_batch = torch.index_select(train_input_batch,0,dp_list) 
                         y_batch = torch.index_select(train_label_batch,0,dp_list) 
                         X_batch = Variable(X_batch)
@@ -201,15 +209,15 @@ class DistributedWorker(NN_Trainer):
                     loss_list = []
                     forward_start_time = time.time()
                     logits = self.network(X_batch)
-                    if self.redundancy:
-                        """
-                        testing individual loss values and gradients
-                        """
+                    if self.redundancy and not red_flag:
                         loss = self.criterion(logits,y_batch)
                         numlayers = 0
                         for _ in self.network.parameters():
                             numlayers = numlayers + 1
                         send_check_requests=[]
+                        not_p = random.random()
+                        if not_p < self._p and self.rank in self._fail_workers[self.cur_step]:
+                            print("Worker {} step {} sending faulty gradient to master".format(self.rank,self.cur_step))
                         for idx, log in enumerate(logits):
                             self.optimizer.zero_grad()
                             temp1 = torch.index_select(logits,0,torch.tensor(idx))
@@ -221,9 +229,8 @@ class DistributedWorker(NN_Trainer):
                             for param_idx, param in enumerate(self.network.parameters()):
                                 grad = param.grad.data.numpy().astype(np.float64)
 
-                                """ implement randomized error generation based on prob(send_error) > q """
-                                if self.rank in self._fail_workers[self.cur_step]:
-                                    # print(f"Error sent by worker {self.rank}")
+                                """  randomized error generation based on prob(send_error) < p """
+                                if self.rank in self._fail_workers[self.cur_step] and not_p < self._p :
                                     grad = err_simulation(grad, self._err_mode)
 
                                 req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(dp_list[idx]*numlayers)+param_idx)
@@ -232,15 +239,10 @@ class DistributedWorker(NN_Trainer):
                         for req in send_check_requests:
                             req.wait()
 
-                        # all gradients sent
-                        # now wait for a new list of datapoints
-                        #   if empty, continue 
-                        #   else, repeat lines 204-229 for with UNCHANGED network
-                        # print(f"Worker {self.rank} step {self.cur_step} fetching second list")
                         new_dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints_redundant())
 
                         if new_dp_list.tolist():
-                            print(f"Worker {self.rank} step {self.cur_step} second datapoints received {new_dp_list}")
+                            print(f"Worker {self.rank} step {self.cur_step} second datapoints received {new_dp_list.tolist()}")
                             # self.network.train()
                             self.optimizer.zero_grad()
                             # print(f"Worker [{self.rank}] redundant datapoints {new_dp_list.tolist()}")
@@ -268,9 +270,8 @@ class DistributedWorker(NN_Trainer):
                                 for param_idx, param in enumerate(self.network.parameters()):
                                     grad = param.grad.data.numpy().astype(np.float64)
 
-                                    """ implement randomized error generation based on prob(send_error) > q """
-                                    if self.rank in self._fail_workers[self.cur_step]:
-                                        # print(f"Error sent by worker {self.rank}")
+                                    """  randomized error generation based on prob(send_error) < p """
+                                    if self.rank in self._fail_workers[self.cur_step] and not_p < self._p:
                                         grad = err_simulation(grad, self._err_mode)
 
                                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(new_dp_list[idx]*numlayers)+param_idx)

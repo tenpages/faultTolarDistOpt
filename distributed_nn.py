@@ -101,6 +101,10 @@ def add_fit_args(parser):
                         help='calculate or not the cosine distance between received gradients and the filtered gradient')
     parser.add_argument('--redundancy', action='store_true', default=False,
                         help='use redundancy filtering of byzantine workers, distribute identical batches')
+    parser.add_argument('--p', type=float, default=.00,
+                        help='the probability from 0 to 1 that byzantine workers will send errors in redundancy scheme')
+    parser.add_argument('--q', type=float, default=1.00,
+                        help='the probability from 0 to 1 that the master will check for errors in redundancy scheme')
 
     args = parser.parse_args()
     return args
@@ -271,6 +275,7 @@ def prepare(args, rank, world_size):
             'adversaries': adversaries,
             'err_mode': args.err_mode,
             'dataset_size': len(training_set),
+            'q': args.q,
         }
         kwargs_worker = {
             'redundancy': args.redundancy,
@@ -292,6 +297,7 @@ def prepare(args, rank, world_size):
             'total_size': data_shape,
             'channel': training_set[0][0].size()[0],
             '1d_size': training_set[0][0].size()[1],
+            'p': args.p,
         }
     # print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)
@@ -323,4 +329,4 @@ if __name__ == "__main__":
             #        print(worker_fc_nn.rank,indx,target)
 
             worker_fc_nn.train(train_loader=train_loader, test_loader=test_loader)
-            print("Now the next step is: {}".format(worker_fc_nn.next_step))
+            print("Worrker {} Now the next step is: {}".format(rank,worker_fc_nn.next_step))
