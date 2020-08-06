@@ -230,7 +230,7 @@ class DistributedWorker(NN_Trainer):
                                 grad = param.grad.data.numpy().astype(np.float64)
 
                                 """  randomized error generation based on prob(send_error) < p """
-                                if self.rank in self._fail_workers[self.cur_step] and not_p < self._p :
+                                if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p :
                                     grad = err_simulation(grad, self._err_mode)
 
                                 req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(dp_list[idx]*numlayers)+param_idx)
@@ -271,7 +271,8 @@ class DistributedWorker(NN_Trainer):
                                     grad = param.grad.data.numpy().astype(np.float64)
 
                                     """  randomized error generation based on prob(send_error) < p """
-                                    if self.rank in self._fail_workers[self.cur_step] and not_p < self._p:
+                                    if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p:
+                                        print("Worker {} step {} sending faulty gradient to master again".format(self.rank,self.cur_step))
                                         grad = err_simulation(grad, self._err_mode)
 
                                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(new_dp_list[idx]*numlayers)+param_idx)
