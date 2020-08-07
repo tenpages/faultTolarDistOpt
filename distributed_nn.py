@@ -101,6 +101,8 @@ def add_fit_args(parser):
                         help='calculate or not the cosine distance between received gradients and the filtered gradient')
     parser.add_argument('--redundancy', action='store_true', default=False,
                         help='use redundancy filtering of byzantine workers, distribute identical batches')
+    parser.add_argument('--red-seed', type=int, default=0,
+                        help='seed for redunancy filtering shuffle')
     parser.add_argument('--p', type=float, default=.00,
                         help='the probability from 0 to 1 that byzantine workers will send errors in redundancy scheme')
     parser.add_argument('--q', type=float, default=1.00,
@@ -168,14 +170,14 @@ def load_data(dataset, seed, args, rank, world_size):
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]), group_size=group_size, start_from=group_size*(rank-1))
-                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(False if args.redundancy else True))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(True))
             elif args.data_distribution == 'same':
                 torch.manual_seed(TORCH_SEED_+rank)
                 training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]))
-                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(False if args.redundancy else True))
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(True))
         test_loader = None
         return train_loader, training_set, test_loader
 
@@ -279,6 +281,7 @@ def prepare(args, rank, world_size):
         }
         kwargs_worker = {
             'redundancy': args.redundancy,
+            'red_seed': args.red_seed,
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
             'max_epochs': args.epochs,
@@ -329,4 +332,5 @@ if __name__ == "__main__":
             #        print(worker_fc_nn.rank,indx,target)
 
             worker_fc_nn.train(train_loader=train_loader, test_loader=test_loader)
+
             print("Worrker {} Now the next step is: {}".format(rank,worker_fc_nn.next_step))

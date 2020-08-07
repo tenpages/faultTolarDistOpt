@@ -512,9 +512,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 f.write('{:.8f},{:.8f}\n'.format(method_duration,update_duration))
             self.cur_step += 1
 
-        # celog = open("{}comp_eff.txt".format(self._train_dir),"a")
-        # celog.write(f"Final: used={used_grads} total={total_grads} f={self._s}\n")
-        # celog.close()
         comp_eff[1].append(used_grads)
         comp_eff[2].append(total_grads)
         comp_eff[0].append(self.cur_step)

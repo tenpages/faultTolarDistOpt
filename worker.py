@@ -31,6 +31,7 @@ class DistributedWorker(NN_Trainer):
         self.next_step = 0
 
         self.redundancy = kwargs['redundancy']
+        self.red_seed = kwargs['red_seed']
         self._p = kwargs['p']
         self.batch_size = kwargs['batch_size']
         self.max_epochs = kwargs['max_epochs']
@@ -109,6 +110,7 @@ class DistributedWorker(NN_Trainer):
         first = True
 
         print("Worker {}: starting training".format(self.rank))
+        torch.manual_seed(self.red_seed)
         flag = True
         for num_epoch in range(loader_epoch, self.max_epochs):
             for batch_idx, (train_input_batch, train_label_batch) in enumerate(train_loader):
@@ -144,6 +146,7 @@ class DistributedWorker(NN_Trainer):
                             print(f"Worker {self.rank} step {self.cur_step} datapoints {dp_list.tolist()}")
 
                 X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
+                # print("Worker {} labels {}".format(self.rank, y_batch.tolist()))
                 
                 if self.redundancy and not red_flag:
                         X_batch = torch.index_select(train_input_batch,0,dp_list) 
