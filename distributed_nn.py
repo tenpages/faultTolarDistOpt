@@ -101,8 +101,6 @@ def add_fit_args(parser):
                         help='calculate or not the cosine distance between received gradients and the filtered gradient')
     parser.add_argument('--redundancy', action='store_true', default=False,
                         help='use redundancy filtering of byzantine workers, distribute identical batches')
-    parser.add_argument('--red-seed', type=int, default=0,
-                        help='seed for redunancy filtering shuffle')
     parser.add_argument('--p', type=float, default=.00,
                         help='the probability from 0 to 1 that byzantine workers will send errors in redundancy scheme')
     parser.add_argument('--q', type=float, default=1.00,
@@ -281,7 +279,6 @@ def prepare(args, rank, world_size):
         }
         kwargs_worker = {
             'redundancy': args.redundancy,
-            'red_seed': args.red_seed,
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
             'max_epochs': args.epochs,

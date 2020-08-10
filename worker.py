@@ -31,7 +31,7 @@ class DistributedWorker(NN_Trainer):
         self.next_step = 0
 
         self.redundancy = kwargs['redundancy']
-        self.red_seed = kwargs['red_seed']
+        self.red_seed = -1
         self._p = kwargs['p']
         self.batch_size = kwargs['batch_size']
         self.max_epochs = kwargs['max_epochs']
@@ -109,8 +109,12 @@ class DistributedWorker(NN_Trainer):
         iter_start_time = 0
         first = True
 
+        if self.redundancy:
+            self.fetch_seed()                   # set self.red_seed
+            assert (self.red_seed >= 0)
+            torch.manual_seed(self.red_seed)    # set manual seed for data shuffling
+
         print("Worker {}: starting training".format(self.rank))
-        torch.manual_seed(self.red_seed)
         flag = True
         for num_epoch in range(loader_epoch, self.max_epochs):
             for batch_idx, (train_input_batch, train_label_batch) in enumerate(train_loader):
@@ -357,6 +361,12 @@ class DistributedWorker(NN_Trainer):
         req = self.comm.irecv(source=0, tag=9)
         datapoints = req.wait()
         return datapoints
+
+    def fetch_seed(self):
+        req = self.comm.irecv(source=0,tag=7)
+        seed = req.wait()
+        print('Worker {}: fetch seed {}'.format(self.rank, seed))
+        self.red_seed = seed
 
     def async_fetch_weight_async(self):
         request_layers = []

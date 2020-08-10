@@ -6,7 +6,6 @@ import hdmedians as hd
 import torch
 from torch.autograd import Variable
 import random
-from random import randrange
 
 import math
 from math import ceil as ceil
@@ -116,6 +115,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def start(self):
         self.async_bcast_step()
+        if self._redundancy :
+            self.bcast_seed()
 
         if self._checkpoint_step != 0:
             # torch.set_rng_state(torch.load(self._train_dir+"rng_state_"+str(self._checkpoint_step)))
@@ -176,10 +177,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                             if not dp_flag:
                                 break
                 else:
-                    print(f"Master {self.cur_step} skipping fault check")
+                    print(f"Master step {self.cur_step} skipping fault check")
 
                 if faulty_grad_datapoints:
-                    print(f"Master {self.cur_step} datapoints with faulty gradients: {faulty_grad_datapoints}") 
+                    print(f"Master step {self.cur_step} datapoints with faulty gradients: {faulty_grad_datapoints}") 
                     # redistribute datapoints for second round 
                     # rule: datapoints must go to different workers than before
                     new_dp_list, new_worker_list = self.async_bcast_redundant_datapoints(dp_list, faulty_grad_datapoints)
@@ -242,7 +243,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                         if rank not in faulty_worker_ranks:
                                             faulty_worker_ranks.append(rank)
 
-                            print(f"faulty workers from dp {dpidx} : {curr_faulty_workers}")
+                            print(f"Master step {self.cur_step} faulty workers from dp {dpidx} : {curr_faulty_workers}")
                             
                     print(f"Master: step {self.cur_step} faulty worker ranks: ",faulty_worker_ranks)
 
@@ -543,6 +544,16 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for i in range(self.world_size):
             if i != 0 :
                 req_list.append(self.comm.isend(self.cur_step, dest=i, tag=10))
+        for i in range(len(req_list)):
+            req_list[i].wait()
+
+    def bcast_seed(self):
+        req_list = []
+        man_seed = random.randrange(0,10000)
+        print('Master: Broadcasting seed {} to workers'.format(man_seed))
+        for i in range(self.world_size):
+            if i != 0:
+                req_list.append(self.comm.isend(man_seed, dest=i,tag=7))
         for i in range(len(req_list)):
             req_list[i].wait()
 
