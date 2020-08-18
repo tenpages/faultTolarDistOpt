@@ -11,6 +11,10 @@ import random
 
 import numpy as np
 
+from scipy.special import erfinv
+from numpy.random import randn
+from math import sqrt
+
 from compress_gradient import compress
 from model_ops.fc import Full_Connected
 from model_ops.lenet import LeNet
@@ -222,9 +226,13 @@ class DistributedWorker(NN_Trainer):
                         for _ in self.network.parameters():
                             numlayers = numlayers + 1
                         send_check_requests=[]
-                        not_p = random.random()
-                        if not_p < self._p and self.rank in self._fail_workers[self.cur_step]:
+
+                        not_p = random.random()                 # use random value not_p to make decision
+                        send_err = self.p_decision(not_p)       # if send_err == 1 then send error
+
+                        if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
                             print("Worker {} step {} sending faulty gradient to master".format(self.rank,self.cur_step))
+
                         for idx, log in enumerate(logits):
                             self.optimizer.zero_grad()
                             temp1 = torch.index_select(logits,0,torch.tensor(idx))
@@ -237,7 +245,8 @@ class DistributedWorker(NN_Trainer):
                                 grad = param.grad.data.numpy().astype(np.float64)
 
                                 """  randomized error generation based on prob(send_error) < p """
-                                if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p :
+                                # if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p :
+                                if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
                                     grad = err_simulation(grad, self._err_mode)
 
                                 req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(dp_list[idx]*numlayers)+param_idx)
@@ -250,8 +259,7 @@ class DistributedWorker(NN_Trainer):
 
                         if new_dp_list.tolist():
                             print(f"Worker {self.rank} step {self.cur_step} second datapoints received {new_dp_list.tolist()}")
-                            # self.network.train()
-                            self.optimizer.zero_grad()
+                            # self.optimizer.zero_grad()
                             # print(f"Worker [{self.rank}] redundant datapoints {new_dp_list.tolist()}")
 
                             # get new inputs/targets the batch
@@ -277,9 +285,10 @@ class DistributedWorker(NN_Trainer):
                                 for param_idx, param in enumerate(self.network.parameters()):
                                     grad = param.grad.data.numpy().astype(np.float64)
 
-                                    """  randomized error generation based on prob(send_error) < p """
-                                    if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p:
-                                        print("Worker {} step {} sending faulty gradient to master again".format(self.rank,self.cur_step))
+                                    """  should this be determined by previous decision?   """
+                                    # if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p:
+                                    if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
+                                        # print("Worker {} step {} sending faulty gradient to master again".format(self.rank,self.cur_step))
                                         grad = err_simulation(grad, self._err_mode)
 
                                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(new_dp_list[idx]*numlayers)+param_idx)
@@ -365,8 +374,20 @@ class DistributedWorker(NN_Trainer):
     def fetch_seed(self):
         req = self.comm.irecv(source=0,tag=7)
         seed = req.wait()
-        print('Worker {}: fetch seed {}'.format(self.rank, seed))
         self.red_seed = seed
+
+    def p_decision(self, p) :
+        mu = 0.00
+        sigma = 1.00
+
+        r = randn()
+
+        quantile = mu + sigma * sqrt(2)*erfinv(2*p-1)
+
+        if quantile >= r :
+            return 1
+        else:
+            return 0
 
     def async_fetch_weight_async(self):
         request_layers = []
@@ -594,3 +615,4 @@ def err_simulation(grad, mode, cyclic=False):
             return np.add(adv, grad)
         else:
             return ADVERSARY_ * grad
+
