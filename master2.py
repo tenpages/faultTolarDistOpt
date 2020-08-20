@@ -154,7 +154,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 fault_check = self.q_decision(not_q)
                 dp_list, worker_list = (None,None)
                 # if fault_check then async_bcast_datapoints_redundant
-                if fault_check:
+                print("_q == {} {}".format(self._q,type(self._q)))
+                if self._q == 1.0 or fault_check:
                     dp_list, worker_list = self.async_bcast_datapoints_redundant()
                 # else async_bcast_datapoints_singular
                 else:
@@ -178,7 +179,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                 # not_q = random.random()
                 # fault_check = self.q_decision(not_q)
-                if fault_check:
+                if self._q == 1.0 or fault_check:
                     print("Master step {} check for faults".format(self.cur_step))
                     for dpidx, dp_buffer in enumerate(self.coded_buffer):
                         dp_flag = True

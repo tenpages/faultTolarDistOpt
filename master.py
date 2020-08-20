@@ -168,7 +168,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                 # check for faults with probability q
                 not_q = random.random()
-                if self.q_decision(not_q):
+                if self._q == 1.0 or self.q_decision(not_q):
                     print("Master step {} check for faults".format(self.cur_step))
                     for dpidx, dp_buffer in enumerate(self.coded_buffer):
                         dp_flag = True
