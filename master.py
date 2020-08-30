@@ -432,7 +432,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def _err_simulator(self):
         print(self._err_mode)
         if self._err_mode == 'cwtm':
-            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]-1))
 
             for g_idx, grads in enumerate(self._grad_aggregate_buffer):
                 coor_wise_sorted = np.sort(np.array(grads)[_honest], axis=0)
