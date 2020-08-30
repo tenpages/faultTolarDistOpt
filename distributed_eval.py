@@ -53,7 +53,7 @@ def add_fit_args(parser):
                         help='which dataset used in training, MNIST and Cifar10 supported currently')
     parser.add_argument('--network', type=str, default='LeNet', metavar='N',
                         help='which kind of network we are going to use, support LeNet and ResNet currently')
-    parser.add_argument('--begin-from', type=str, default=1, metavar='N',
+    parser.add_argument('--begin-from', type=int, default=1, metavar='N',
                         help='begin evaluation on model from step N')
     args = parser.parse_args()
     return args
