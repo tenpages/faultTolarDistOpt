@@ -53,6 +53,8 @@ def add_fit_args(parser):
                         help='which dataset used in training, MNIST and Cifar10 supported currently')
     parser.add_argument('--network', type=str, default='LeNet', metavar='N',
                         help='which kind of network we are going to use, support LeNet and ResNet currently')
+    parser.add_argument('--begin-from', type=str, default=1, metavar='N',
+                        help='begin evaluation on model from step N')
     args = parser.parse_args()
     return args
 
@@ -66,7 +68,7 @@ class DistributedEvaluator(object):
     '''
 
     def __init__(self, **kwargs):
-        self._cur_step = 0
+        self._cur_step = kwargs['begin_from'] - 1
         self._model_dir = kwargs['model_dir']
         self._eval_freq = int(kwargs['eval_freq'])
         self._eval_batch_size = kwargs['eval_batch_size']
@@ -164,7 +166,8 @@ if __name__ == "__main__":
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
                         'eval_batch_size': args.eval_batch_size, 'network': args.network,
                         'input_size': data_shape, 'channel': testing_set[0][0].size()[0],
-                        '1d_size': testing_set[0][0].size()[1]}
+                        '1d_size': testing_set[0][0].size()[1],
+                        'begin_from':args.begin_from}
     evaluator_nn = DistributedEvaluator(**kwargs_evaluator)
     print("evaluator initiated.")
     evaluator_nn.evaluate(validation_loader=test_loader)
