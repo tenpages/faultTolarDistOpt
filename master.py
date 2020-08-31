@@ -441,7 +441,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     self._grad_aggregate_buffer[g_idx][i-1] = fault_gradient
             print(self._err_mode,"err sim finished")
         if self._err_mode == 'krum':
-            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]-1))
 
             concatenated_gradients = None
             separator = []
@@ -479,7 +479,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     self._grad_aggregate_buffer[g_idx][i-1] = fault_gradient[g_idx]
             print(self._err_mode,"err sim finished")
         if self._err_mode == 'krum2':
-            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]-1))
 
             concatenated_gradients = None
             separator = []
@@ -518,7 +518,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             print(self._err_mode,"err sim finished")
         if self._err_mode == 'normfilter':
             # Reversing direction and being the (n-f) largest norm
-            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]-1))
 
             concatenated_gradients = None
             separator = []
@@ -541,7 +541,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             print(self._err_mode,"err sim finished")
         if self._err_mode == 'normfilter2':
             # Reversing direction of honest average and being the (n-f) largest norm
-            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]-1))
 
             concatenated_gradients = None
             separator = []
@@ -565,7 +565,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             print(self._err_mode,"err sim finished")
         if self._err_mode == 'normfilter3':
             # Reversing direction and being the largest norm
-            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
+            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]-1))
 
             concatenated_gradients = None
             separator = []
