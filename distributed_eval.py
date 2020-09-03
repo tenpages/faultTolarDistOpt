@@ -13,6 +13,7 @@ from model_ops.lenet import LeNet
 from model_ops.resnet import ResNet18
 from model_ops.resnetn import ResNet18N
 from model_ops.vgg import VGG13, VGG16, VGG19
+from model_ops.nin import NiN
 from nn_ops import NN_Trainer
 
 import torch
@@ -89,6 +90,8 @@ class DistributedEvaluator(object):
             self.network = VGG16(kwargs['channel'])
         elif self.network_config == 'VGG19':
             self.network = VGG19(kwargs['channel'])
+        elif self.network_config == 'NiN':
+            self.network = NiN(kwargs['channel'])
         self.results = np.array([[0.],[1.],[2.],[3.]], dtype=np.float64)
 
     def evaluate(self, validation_loader):
