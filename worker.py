@@ -14,6 +14,7 @@ from model_ops.lenet import LeNet
 from model_ops.resnet import ResNet18
 from model_ops.resnetn import ResNet18N
 from model_ops.vgg import VGG13, VGG16, VGG19
+from model_ops.nin import NiN
 from nn_ops import NN_Trainer
 
 STEP_START_ = 1
@@ -63,6 +64,8 @@ class DistributedWorker(NN_Trainer):
             self.network = VGG16(self._channel)
         elif self.network_config == 'VGG19':
             self.network = VGG19(self._channel)
+        elif self.network_config == 'NiN':
+            self.network = NiN(self._channel)
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
@@ -190,6 +193,8 @@ class DistributedWorker(NN_Trainer):
                         loss = self.criterion(logits, y_batch)
                     elif "VGG" in self.network_config:
                         loss = self.criterion(logits, y_batch)
+                    elif "NiN" in self.network_config:
+                        loss = self.criterion(logits, y_batch)
                     else:
                         raise Exception("No such network as "+self.network_config)
                     epoch_avg_loss += loss.item()
@@ -202,6 +207,8 @@ class DistributedWorker(NN_Trainer):
                     elif "ResNet" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
                     elif "VGG" in self.network_config:
+                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                    elif "NiN" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
 
                     prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))

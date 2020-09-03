@@ -16,6 +16,7 @@ from model_ops.fc import Full_Connected_Split
 from model_ops.resnet import ResNet18
 from model_ops.resnetn import ResNet18N
 from model_ops.vgg import VGG13, VGG16, VGG19
+from model_ops.nin import NiN
 from nn_ops import NN_Trainer, accuracy
 from optim.sgd_modified import SGDModified
 
@@ -87,6 +88,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.network = VGG16(self._channel)
         elif self.network_config == 'VGG19':
             self.network = VGG19(self._channel)
+        elif self.network_config == "NiN":
+            self.network = NiN(self._channel)
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
