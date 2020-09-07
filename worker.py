@@ -409,7 +409,7 @@ def err_simulation(grad, mode, cyclic=False):
             assert adv.shape == grad.shape
             return np.add(adv, grad)
         else:
-            return ADVERSARY_ * grad
+            return -1 * grad
     elif mode == 'constant':
         if cyclic:
             adv = np.ones(grad.shape, dtype=np.float64)*CONST_
