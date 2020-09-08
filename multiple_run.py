@@ -27,24 +27,21 @@ for fault_type in fault_types:
 				'--eval-freq', '1']
 		print("Now running experiments on "+fault_type+" using "+model_name+" using command:")
 		print(' '.join(args))
-		results = subprocess.run(args, stdout=subprocess.PIPE)
-		with open('logs-paper2-cifar-64-' + fault_type + '-' + model_name + '-40-4','w') as f:
-			f.write(results.stdout.decode())
-		print("finished")
-		print("========================")
+		results = subprocess.run(args, capture_output=True)
+		if results.returncode==0 and results.stdout != None:
+			with open('logs-paper2-cifar-64-' + fault_type + '-' + model_name + '-40-4','w') as f:
+				f.write(results.stdout.decode())
+			print("finished")
+			print("========================")
+		else:
+			print("failed")
+			print("========================")
 
 print()
 for fault_type in fault_types:
 	for model_name, model in zip(model_names, models):
-		args = ['python', 'distributed_eval.py', 
-				'--model-dir', 'output/models/paper2/CIFAR-LeNet/64/normfilter/geomedian/40-4/', 
-				'--dataset', 'CIFAR10', 
-				'--network', 'LeNet', 
-				'--eval-freq', '1']
+		args = 'python distributed_eval.py --model-dir output/models/paper2/CIFAR-LeNet/64/'+fault_type+'/'+model_name+
+			'/40-4/ --dataset CIFAR10 --network LeNet --eval-freq 1 > results-paper2-cifar-64-'+fault_type+'-'+model_name+'-40-4 2>&1 &'
 		print("Now evaluating "+fault_type+" using "+model_name+" using command:")
-		print(' '.join(args))
-		results = subprocess.run(args, stdout=subprocess.PIPE)
-		with open('results-paper2-cifar-64-' + fault_type + '-' + model_name + '-40-4','w') as f:
-			f.write(results.stdout.decode())
-		print("finished")
-		print("========================")
+		print(args)
+		results = subprocess.run(args, shell=True)
