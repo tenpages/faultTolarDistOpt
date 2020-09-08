@@ -40,7 +40,7 @@ for fault_type in fault_types:
 print()
 for fault_type in fault_types:
 	for model_name, model in zip(model_names, models):
-		args = 'python distributed_eval.py --model-dir output/models/paper2/CIFAR-LeNet/64/'+fault_type+'/'+model_name+
+		args = 'python distributed_eval.py --model-dir output/models/paper2/CIFAR-LeNet/64/'+fault_type+'/'+model_name+ \
 			'/40-4/ --dataset CIFAR10 --network LeNet --eval-freq 1 > results-paper2-cifar-64-'+fault_type+'-'+model_name+'-40-4 2>&1 &'
 		print("Now evaluating "+fault_type+" using "+model_name+" using command:")
 		print(args)
