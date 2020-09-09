@@ -2,14 +2,14 @@ import subprocess
 
 model_names = ['geomedian','medofmeans','cwtm','mkrum5','normfilter']
 models = ['geometric_median','median_of_means','coor_wise_trimmed_mean','multi_krum','grad_norm']
-fault_types = ['labelflipping','gaussian']
+fault_types = ['revgrad2','normfilter','labelflipping','gaussian']
 
 for fault_type in fault_types:
 	for model_name, model in zip(model_names, models):
 		args = ['mpirun', '-n', '41', 
 				'python', 'distributed_nn.py', 
 				'--batch-size=64', 
-				'--max-steps', '500', 
+				'--max-steps', '700', 
 				'--epochs', '100', 
 				'--network', 'LeNet', 
 				'--mode', model, '--multi-krum-m','5',
@@ -23,7 +23,7 @@ for fault_type in fault_types:
 				'--fault-thrshld', '4', 
 				'--data-distribution', 'same', 
 				'--calculate-cosine', 'False', 
-				'--checkpoint-step', '0', 
+				'--checkpoint-step', '500', 
 				'--eval-freq', '1']
 		print("Now running experiments on "+fault_type+" using "+model_name+" using command:")
 		print(' '.join(args))
@@ -37,6 +37,7 @@ for fault_type in fault_types:
 			print("failed")
 			print("========================")
 
+"""
 print()
 for fault_type in fault_types:
 	for model_name, model in zip(model_names, models):
@@ -45,3 +46,4 @@ for fault_type in fault_types:
 		print("Now evaluating "+fault_type+" using "+model_name+" using command:")
 		print(args)
 		results = subprocess.run(args, shell=True)
+"""
