@@ -4,6 +4,7 @@ model_names = ['geomedian','medofmeans','cwtm','mkrum5','normfilter']
 models = ['geometric_median','median_of_means','coor_wise_trimmed_mean','multi_krum','grad_norm']
 fault_types = ['revgrad2','normfilter','labelflipping','gaussian']
 
+"""
 for fault_type in fault_types:
 	for model_name, model in zip(model_names, models):
 		args = ['mpirun', '-n', '41', 
@@ -36,14 +37,13 @@ for fault_type in fault_types:
 		else:
 			print("failed")
 			print("========================")
-
 """
+
 print()
 for fault_type in fault_types:
 	for model_name, model in zip(model_names, models):
 		args = 'python distributed_eval.py --model-dir output/models/paper2/CIFAR-LeNet/64/'+fault_type+'/'+model_name+ \
-			'/40-4/ --dataset CIFAR10 --network LeNet --eval-freq 1 > results-paper2-cifar-64-'+fault_type+'-'+model_name+'-40-4 2>&1 &'
+			'/40-4/ --dataset CIFAR10 --network LeNet --eval-freq 1 --start-from 500 > results-paper2-cifar-64-'+fault_type+'-'+model_name+'-40-4 2>&1 &'
 		print("Now evaluating "+fault_type+" using "+model_name+" using command:")
 		print(args)
 		results = subprocess.run(args, shell=True)
-"""
