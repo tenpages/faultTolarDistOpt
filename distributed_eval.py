@@ -93,6 +93,8 @@ class DistributedEvaluator(object):
         elif self.network_config == 'NiN':
             self.network = NiN(kwargs['channel'])
         self.results = np.array([[0.],[1.],[2.],[3.]], dtype=np.float64)
+        if self._cur_step !=0:
+            self.results = np.load(self._model_dir+'results.npy')
 
     def evaluate(self, validation_loader):
         # init objective to fetch at the begining
