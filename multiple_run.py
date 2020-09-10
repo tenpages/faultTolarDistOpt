@@ -1,10 +1,11 @@
 import subprocess
 
-model_names = ['geomedian','medofmeans','cwtm','mkrum5','normfilter']
-models = ['geometric_median','median_of_means','coor_wise_trimmed_mean','multi_krum','grad_norm']
-fault_types = ['revgrad2']#,'normfilter','labelflipping','gaussian']
+model_names = ['geomedian','medofmeans','cwtm','mkrum5']
+models = ['geometric_median','median_of_means','coor_wise_trimmed_mean','multi_krum']
+fault_types = ['revgrad2','normfilter','labelflipping','gaussian']
+nums_faults = [2,6,8]#,10,12]
 
-for i in range(1,4):
+for i in nums_faults:
 	for fault_type in fault_types:
 		for model_name, model in zip(model_names, models):
 			args = ['mpirun', '-n', '11', 
@@ -18,7 +19,7 @@ for i in range(1,4):
 					'--approach', 'baseline', 
 					'--err-mode', fault_type, 
 					'--lr', '0.01', 
-					'--train-dir', 'output/models/paper2/MNIST-LeNet/64/' + fault_type + '/' + model_name + '/10-' + str(i) + '/', 
+					'--train-dir', 'output/models/paper2/MNIST-LeNet/64/' + fault_type + '/' + model_name + '/40-' + str(i) + '/', 
 					'--accumulative', 'False', 
 					'--worker-fail', str(i), 
 					'--fault-thrshld', str(i), 
@@ -30,7 +31,7 @@ for i in range(1,4):
 			print(' '.join(args))
 			results = subprocess.run(args, capture_output=True)
 			if results.returncode==0 and results.stdout != None:
-				with open('logs-paper2-mnist-64-' + fault_type + '-' + model_name + '-10-'+str(i),'w') as f:
+				with open('logs-paper2-mnist-64-' + fault_type + '-' + model_name + '-40-'+str(i),'w') as f:
 					f.write(results.stdout.decode())
 				print("finished")
 				print("========================")
@@ -40,11 +41,11 @@ for i in range(1,4):
 				print("========================")
 
 print()
-for i in range(1,4):
+for i in nums_faults:
 	for fault_type in fault_types:
 		for model_name, model in zip(model_names, models):
 			args = 'python distributed_eval.py --model-dir output/models/paper2/MNIST-LeNet/64/'+fault_type+'/'+model_name+ \
-				'/10-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > results-paper2-mnist-64-'+fault_type+'-'+model_name+'-10-'+str(i)+' 2>&1 &'
+				'/40-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > results-paper2-mnist-64-'+fault_type+'-'+model_name+'-40-'+str(i)+' 2>&1 &'
 			print("Now evaluating "+fault_type+" using "+model_name+" using command:")
 			print(args)
 			results = subprocess.run(args, shell=True)
