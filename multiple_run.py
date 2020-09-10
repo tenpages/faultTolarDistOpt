@@ -35,6 +35,7 @@ for i in range(1,4):
 				print("finished")
 				print("========================")
 			else:
+				print(results.stderr.decode())
 				print("failed")
 				print("========================")
 
