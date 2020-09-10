@@ -8,7 +8,7 @@ nums_faults = [2,6,8]#,10,12]
 for i in nums_faults:
 	for fault_type in fault_types:
 		for model_name, model in zip(model_names, models):
-			if i == 2 and fault_type == 'revgrad2' and model_names != 'mkrum5':
+			if i == 2 and fault_type == 'revgrad2' and model_name != 'mkrum5':
 				print(fault_type+" "+model_names+" "+str(i)+"/40 skipped")
 				continue
 			args = ['mpirun', '-n', '41', 
