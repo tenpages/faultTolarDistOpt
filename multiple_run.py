@@ -8,7 +8,7 @@ nums_faults = [2,6,8]#,10,12]
 for i in nums_faults:
 	for fault_type in fault_types:
 		for model_name, model in zip(model_names, models):
-			args = ['mpirun', '-n', '11', 
+			args = ['mpirun', '-n', '41', 
 					'python', 'distributed_nn.py', 
 					'--batch-size=64', 
 					'--max-steps', '500', 
