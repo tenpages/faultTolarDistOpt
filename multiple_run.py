@@ -18,7 +18,7 @@ for i in range(1,4):
 					'--approach', 'baseline', 
 					'--err-mode', fault_type, 
 					'--lr', '0.01', 
-					'--train-dir', 'output/models/paper2/CIFAR-LeNet/64/' + fault_type + '/' + model_name + '/10-' + str(i) + '/', 
+					'--train-dir', 'output/models/paper2/MNIST-LeNet/64/' + fault_type + '/' + model_name + '/10-' + str(i) + '/', 
 					'--accumulative', 'False', 
 					'--worker-fail', str(i), 
 					'--fault-thrshld', str(i), 
@@ -43,7 +43,7 @@ print()
 for i in range(1,4):
 	for fault_type in fault_types:
 		for model_name, model in zip(model_names, models):
-			args = 'python distributed_eval.py --model-dir output/models/paper2/CIFAR-LeNet/64/'+fault_type+'/'+model_name+ \
+			args = 'python distributed_eval.py --model-dir output/models/paper2/MNIST-LeNet/64/'+fault_type+'/'+model_name+ \
 				'/10-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > results-paper2-mnist-64-'+fault_type+'-'+model_name+'-10-'+str(i)+' 2>&1 &'
 			print("Now evaluating "+fault_type+" using "+model_name+" using command:")
 			print(args)
