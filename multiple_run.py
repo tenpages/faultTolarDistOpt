@@ -8,13 +8,15 @@ nums_faults = [2,6,8]#,10,12]
 for i in nums_faults:
 	for fault_type in fault_types:
 		for model_name, model in zip(model_names, models):
+			if fault_type == 'revgrad2' and model_names != 'mkrum5':
+				continue
 			args = ['mpirun', '-n', '41', 
 					'python', 'distributed_nn.py', 
 					'--batch-size=64', 
 					'--max-steps', '500', 
 					'--epochs', '100', 
 					'--network', 'LeNet', 
-					'--mode', model, '--multi-krum-m','2',
+					'--mode', model, '--multi-krum-m','5',
 					'--dataset', 'MNIST', 
 					'--approach', 'baseline', 
 					'--err-mode', fault_type, 
