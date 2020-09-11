@@ -3,14 +3,11 @@ import subprocess
 model_names = ['geomedian','medofmeans','cwtm','mkrum5']
 models = ['geometric_median','median_of_means','coor_wise_trimmed_mean','multi_krum']
 fault_types = ['revgrad2','labelflipping','gaussian']
-nums_faults = [2,6,8]#,10,12]
+nums_faults = [10,12]#[2,6,8,10,12]
 
 for i in nums_faults:
 	for fault_type in fault_types:
 		for model_name, model in zip(model_names, models):
-			if i == 2 and fault_type == 'revgrad2' and model_name != 'mkrum5':
-				print(fault_type+" "+model_name+" "+str(i)+"/40 skipped")
-				continue
 			args = ['mpirun', '-n', '41', 
 					'python', 'distributed_nn.py', 
 					'--batch-size=64', 
