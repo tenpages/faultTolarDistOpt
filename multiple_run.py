@@ -7,7 +7,7 @@ model_names = ['normfilter']
 models = ['grad_norm']
 fault_types = ['normfilter']
 nums_faults = [4]
-batch_sizes = ['64']
+batch_sizes = ['32','128','256']
 
 for batch_size in batch_sizes:
 	for i in nums_faults:
