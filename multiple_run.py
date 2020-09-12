@@ -1,9 +1,12 @@
 import subprocess
 
-model_names = ['geomedian','medofmeans','cwtm','mkrum5']
-models = ['geometric_median','median_of_means','coor_wise_trimmed_mean','multi_krum']
-fault_types = ['revgrad2','labelflipping','gaussian']
-nums_faults = [10,12]#[2,6,8,10,12]
+#model_names = ['geomedian','medofmeans','cwtm','mkrum5']
+#models = ['geometric_median','median_of_means','coor_wise_trimmed_mean','multi_krum']
+#fault_types = ['revgrad2','labelflipping','gaussian']
+model_names = ['normfilter']
+models = ['grad_norm']
+fault_types = ['normfilter']
+nums_faults = [2,6,8,10,12]
 
 for i in nums_faults:
 	for fault_type in fault_types:
@@ -15,11 +18,11 @@ for i in nums_faults:
 					'--epochs', '100', 
 					'--network', 'LeNet', 
 					'--mode', model, '--multi-krum-m','5',
-					'--dataset', 'MNIST', 
+					'--dataset', 'CIFAR10', 
 					'--approach', 'baseline', 
 					'--err-mode', fault_type, 
 					'--lr', '0.01', 
-					'--train-dir', 'output/models/paper2/MNIST-LeNet/64/' + fault_type + '/' + model_name + '/40-' + str(i) + '/', 
+					'--train-dir', 'output/models/paper2/CIFAR-LeNet/64/' + fault_type + '/' + model_name + '/40-' + str(i) + '/', 
 					'--accumulative', 'False', 
 					'--worker-fail', str(i), 
 					'--fault-thrshld', str(i), 
@@ -31,7 +34,7 @@ for i in nums_faults:
 			print(' '.join(args))
 			results = subprocess.run(args, capture_output=True)
 			if results.returncode==0 and results.stdout != None:
-				with open('logs-paper2-mnist-64-' + fault_type + '-' + model_name + '-40-'+str(i),'w') as f:
+				with open('logs-paper2-cifar-64-' + fault_type + '-' + model_name + '-40-'+str(i),'w') as f:
 					f.write(results.stdout.decode())
 				print("finished")
 				print("========================")
@@ -44,8 +47,8 @@ print()
 for i in nums_faults:
 	for fault_type in fault_types:
 		for model_name, model in zip(model_names, models):
-			args = 'python distributed_eval.py --model-dir output/models/paper2/MNIST-LeNet/64/'+fault_type+'/'+model_name+ \
-				'/40-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > results-paper2-mnist-64-'+fault_type+'-'+model_name+'-40-'+str(i)+' 2>&1 &'
+			args = 'python distributed_eval.py --model-dir output/models/paper2/CIFAR-LeNet/64/'+fault_type+'/'+model_name+ \
+				'/40-'+str(i)+'/ --dataset CIFAR10 --network LeNet --eval-freq 1 > results-paper2-cifar-64-'+fault_type+'-'+model_name+'-40-'+str(i)+' 2>&1 &'
 			print("Now evaluating "+fault_type+" using "+model_name+" using command:")
 			print(args)
 			results = subprocess.run(args, shell=True)
