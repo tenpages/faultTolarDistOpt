@@ -3,10 +3,10 @@ import subprocess
 #model_names = ['geomedian','medofmeans','cwtm','mkrum5']
 #models = ['geometric_median','median_of_means','coor_wise_trimmed_mean','multi_krum']
 #fault_types = ['revgrad2','labelflipping','gaussian']
-model_names = ['normfilter']
-models = ['grad_norm']
-fault_types = ['revgrad2','labelflipping','gaussian']
-nums_faults = [2,6,8,10,12]
+model_names = ['geomedian','medofmeans','cwtm','mkrum5','normfilter']
+models = ['geometric_median','median_of_means','coor_wise_trimmed_mean','multi_krum','grad_norm']
+fault_types = ['revgrad2','normfilter','labelflipping','gaussian']
+nums_faults = [4]
 batch_sizes = ['64']
 
 for batch_size in batch_sizes:
@@ -16,7 +16,7 @@ for batch_size in batch_sizes:
 				args = ['mpirun', '-n', '41', 
 						'python', 'distributed_nn.py', 
 						'--batch-size=' + batch_size, 
-						'--max-steps', '500', 
+						'--max-steps', '1200', 
 						'--epochs', '100', 
 						'--network', 'LeNet', 
 						'--mode', model, '--multi-krum-m','5',
@@ -30,7 +30,7 @@ for batch_size in batch_sizes:
 						'--fault-thrshld', str(i), 
 						'--data-distribution', 'same', 
 						'--calculate-cosine', 'False', 
-						'--checkpoint-step', '0', 
+						'--checkpoint-step', '700', 
 						'--eval-freq', '1']
 				print("Now running experiments on "+fault_type+" using "+model_name+" using command:")
 				print(' '.join(args))
@@ -51,7 +51,7 @@ for batch_size in batch_sizes:
 		for fault_type in fault_types:
 			for model_name, model in zip(model_names, models):
 				args = 'python distributed_eval.py --model-dir output/models/paper2/CIFAR-LeNet/'+batch_size+'/'+fault_type+'/'+model_name+ \
-					'/40-'+str(i)+'/ --dataset CIFAR10 --network LeNet --eval-freq 1 > results-paper2-cifar-'+batch_size+'-'+fault_type+'-'+model_name+'-40-'+str(i)+' 2>&1 &'
+					'/40-'+str(i)+'/ --dataset CIFAR10 --network LeNet --eval-freq 1 --begin-from 701 > results-paper2-cifar-'+batch_size+'-'+fault_type+'-'+model_name+'-40-'+str(i)+' 2>&1 &'
 				print("Now evaluating "+fault_type+" using "+model_name+" using command:")
 				print(args)
 				results = subprocess.run(args, shell=True)
