@@ -5,9 +5,9 @@ import subprocess
 #fault_types = ['revgrad2','labelflipping','gaussian']
 model_names = ['normfilter']
 models = ['grad_norm']
-fault_types = ['normfilter']
+fault_types = ['revgrad2','labelflipping','gaussian']
 nums_faults = [2,6,8,10,12]
-batch_sizes = ['32','128','256']
+batch_sizes = ['64']
 
 for batch_size in batch_sizes:
 	for i in nums_faults:
