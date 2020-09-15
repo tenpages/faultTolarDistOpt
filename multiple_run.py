@@ -33,7 +33,7 @@ for acc_alpha in acc_alphas:
 							'--fault-thrshld', str(i), 
 							'--data-distribution', 'same', 
 							'--calculate-cosine', 'False', 
-							'--checkpoint-step', '700', 
+							'--checkpoint-step', '500', 
 							'--eval-freq', '1']
 					print("Now running experiments on "+fault_type+" using "+model_name+" using command:")
 					print(' '.join(args))
@@ -55,7 +55,7 @@ for acc_alpha in acc_alphas:
 			for fault_type in fault_types:
 				for model_name, model in zip(model_names, models):
 					args = 'python distributed_eval.py --model-dir output/models/paper2/CIFAR-LeNet/'+batch_size+'/'+fault_type+'/'+model_name+ \
-						'/acc-'+acc_alpha+'/40-'+str(i)+'/ --dataset CIFAR10 --network LeNet --eval-freq 1 --begin-from 701 > results-paper2-cifar-'+batch_size+'-'+fault_type+'-'+model_name+'-acc-'+acc_alpha'-40-'+str(i)+' 2>&1 &'
+						'/acc-'+acc_alpha+'/40-'+str(i)+'/ --dataset CIFAR10 --network LeNet --eval-freq 1 --begin-from 501 > results-paper2-cifar-'+batch_size+'-'+fault_type+'-'+model_name+'-acc-'+acc_alpha'-40-'+str(i)+' 2>&1 &'
 					print("Now evaluating "+fault_type+" using "+model_name+" using command:")
 					print(args)
 					results = subprocess.run(args, shell=True)
