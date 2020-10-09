@@ -1057,7 +1057,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         concatenated_gradients = None
         separator = []
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            #print(np.array(grads).shape)
+            print(np.array(grads).shape)
             if g_idx == 0:
                 concatenated_gradients = np.array(grads)
             else:
@@ -1073,14 +1073,13 @@ class SyncReplicaMaster_NN(NN_Trainer):
         #print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
 
         filtered_gradients = np.array(concatenated_gradients)[ranks[:(self.num_workers-self._t)]]
+        self._grad_aggregate_buffer = np.split(filtered_gradients,separator[:len(separator)-1])
 
         cwtm_start = time.time()
-        for g_idx, grads in enumerate(filtered_gradients):
-            trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._t:self.num_workers-self._t], axis=0)
-            filtered_gradients[g_idx] = trimmed_mean
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._t:self.num_workers-2*self._t], axis=0)
+            self._grad_aggregate_buffer[g_idx] = trimmed_mean
         filter_finish_time = time.time()
-
-        self._grad_aggregate_buffer = np.split(filtered_gradients,separator[:len(separator)-1])
 
         print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
         with open(self._train_dir+"logs-master",'a') as f:
