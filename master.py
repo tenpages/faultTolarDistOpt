@@ -1057,7 +1057,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         concatenated_gradients = None
         separator = []
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            print(np.array(grads).shape)
+            #print(np.array(grads).shape)
             if g_idx == 0:
                 concatenated_gradients = np.array(grads)
             else:
@@ -1081,9 +1081,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self._grad_aggregate_buffer[g_idx] = trimmed_mean
         filter_finish_time = time.time()
 
-        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
+        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
         with open(self._train_dir+"logs-master",'a') as f:
-            f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
+            f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time))
 
     def _ensemble_normfilter_medofmeans(self):
         ensemble_filter_start = time.time()
