@@ -1073,7 +1073,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         #print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
 
         filtered_gradients = np.array(concatenated_gradients)[ranks[:(self.num_workers-self._t)]]
-        self._grad_aggregate_buffer = np.split(filtered_gradients,separator[:len(separator)-1])
+        self._grad_aggregate_buffer = np.split(filtered_gradients,separator[:len(separator)-1],axis=1)
 
         cwtm_start = time.time()
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
