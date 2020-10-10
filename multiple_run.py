@@ -5,7 +5,7 @@ import subprocess
 #fault_types = ['revgrad2','labelflipping','gaussian']
 model_names = ['normfiltercwtm']
 models = ['ensemble_normfilter_cwtm']
-fault_types = ['normfilter']
+fault_types = ['labelflipping']
 nums_faults = [2,4,6,8,10,12]
 batch_sizes = ['64']
 #acc_alphas = ['20','40','60']
@@ -52,7 +52,7 @@ for batch_size in batch_sizes:
 	for i in nums_faults:
 		for fault_type in fault_types:
 			for model_name, model in zip(model_names, models):
-				args = 'python distributed_eval.py --model-dir output/models/paper2/MNIST-LeNet/'+batch_size+'/'+fault_type+'/'+model_name+ \
+				args = 'python distributed_eval.py --model-dir output/models/paper2/MNIST-LeNet/'+batch_size+'/'+fault_type+'/'+model_name \
 					+'/40-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > results-paper2-mnist-'+batch_size+'-'+fault_type+'-'+model_name+'-40-'+str(i)+' 2>&1 &'
 				print("Now evaluating "+fault_type+" using "+model_name+" using command:")
 				print(args)
