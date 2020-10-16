@@ -192,6 +192,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_start = time.time()
                 self._grad_norm_multi_parts()
                 method_duration = time.time() - method_start
+            elif self._update_mode == 'ensemble_normfilter_cwtm':
+                method_start = time.time()
+                self._ensemble_normfilter_cwtm()
+                method_duration = time.time() - method_start
 
             """
             if self.cur_step >= 8:
@@ -545,6 +549,33 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # print(len(self._grad_aggregate_buffer))
         # for i in self._grad_aggregate_buffer:
         #     print(i.shape)
+
+    def _ensemble_normfilter_cwtm(self):
+        ensemble_filter_start = time.time()
+        concatenated_gradients = None
+        separator = []
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            #print(np.array(grads).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+            separator.append(len(concatenated_gradients[0]))
+        aggregation_finish_time = time.time()
+        ranks = np.argsort(np.linalg.norm(np.array(concatenated_gradients), axis=1))
+
+        filtered_gradients = np.array(concatenated_gradients)[ranks[:(self.num_workers-int(self._t/2))]]
+        self._grad_aggregate_buffer = np.split(filtered_gradients,separator[:len(separator)-1],axis=1)
+
+        cwtm_start = time.time()
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            trimmed_mean = np.mean(np.sort(np.array(grads), axis=0)[(self._t-int(self._t/2)):self.num_workers-self._t], axis=0)
+            self._grad_aggregate_buffer[g_idx] = trimmed_mean
+        filter_finish_time = time.time()
+
+        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time))
+        with open(self._train_dir+"logs-master",'a') as f:
+            f.write('{:.8f},{:.8f},'.format(aggregation_finish_time-ensemble_filter_start, filter_finish_time-aggregation_finish_time))
 
 
 class GradientAccumulator(object):
