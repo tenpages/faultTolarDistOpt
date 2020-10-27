@@ -151,13 +151,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if self._redundancy:
                 # q_decision 
                 not_q = random.random()
-                fault_check = self.q_decision(not_q)
+                fault_check = self.q_decision(self._q)
                 dp_list, worker_list = (None,None)
-                # if fault_check then async_bcast_datapoints_redundant
-                print("_q == {} {}".format(self._q,type(self._q)))
+                # print("_q == {} {}".format(self._q,type(self._q)))
                 if self._q == 1.0 or fault_check:
                     dp_list, worker_list = self.async_bcast_datapoints_redundant()
-                # else async_bcast_datapoints_singular
                 else:
                     dp_list, worker_list = self.async_bcast_datapoints_singular()
 

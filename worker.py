@@ -127,7 +127,7 @@ class DistributedWorker(NN_Trainer):
                 if loader_step<self.cur_step and flag:
                     loader_step += 1
                     if self.rank == 1:
-                        print("skipped")
+                        # print("skipped")
                         """
                         with open("print-dataset-log-with-checkpoint"+str(self._checkpoint_step), "a+") as f:
                             f.write(str(self.cur_step)+": epoch="+str(num_epoch)+", batch_idx="+str(batch_idx)+" SKIPPED\n")
@@ -148,7 +148,7 @@ class DistributedWorker(NN_Trainer):
 
                         # receive empty list if  blacklisted
                         if not dp_list.tolist():
-                            print("Worker {} step {} received no datapoints".format(self.rank,self.cur_step))
+                            # print("Worker {} step {} received no datapoints".format(self.rank,self.cur_step))
                             red_flag = True
                         else :
                             print(f"Worker {self.rank} step {self.cur_step} datapoints {dp_list.tolist()}")

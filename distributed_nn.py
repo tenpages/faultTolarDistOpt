@@ -17,7 +17,7 @@ import numpy as np
 
 from torchvision import datasets, transforms
 
-import master
+import master2 as master
 import worker
 
 SEED_ = 428
