@@ -145,12 +145,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.async_bcast_step()
             total_grads_t = 0
             used_grads_t = 0
-            not_q = None
             fault_check = None
             
             if self._redundancy:
                 # q_decision 
-                not_q = random.random()
                 fault_check = self.q_decision(self._q)
                 dp_list, worker_list = (None,None)
                 # print("_q == {} {}".format(self._q,type(self._q)))
@@ -175,9 +173,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 MPI.Request.Waitall(requests=gradient_fetch_requests, statuses=statuses)
                 faulty_grad_datapoints=[]
 
-                # not_q = random.random()
-                # fault_check = self.q_decision(not_q)
-                if self._q == 1.0 or fault_check:
+                if self._s > 0 and (self._q == 1.0 or fault_check):
                     print("Master step {} check for faults".format(self.cur_step))
                     for dpidx, dp_buffer in enumerate(self.coded_buffer):
                         dp_flag = True
@@ -274,6 +270,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     print(f"Master: step {self.cur_step} faulty worker ranks: ",faulty_worker_ranks)
 
                     # aggregate gradients of all non-faulty workers
+                    """
+                        FIX THIS
+                        NEEDS TO ONLY GET a single GRADIENT FROM NON-FAULTY WORKERS
+                    """
                     for dpidx, grad_list in enumerate(self.coded_buffer):
                         used_grads_t = used_grads_t + 1
                         for widx, grad in enumerate(grad_list):
@@ -291,7 +291,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                 else :
                     # either skipped fault check or found no faulty gradients
-                    # print(f"Master {self.cur_step} no faulty gradients")
+                    if fault_check:
+                        print(f"Master {self.cur_step} no faulty gradients")
                     redundancy_requests=[]
                     for rank in range(1,self.world_size):
                         # send an empty list to each worker with tag=9
@@ -304,11 +305,32 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         # tally total gradients used for update
                         # for each dpidx, accumulated grads are averaged
                         used_grads_t = used_grads_t + 1
+                        total_grads_t = total_grads_t + 1
+
+                        if len(grad_list) == 1:
+                            for layer_index, param in enumerate(self.network.parameters()):
+                                self.aggregate_gradient(gradient=grad_list[0][layer_index], layer_idx=layer_index, source=worker_list[dpidx][0] - 1)
+                        else:
+                            temp_grad=[]
+                            for layer_index, param in enumerate(self.network.parameters()):
+                                temp_grad.append(np.zeros(param.size()))
+                            for widx, grad in enumerate(grad_list):
+                                for layer_index, param in enumerate(self.network.parameters()):
+                                    # self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][widx] - 1)
+                                    temp_grad[layer_index] += grad[layer_index]
+                            print(temp_grad, len(grad_list))
+                            temp_grad /= len(grad_list)
+                            print(temp_grad) 
+                            for layer_idx, grad in enumerate(temp_grad):
+                                self.aggregate_gradient(gradient=grad,layer_idx=layer_idx,source=worker_list[dpidx][0]-1)
+
+                        """
                         for widx, grad in enumerate(grad_list):
                             # add to total gradients calculated, greater than or equal to (batch_size) * (f+1)
                             total_grads_t = total_grads_t + 1
                             for layer_index, param in enumerate(self.network.parameters()):
                                 self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][widx] - 1)
+                        """
 
                     print(f"Master {self.cur_step} used gradients: {used_grads_t}/{total_grads_t}")
                 
@@ -387,7 +409,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if self._redundancy:
                 method_start = time.time()
                 # average grads for each datapoint 
-                self._avg_received_grads_n(total_grads_t)
+                #self._avg_received_grads_n(total_grads_t)
+                print("redundant gradient update")
                 method_duration = time.time() - method_start
             elif self._update_mode == 'normal':
                 method_start = time.time()

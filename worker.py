@@ -227,8 +227,7 @@ class DistributedWorker(NN_Trainer):
                             numlayers = numlayers + 1
                         send_check_requests=[]
 
-                        not_p = random.random()                 # use random value not_p to make decision
-                        send_err = self.p_decision(not_p)       # if send_err == 1 then send error
+                        send_err = self.p_decision(self._p)       # if send_err == 1 then send error
 
                         if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
                             print("Worker {} step {} sending faulty gradient to master".format(self.rank,self.cur_step))
@@ -437,7 +436,7 @@ class DistributedWorker(NN_Trainer):
                 model_counter_ += 1
             new_state_dict.update(tmp_dict)
         self.network.load_state_dict(new_state_dict)
-
+        print("[{}] worker update".format(self.rank))
     """
     _multi_backward() no longer used
         
