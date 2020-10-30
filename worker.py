@@ -34,6 +34,7 @@ class DistributedWorker(NN_Trainer):
         self.cur_step = 0
         self.next_step = 0
 
+        self.rand_nums = []
         self.redundancy = kwargs['redundancy']
         self.red_seed = -1
         self._p = kwargs['p']
@@ -115,6 +116,7 @@ class DistributedWorker(NN_Trainer):
 
         if self.redundancy:
             self.fetch_seed()                   # set self.red_seed
+            self.fetch_rand_nums()
             assert (self.red_seed >= 0)
             torch.manual_seed(self.red_seed)    # set manual seed for data shuffling
 
@@ -148,19 +150,21 @@ class DistributedWorker(NN_Trainer):
 
                         # receive empty list if  blacklisted
                         if not dp_list.tolist():
-                            # print("Worker {} step {} received no datapoints".format(self.rank,self.cur_step))
+                            print("Worker {} step {} received no datapoints".format(self.rank,self.cur_step))
                             red_flag = True
                         else :
                             print(f"Worker {self.rank} step {self.cur_step} datapoints {dp_list.tolist()}")
 
                 X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
                 # print("Worker {} labels {}".format(self.rank, y_batch.tolist()))
-                
+
                 if self.redundancy and not red_flag:
                         X_batch = torch.index_select(train_input_batch,0,dp_list) 
                         y_batch = torch.index_select(train_label_batch,0,dp_list) 
                         X_batch = Variable(X_batch)
                         y_batch = Variable(y_batch)
+                # print("Worker {} x's {}".format(self.rank, X_batch.tolist()))
+                # print("Worker {} labels {}".format(self.rank, y_batch.tolist()))
                         
                 while True:
                     self.async_fetch_step()
@@ -220,6 +224,7 @@ class DistributedWorker(NN_Trainer):
                     loss_list = []
                     forward_start_time = time.time()
                     logits = self.network(X_batch)
+                    print("Worker {} logits: {}".format(self.rank,logits))
                     if self.redundancy and not red_flag:
                         loss = self.criterion(logits,y_batch)
                         numlayers = 0
@@ -227,7 +232,8 @@ class DistributedWorker(NN_Trainer):
                             numlayers = numlayers + 1
                         send_check_requests=[]
 
-                        send_err = self.p_decision(self._p)       # if send_err == 1 then send error
+                        # send_err = self.p_decision(self._p)       # if send_err == 1 then send error
+                        send_err = self.p_decision(self._p,self.rand_nums.pop(0))
 
                         if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
                             print("Worker {} step {} sending faulty gradient to master".format(self.rank,self.cur_step))
@@ -375,15 +381,20 @@ class DistributedWorker(NN_Trainer):
         seed = req.wait()
         self.red_seed = seed
 
-    def p_decision(self, p) :
+    def fetch_rand_nums(self):
+        req = self.comm.irecv(source=0,tag=6)
+        nums = req.wait()
+        self.rand_nums = nums
+
+    def p_decision(self, p, r) :
         mu = 0.00
         sigma = 1.00
 
-        r = randn()
-
+        # r = randn()
+        _r = r
         quantile = mu + sigma * sqrt(2)*erfinv(2*p-1)
 
-        if quantile >= r :
+        if quantile >= _r :
             return 1
         else:
             return 0
@@ -436,7 +447,6 @@ class DistributedWorker(NN_Trainer):
                 model_counter_ += 1
             new_state_dict.update(tmp_dict)
         self.network.load_state_dict(new_state_dict)
-        print("[{}] worker update".format(self.rank))
     """
     _multi_backward() no longer used
         
@@ -615,3 +625,31 @@ def err_simulation(grad, mode, cyclic=False):
         else:
             return ADVERSARY_ * grad
 
+
+def make_decision(p) :
+    mu = 0.00
+    sigma = 1.00
+
+    r = randn()
+
+    quantile = mu + sigma * sqrt(2)*erfinv(2*p-1)
+
+    if quantile >= r :
+        return 1
+    else:
+        return 0
+
+if __name__ == "__main__":
+    p = .25
+    x=0
+    y=0
+
+    for i in range(1000):
+        if make_decision(p):
+            if x==0:
+                print("first x @ i={}".format(i))
+            x+=1
+        else:
+            y+=1
+
+    print("x = {}%".format(x/1000))

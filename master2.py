@@ -122,6 +122,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self.async_bcast_step()
         if self._redundancy :
             self.bcast_seed()
+            self.bcast_rand_nums()
 
         if self._checkpoint_step != 0:
             # torch.set_rng_state(torch.load(self._train_dir+"rng_state_"+str(self._checkpoint_step)))
@@ -153,8 +154,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 dp_list, worker_list = (None,None)
                 # print("_q == {} {}".format(self._q,type(self._q)))
                 if self._q == 1.0 or fault_check:
+                    self._num_grad_to_collect = (self.batch_size)*(self._s + 1)
                     dp_list, worker_list = self.async_bcast_datapoints_redundant()
                 else:
+                    self._num_grad_to_collect = self.batch_size
                     dp_list, worker_list = self.async_bcast_datapoints_singular()
 
                 self.set_coded_buffer(worker_list)
@@ -177,7 +180,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     print("Master step {} check for faults".format(self.cur_step))
                     for dpidx, dp_buffer in enumerate(self.coded_buffer):
                         dp_flag = True
-                        first=dp_buffer[0] 
+                        first=dp_buffer[0]
+                        # print("dp_buffer[0]",dp_buffer[0])
 
                         for widx, worker_buffer in enumerate(dp_buffer):
                             for layer_idx, param in enumerate(worker_buffer):
@@ -194,7 +198,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                 if faulty_grad_datapoints:
                     print(f"Master step {self.cur_step} datapoints with faulty gradients: {faulty_grad_datapoints}") 
-
+                    # self._num_grad_to_collect = (self._s+1)*self.batch_size + self._s
                     # redistribute datapoints for second round 
                     # rule: datapoints must go to different workers than before
                     new_dp_list, new_worker_list = self.async_bcast_redundant_datapoints(dp_list, faulty_grad_datapoints)
@@ -265,15 +269,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                         if rank not in faulty_worker_ranks:
                                             faulty_worker_ranks.append(rank)
 
-                            print(f"Master step {self.cur_step} faulty workers from dp {dpidx} : {curr_faulty_workers}")
+                            # print(f"Master step {self.cur_step} faulty workers from dp {dpidx} : {curr_faulty_workers}")
                             
                     print(f"Master: step {self.cur_step} faulty worker ranks: ",faulty_worker_ranks)
 
                     # aggregate gradients of all non-faulty workers
-                    """
-                        FIX THIS
-                        NEEDS TO ONLY GET a single GRADIENT FROM NON-FAULTY WORKERS
-                    """
                     for dpidx, grad_list in enumerate(self.coded_buffer):
                         used_grads_t = used_grads_t + 1
                         for widx, grad in enumerate(grad_list):
@@ -291,8 +291,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                 else :
                     # either skipped fault check or found no faulty gradients
-                    if fault_check:
-                        print(f"Master {self.cur_step} no faulty gradients")
+                    # send blank lists to skip redundant step
                     redundancy_requests=[]
                     for rank in range(1,self.world_size):
                         # send an empty list to each worker with tag=9
@@ -300,37 +299,44 @@ class SyncReplicaMaster_NN(NN_Trainer):
                             redundancy_requests.append(self.comm.isend([], dest=rank, tag=8))
                     for i in range(len(redundancy_requests)):
                         redundancy_requests[i].wait()
-
+                    count = 0
+                    # aggregate gradient
                     for dpidx, grad_list in enumerate(self.coded_buffer):
                         # tally total gradients used for update
                         # for each dpidx, accumulated grads are averaged
                         used_grads_t = used_grads_t + 1
-                        total_grads_t = total_grads_t + 1
 
                         if len(grad_list) == 1:
+                            total_grads_t = total_grads_t + 1
+                            grad = grad_list[0]
+                            count += 1
                             for layer_index, param in enumerate(self.network.parameters()):
-                                self.aggregate_gradient(gradient=grad_list[0][layer_index], layer_idx=layer_index, source=worker_list[dpidx][0] - 1)
+                                if layer_index < 2:
+                                    print("[{}] worker={} layer={}\t{}".format(self.cur_step,worker_list[dpidx][0],layer_index,grad[layer_index].tolist()))
+                                self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][0] - 1)
                         else:
+                            if dpidx == 0:
+                                print(f"Master {self.cur_step} no faulty gradients")
+                            """
                             temp_grad=[]
                             for layer_index, param in enumerate(self.network.parameters()):
                                 temp_grad.append(np.zeros(param.size()))
                             for widx, grad in enumerate(grad_list):
                                 for layer_index, param in enumerate(self.network.parameters()):
-                                    # self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][widx] - 1)
                                     temp_grad[layer_index] += grad[layer_index]
-                            print(temp_grad, len(grad_list))
-                            temp_grad /= len(grad_list)
+                            print("grad_list {}\ngrad_list[0] {}\ngrad_list[0][0] {}".format(len(grad_list),len(grad_list[0]),len(grad_list[0][0])))
+                            for idx, grad in enumerate(temp_grad):
+                                temp_grad[idx] /= len(grad_list)
                             print(temp_grad) 
                             for layer_idx, grad in enumerate(temp_grad):
                                 self.aggregate_gradient(gradient=grad,layer_idx=layer_idx,source=worker_list[dpidx][0]-1)
+                            """
 
-                        """
-                        for widx, grad in enumerate(grad_list):
-                            # add to total gradients calculated, greater than or equal to (batch_size) * (f+1)
-                            total_grads_t = total_grads_t + 1
-                            for layer_index, param in enumerate(self.network.parameters()):
-                                self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][widx] - 1)
-                        """
+                            for widx, grad in enumerate(grad_list):
+                                # add to total gradients calculated, greater than or equal to (batch_size) * (f+1)
+                                total_grads_t = total_grads_t + 1
+                                for layer_index, param in enumerate(self.network.parameters()):
+                                    self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][widx] - 1)
 
                     print(f"Master {self.cur_step} used gradients: {used_grads_t}/{total_grads_t}")
                 
@@ -382,6 +388,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                         # aggregate the gradient
                         if self.grad_accumulator.gradient_aggregate_counter[layer_index] <= self._num_grad_to_collect:
+                            if layer_index < 2:
+                                print("[{}] worker={} layer={}\t{}".format(self.cur_step,status.source,layer_index,received_grad.tolist()))
                             self.aggregate_gradient(gradient=received_grad, layer_idx=layer_index, source=status.source-1)
 
                         self.grad_accumulator.gradient_aggregate_counter[layer_index] += 1
@@ -408,9 +416,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             # update by given gradient filter
             if self._redundancy:
                 method_start = time.time()
-                # average grads for each datapoint 
-                #self._avg_received_grads_n(total_grads_t)
-                print("redundant gradient update")
+                # self._avg_received_grads_n(total_grads_t)
+                self._avg_received_grads()
                 method_duration = time.time() - method_start
             elif self._update_mode == 'normal':
                 method_start = time.time()
@@ -599,6 +606,16 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 req_list.append(self.comm.isend(man_seed, dest=i,tag=7))
         for i in range(len(req_list)):
             req_list[i].wait()
+
+    def bcast_rand_nums(self):
+        req_list = []
+        for i in range(self.world_size):
+            if i != 0:
+                nums = [randn() for i in range(self._max_steps)]
+                req_list.append(self.comm.isend(nums, dest=i,tag=6))
+        for i in range(len(req_list)):
+            req_list[i].wait()
+        
 
     def async_bcast_layer_weights_async(self):
         request_layers = []
@@ -1020,6 +1037,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         print('Testset performance: Cur step:{}\tPrec@1: {}\tPrec@5: {}'.format(self.cur_step, prec1, prec5))
 
     def _avg_received_grads(self):
+        print("[{}] avg over {}".format(self.cur_step, self._num_grad_to_collect))
         for i in range(len(self._grad_aggregate_buffer)):
             self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
 
