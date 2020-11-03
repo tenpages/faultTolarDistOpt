@@ -224,7 +224,7 @@ class DistributedWorker(NN_Trainer):
                     loss_list = []
                     forward_start_time = time.time()
                     logits = self.network(X_batch)
-                    print("Worker {} logits: {}".format(self.rank,logits))
+                    # print("Worker {} logits: {}".format(self.rank,logits))
                     if self.redundancy and not red_flag:
                         loss = self.criterion(logits,y_batch)
                         numlayers = 0

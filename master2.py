@@ -210,7 +210,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         for rank in new_worker_list[dp]:
                             combined_list[dp].append(rank)
 
-                    print("updated worker rank list: {}".format(combined_list))
+                    # print("updated worker rank list: {}".format(combined_list))
 
                     # create requests for redundant gradients and wait for messages
                     redundant_fetch_requests = self.fetch_coded_gradients_redundant(new_worker_list, worker_list)
@@ -311,8 +311,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                             grad = grad_list[0]
                             count += 1
                             for layer_index, param in enumerate(self.network.parameters()):
-                                if layer_index < 2:
-                                    print("[{}] worker={} layer={}\t{}".format(self.cur_step,worker_list[dpidx][0],layer_index,grad[layer_index].tolist()))
+                                #if layer_index < 2:
+                                #    print("[{}] worker={} layer={}\t{}".format(self.cur_step,worker_list[dpidx][0],layer_index,grad[layer_index].tolist()))
                                 self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][0] - 1)
                         else:
                             if dpidx == 0:
@@ -388,8 +388,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                         # aggregate the gradient
                         if self.grad_accumulator.gradient_aggregate_counter[layer_index] <= self._num_grad_to_collect:
-                            if layer_index < 2:
-                                print("[{}] worker={} layer={}\t{}".format(self.cur_step,status.source,layer_index,received_grad.tolist()))
+                            # if layer_index < 2:
+                            #     print("[{}] worker={} layer={}\t{}".format(self.cur_step,status.source,layer_index,received_grad.tolist()))
                             self.aggregate_gradient(gradient=received_grad, layer_idx=layer_index, source=status.source-1)
 
                         self.grad_accumulator.gradient_aggregate_counter[layer_index] += 1
