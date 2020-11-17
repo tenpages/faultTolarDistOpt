@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-X=[]
+X_=[]
 for i in range(10):
 	t=[]
 	for j in range(10):
@@ -9,10 +9,10 @@ for i in range(10):
 			t.append(1)
 		else:
 			t.append(0)
-	X.append([t]*19)
+	X_.append([t]*19)
 
-X = np.array(X).reshape(-1,10)
-weight = np.array([1]*10)
+X = np.array(X_).reshape(-1,10)
+weight = np.array([2.5]*10)
 
 Y = np.matmul(X, weight).reshape(-1,1) + np.random.rand(190).reshape(-1,1)/50-.01
 Yp = np.matmul(X, weight).reshape(-1,1)

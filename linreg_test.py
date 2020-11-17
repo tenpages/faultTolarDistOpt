@@ -213,6 +213,24 @@ def load_data(dataset, seed, args, rank, world_size):
         test_loader = None
         return train_loader, training_set, test_loader
 
+    elif dataset == "dataset":
+        if rank==0:
+            training_set = torch.load("linRegDataset")
+            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        else:
+            if args.data_distribution == 'distributed':
+                group_size = int(190 / (world_size - 1))
+                tmp_set = torch.load("linRegDataset")[group_size*(rank-1):group_size*rank]
+                training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'same':
+                torch.manual_seed(TORCH_SEED_+rank)
+                training_set = torch.load("linRegDataset")
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        test_loader = None
+        return train_loader, training_set, test_loader
+
+    #print("here2")
     return None, None, None
 
 
@@ -242,7 +260,9 @@ def prepare(args, rank, world_size):
         print("Faulty agents:", adversaries[0], "Total:", len(adversaries[0]))
         train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank,
                                                             world_size=world_size)
-        data_shape = training_set[0][0].size()[0]*training_set[0][0].size()[1]*training_set[0][0].size()[2]
+        
+        # data_shape = training_set[0][0].size()[0]*training_set[0][0].size()[1]*training_set[0][0].size()[2]
+        data_shape = training_set[0][0].size()[0]
         kwargs_master = {
             'redundancy': args.redundancy,
             'batch_size': args.batch_size,
@@ -294,8 +314,8 @@ def prepare(args, rank, world_size):
             'checkpoint_step': args.checkpoint_step,
             'adversaries': adversaries,
             'total_size': data_shape,
-            'channel': training_set[0][0].size()[0],
-            '1d_size': training_set[0][0].size()[1],
+            # 'channel': training_set[0][0].size()[0],
+            # '1d_size': training_set[0][0].size()[1],
             'p': args.p,
         }
     # print(train_loader, training_set, test_loader)
