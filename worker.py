@@ -23,6 +23,8 @@ from model_ops.resnetn import ResNet18N
 from model_ops.vgg import VGG13, VGG16, VGG19
 from nn_ops import NN_Trainer
 
+from model_ops.reg_fc import LinregTest
+
 STEP_START_ = 1
 
 
@@ -74,13 +76,16 @@ class DistributedWorker(NN_Trainer):
             self.network = VGG16(self._channel)
         elif self.network_config == 'VGG19':
             self.network = VGG19(self._channel)
+        elif self.network_config == 'LinregTest':
+            self.network = LinregTest(self._total_size)
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
             self._load_model(file_path)
 
         self.optimizer = torch.optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
-        self.criterion = nn.CrossEntropyLoss()
+        # self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.MSELoss()
 
         self.init_recv_buf()
 
@@ -115,8 +120,11 @@ class DistributedWorker(NN_Trainer):
         first = True
 
         if self.redundancy:
+            np.random.seed()
+            # print("Worker {}:\trandoms: {}".format(self.rank, [np.random.randn() for _ in range(10)]))
+            self.rand_nums = [np.random.randn() for _ in range(self._max_steps)]
             self.fetch_seed()                   # set self.red_seed
-            self.fetch_rand_nums()
+            # self.fetch_rand_nums()
             assert (self.red_seed >= 0)
             torch.manual_seed(self.red_seed)    # set manual seed for data shuffling
 
@@ -142,6 +150,7 @@ class DistributedWorker(NN_Trainer):
                     flag = False
 
                 if self.cur_step == self._max_steps:
+                    print("[{}] end of worker training.".format(self.rank))
                     break
 
                 red_flag = False
@@ -225,40 +234,43 @@ class DistributedWorker(NN_Trainer):
                     forward_start_time = time.time()
                     logits = self.network(X_batch)
                     # print("Worker {} logits: {}".format(self.rank,logits))
-                    if self.redundancy and not red_flag:
+                    if self.redundancy:
                         loss = self.criterion(logits,y_batch)
+                        assert (self.cur_step <= len(self.rand_nums))
+                        send_err = self.p_decision(self._p,self.rand_nums.pop(0))
                         numlayers = 0
                         for _ in self.network.parameters():
                             numlayers = numlayers + 1
                         send_check_requests=[]
+                        if not red_flag:
 
-                        # send_err = self.p_decision(self._p)       # if send_err == 1 then send error
-                        send_err = self.p_decision(self._p,self.rand_nums.pop(0))
+                            # send_err = self.p_decision(self._p)       # if send_err == 1 then send error
+                            # send_err = self.p_decision(self._p,self.rand_nums.pop(0))
 
-                        if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
-                            print("Worker {} step {} sending faulty gradient to master".format(self.rank,self.cur_step))
+                            if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
+                                print("Worker {} step {} sending faulty gradient to master".format(self.rank,self.cur_step))
 
-                        for idx, log in enumerate(logits):
-                            self.optimizer.zero_grad()
-                            temp1 = torch.index_select(logits,0,torch.tensor(idx))
-                            temp2 = torch.index_select(y_batch,0,torch.tensor(idx))
-                            # loss_list.append(self.criterion(temp1,temp2))
-                            red_loss = self.criterion(temp1,temp2)
+                            for idx, log in enumerate(logits):
+                                self.optimizer.zero_grad()
+                                temp1 = torch.index_select(logits,0,torch.tensor(idx))
+                                temp2 = torch.index_select(y_batch,0,torch.tensor(idx))
+                                # loss_list.append(self.criterion(temp1,temp2))
+                                red_loss = self.criterion(temp1,temp2)
                  
-                            red_loss.backward(retain_graph=True)
-                            for param_idx, param in enumerate(self.network.parameters()):
-                                grad = param.grad.data.numpy().astype(np.float64)
+                                red_loss.backward(retain_graph=True)
+                                for param_idx, param in enumerate(self.network.parameters()):
+                                    grad = param.grad.data.numpy().astype(np.float64)
 
-                                """  randomized error generation based on prob(send_error) < p """
-                                # if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p :
-                                if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
-                                    grad = err_simulation(grad, self._err_mode)
+                                    """  randomized error generation based on prob(send_error) < p """
+                                    # if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p :
+                                    if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
+                                        grad = err_simulation(grad, self._err_mode)
 
-                                req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(dp_list[idx]*numlayers)+param_idx)
-                                send_check_requests.append(req_isend)
+                                    req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(dp_list[idx]*numlayers)+param_idx)
+                                    send_check_requests.append(req_isend)
         
-                        for req in send_check_requests:
-                            req.wait()
+                            for req in send_check_requests:
+                                req.wait()
 
                         new_dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints_redundant())
 
@@ -305,6 +317,7 @@ class DistributedWorker(NN_Trainer):
                             # end if new_dp_list
                         else :
                             print(f"Worker {self.rank} step {self.cur_step} received no redundant datapoints")
+                            break
                         
                     
                     elif "FC" in self.network_config:
@@ -316,6 +329,8 @@ class DistributedWorker(NN_Trainer):
                     elif "ResNet" in self.network_config:
                         loss = self.criterion(logits, y_batch)
                     elif "VGG" in self.network_config:
+                        loss = self.criterion(logits, y_batch)
+                    elif "LinregTest" in self.network_config:
                         loss = self.criterion(logits, y_batch)
                     else:
                         raise Exception("No such network as "+self.network_config)
@@ -334,11 +349,14 @@ class DistributedWorker(NN_Trainer):
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
                     elif "VGG" in self.network_config:
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
+                    elif "LinregTest" in self.network_config:
+                        computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
 
                     # prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))
-                    prec1, prec3 = accuracy(logits.data, y_batch.long(), topk=(1, 3))
+                    # prec1, prec3 = accuracy(logits.data, y_batch.long(), topk=(1, 3))
                     with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
                         f.write('{:.8f}\n'.format(time.time()-iter_start_time))
+                    '''
                     print(
                         'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.8f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@3: {}'.format(
                             self.rank,
@@ -347,6 +365,15 @@ class DistributedWorker(NN_Trainer):
                                                       time.time() - iter_start_time, computation_time,
                                                       c_duration + fetch_weight_duration,
                             prec1.numpy()[0], prec3.numpy()[0]))
+                    '''
+                    print(
+                        'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.8f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@3: {}'.format(
+                            self.rank,
+                            self.cur_step, num_epoch, batch_idx * self.batch_size, len(train_loader.dataset),
+                            (100. * (batch_idx * self.batch_size) / len(train_loader.dataset)), loss.item(),
+                                                      time.time() - iter_start_time, computation_time,
+                                                      c_duration + fetch_weight_duration,
+                            "NA", "NA"))
 
                     if self.cur_step % self._eval_freq == 0 and self.rank == 1:
                         # save snapshots

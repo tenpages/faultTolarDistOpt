@@ -30,6 +30,8 @@ from optim.sgd_modified import SGDModified
 
 from functools import reduce
 
+from model_ops.reg_fc import LinregTest_Split 
+
 import math
 
 STEP_START_ = 1
@@ -102,6 +104,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.network = VGG16(self._channel)
         elif self.network_config == 'VGG19':
             self.network = VGG19(self._channel)
+        elif self.network_config == 'LinregTest':
+            self.network = LinregTest_Split(self._total_size)
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
@@ -121,8 +125,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # np.set_printoptions(formatter={'float': lambda x: "{0:0.6f}".format(x)})
         self.async_bcast_step()
         if self._redundancy :
+            # self.bcast_rand_nums()
             self.bcast_seed()
-            self.bcast_rand_nums()
 
         if self._checkpoint_step != 0:
             # torch.set_rng_state(torch.load(self._train_dir+"rng_state_"+str(self._checkpoint_step)))
@@ -154,7 +158,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 dp_list, worker_list = (None,None)
                 # print("_q == {} {}".format(self._q,type(self._q)))
                 if self._q == 1.0 or fault_check:
-                    self._num_grad_to_collect = (self.batch_size)*(self._s + 1)
+                    fault_check == 1 
+                    self._num_grad_t_collect = (self.batch_size)*(self._s + 1)
                     dp_list, worker_list = self.async_bcast_datapoints_redundant()
                 else:
                     self._num_grad_to_collect = self.batch_size
@@ -202,6 +207,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     # redistribute datapoints for second round 
                     # rule: datapoints must go to different workers than before
                     new_dp_list, new_worker_list = self.async_bcast_redundant_datapoints(dp_list, faulty_grad_datapoints)
+                    print('old_worker_list', worker_list)
+                    print("new_worker_list",new_worker_list)
 
                     combined_list = [[] for _ in new_worker_list]
                     for dp in range(len(worker_list)):
@@ -209,8 +216,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                             combined_list[dp].append(rank)
                         for rank in new_worker_list[dp]:
                             combined_list[dp].append(rank)
-
-                    # print("updated worker rank list: {}".format(combined_list))
+                    print("updated worker rank list: {}".format(combined_list))
 
                     # create requests for redundant gradients and wait for messages
                     redundant_fetch_requests = self.fetch_coded_gradients_redundant(new_worker_list, worker_list)
@@ -295,8 +301,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     redundancy_requests=[]
                     for rank in range(1,self.world_size):
                         # send an empty list to each worker with tag=9
-                        if rank not in self._byzantine_workers:
-                            redundancy_requests.append(self.comm.isend([], dest=rank, tag=8))
+                        # if rank not in self._byzantine_workers:
+                        redundancy_requests.append(self.comm.isend([], dest=rank, tag=8))
                     for i in range(len(redundancy_requests)):
                         redundancy_requests[i].wait()
                     count = 0
@@ -570,6 +576,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             comp_eff = np.array(comp_eff)
             np.save(self._train_dir + "comp_eff.npy",comp_eff)        
             print("Master total gradients used: {}/{}".format(used_grads,total_grads))
+        print('end of execution')
 
     def init_model_shapes(self):
         for param_idx, param in enumerate(self.network.parameters()):
@@ -609,6 +616,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def bcast_rand_nums(self):
         req_list = []
+        # np.random.seed(time.localtime().tm_min)
+        np.random.seed()
         for i in range(self.world_size):
             if i != 0:
                 nums = [randn() for i in range(self._max_steps)]
