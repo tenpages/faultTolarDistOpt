@@ -236,8 +236,9 @@ class DistributedWorker(NN_Trainer):
                     # print("Worker {} logits: {}".format(self.rank,logits))
                     if self.redundancy:
                         loss = self.criterion(logits,y_batch)
-                        assert (self.cur_step <= len(self.rand_nums))
-                        send_err = self.p_decision(self._p,self.rand_nums.pop(0))
+                        send_err = None
+                        if self._p > 0.0 :
+                            send_err = self.p_decision(self._p,self.rand_nums.pop(0))
                         numlayers = 0
                         for _ in self.network.parameters():
                             numlayers = numlayers + 1
@@ -247,7 +248,7 @@ class DistributedWorker(NN_Trainer):
                             # send_err = self.p_decision(self._p)       # if send_err == 1 then send error
                             # send_err = self.p_decision(self._p,self.rand_nums.pop(0))
 
-                            if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
+                            if self.rank in self._fail_workers[self.cur_step] and send_err:
                                 print("Worker {} step {} sending faulty gradient to master".format(self.rank,self.cur_step))
 
                             for idx, log in enumerate(logits):
@@ -304,8 +305,8 @@ class DistributedWorker(NN_Trainer):
 
                                     """  should this be determined by previous decision?   """
                                     # if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p:
-                                    if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
-                                        # print("Worker {} step {} sending faulty gradient to master again".format(self.rank,self.cur_step))
+                                    if self.rank in self._fail_workers[self.cur_step] and send_err:
+                                        print("Worker {} step {} sending faulty gradient to master again".format(self.rank,self.cur_step))
                                         grad = err_simulation(grad, self._err_mode)
 
                                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(new_dp_list[idx]*numlayers)+param_idx)
