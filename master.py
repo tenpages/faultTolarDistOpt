@@ -1041,6 +1041,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             min_dist_label = calc_min_distance(sum_gradient, concatenated_gradients[unselected])
             unselected.remove(min_dist_label)
             selected.append(min_dist_label)
+            n -= 1
         filtered_gradient = np.mean(np.array(concatenated_gradients[selected]), axis=0)
         filter_finish_time = time.time()
 
