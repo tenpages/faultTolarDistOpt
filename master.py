@@ -376,6 +376,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
             self.meset_grad_buffer()
             self.grad_accumulator.meset_everything()
+            if 'ResNet' in self.network_config:
+                self.param_accumulator.meset_everything()
 
             if self._eval_freq!=0 and self.cur_step % self._eval_freq == 0:
                 self._save_model(file_path=self._generate_model_path())
