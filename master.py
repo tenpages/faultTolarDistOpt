@@ -366,9 +366,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._filter_statistics()
                 network_state_keys = list(self.network.state_dict())
                 for stat_idx, param in enumerate(self._param_aggregate_buffer):
-                    assert ('running' in self.network.state_dict()[network_state_keys[self.param_accumulator.stat_id_mapper[stat_idx]]])
-                    assert (self.network.state_dict()[network_state_keys[self.param_accumulator.stat_id_mapper[stat_idx]]].shape.numel() == self._param_aggregate_buffer[stat_idx])
-                    self.network.state_dict()[network_state_keys[self.param_accumulator.stat_id_mapper[stat_idx]]].put_(torch.tensor(range(self._param_aggregate_buffer[stat_idx].size)), torch.tensor(self._param_aggregate_buffer[stat_idx]).float())
+                    assert ('running' in self.network.state_dict()[network_state_keys[self.param_accumulator.accumulator_id_mapper[stat_idx]]])
+                    assert (self.network.state_dict()[network_state_keys[self.param_accumulator.accumulator_id_mapper[stat_idx]]].shape.numel() == self._param_aggregate_buffer[stat_idx])
+                    self.network.state_dict()[network_state_keys[self.param_accumulator.accumulator_id_mapper[stat_idx]]].put_(torch.tensor(range(self._param_aggregate_buffer[stat_idx].size)), torch.tensor(self._param_aggregate_buffer[stat_idx]).float())
 
                 for state_key in network_state_keys:
                     if 'num_batches_tracked' in state_key:
