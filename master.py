@@ -120,6 +120,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self.scheduler.load_state_dict(torch.load(self._train_dir+"scheduler_"+str(self._checkpoint_step)))
         
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
+            print("at place 0\n",self._param_aggregate_buffer[0])
             if self._diminishing_lr == True:
                 self.scheduler.step()
             self.network.train()
@@ -140,6 +141,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             gradient_fetch_requests = self.async_fetch_gradient_start()
             if 'ResNet' in self.network_config:
                 param_fetch_requests = self.async_fetch_parameter_start()
+            print("at place 1\n",self._param_aggregate_buffer[0])
 
             while not enough_gradients_received:
                 status = MPI.Status()
@@ -184,6 +186,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for j in self.grad_accumulator.gradient_aggregate_counter:
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
 
+            print("at place 2\n",self._param_aggregate_buffer[0])
             if self._err_mode in ['cwtm', 'krum', 'krum2', 'normfilter', 'normfilter2', 'normfilter3']:
                 self._err_simulator()
 
@@ -331,6 +334,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.optimizer.step(grads=self._grad_aggregate_buffer, mode=self._update_mode)
             update_duration = time.time() - update_start
 
+            print("at place 3\n",self._param_aggregate_buffer[0])
             if 'ResNet' in self.network_config:
                 self._first_param_received = False
                 enough_params_received = False
@@ -375,11 +379,13 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     if 'num_batches_tracked' in state_key:
                         self.network.state_dict()[state_key].add_(1)
 
+            print("at place 4\n",self._param_aggregate_buffer[0])
             self.meset_grad_buffer()
             self.grad_accumulator.meset_everything()
             if 'ResNet' in self.network_config:
                 self.param_accumulator.meset_everything()
 
+            print("at place 5\n",self._param_aggregate_buffer[0])
             if self._eval_freq!=0 and self.cur_step % self._eval_freq == 0:
                 self._save_model(file_path=self._generate_model_path())
                 # torch.save(torch.get_rng_state(), open(self._train_dir+"rng_state_"+str(self.cur_step),"wb"))
