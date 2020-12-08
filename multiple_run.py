@@ -3,11 +3,13 @@ import subprocess
 #model_names = ['geomedian','medofmeans','cwtm','mkrum5']
 #models = ['geometric_median','median_of_means','coor_wise_trimmed_mean','multi_krum']
 #fault_types = ['revgrad2','labelflipping','gaussian']
-model_names = ['bulyannormfilter']
-models = ['bulyan_grad_norm']
-fault_types = ['revgrad2','normfilter','labelflipping','gaussian']
-nums_faults = [4]
-batch_sizes = ['64']
+#model_names = ['bulyannormfilter']
+#models = ['bulyan_grad_norm']
+model_names = ['normfilter']
+models = ['grad_norm']
+fault_types = ['revgrad2']
+nums_faults = [2,4,6,8,10,12]
+batch_sizes = ['32','128','256']
 #acc_alphas = ['20','40','60']
 
 for batch_size in batch_sizes:
