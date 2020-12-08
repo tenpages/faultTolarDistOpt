@@ -464,11 +464,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if 'running_mean' in state_key or 'running_var' in state_key:
                 for k in range(self._num_grad_to_collect):
                     if self._compress_grad == 'compress':
-                        req = self.comm.irecv(self.param_accumulator.parameter_aggregator[state_idx][k], source=k+1,
-                                              tag=10088+layer_idx)
+                        req = self.comm.irecv(self.param_accumulator.parameter_aggregator[self.param_accumulator.state_id_mapper[state_idx]][k], source=k+1,
+                                              tag=10088+state_idx)
                     else:
-                        req = self.comm.Irecv([self.param_accumulator.parameter_aggregator[state_idx][k], MPI.DOUBLE],
-                                              source=k+1, tag=10088+layer_idx)
+                        req = self.comm.Irecv([self.param_accumulator.parameter_aggregator[self.param_accumulator.state_id_mapper[state_idx]][k], MPI.DOUBLE],
+                                              source=k+1, tag=10088+state_idx)
                     param_fetch_requests.append(req)
         return param_fetch_requests
 
