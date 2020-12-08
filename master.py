@@ -47,6 +47,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_aggregate_buffer = []
         self._historical_buffer = []
         self._model_shapes = []
+        if 'ResNet' in self.network_config:
+            self._param_aggregate_buffer = []
+            self._stat_shapes = []
         self._first_grad_received = False
         self._eval_freq = kwargs['eval_freq']
         self._train_dir = kwargs['train_dir']
@@ -98,6 +101,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         # gradient accumulator collects gradients from worker nodes
         self.grad_accumulator = GradientAccumulator(self.network, self.world_size - 1, mode=self._compress_grad)
+        if 'ResNet' in self.network_config:
+            self.param_accumulator = ParameterAccumulator(self.network, self.world_size - 1, mode=self._compress_grad)
         self.init_model_shapes()
         # optimizer can be others
         self.optimizer = SGDModified(self.network.parameters(), lr=self.lr, momentum=self.momentum)
@@ -133,6 +138,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self.async_bcast_layer_weights_async()
 
             gradient_fetch_requests = self.async_fetch_gradient_start()
+            if 'ResNet' in self.network_config:
+                param_fetch_requests = self.async_fetch_parameter_start()
 
             while not enough_gradients_received:
                 status = MPI.Status()
@@ -324,6 +331,49 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.optimizer.step(grads=self._grad_aggregate_buffer, mode=self._update_mode)
             update_duration = time.time() - update_start
 
+            if 'ResNet' in self.network_config:
+                self._first_param_received = False
+                enough_params_received = False
+                while not enough_params_received:
+                    status = MPI.Status()
+                    if self._compress_grad == 'None':
+                        MPI.Request.Waitany(requests=param_fetch_requests, status=status)
+                    elif self._compress_grad == "compress":
+                        t, received_msg = MPI.Request.waitany(requests=param_fetch_requests, status=status)
+                        received_param = decompress(received_msg)
+
+                    if status.tag - 10088 in self.param_accumulator.model_index_range:
+                        if not self._first_param_received:
+                            self._first_param_received = True
+                            param_gather_start_time = time.time()
+
+                        state_idx = status.tag - 10088
+
+                        if self._compress_grad == "None":
+                            received_param = self.param_accumulator.parameter_aggregator[self.param_accumulator.state_id_mapper[state_idx]][status.source - 1]
+                        assert (received_param.shape == self._stat_shapes[self.param_accumulator.state_id_mapper[state_idx]])
+
+                        # aggregate the gradient
+                        if self.param_accumulator.parameter_aggregate_counter[self.param_accumulator.state_id_mapper[state_idx]] <= self._num_grad_to_collect:
+                            self.aggregate_parameters(param=received_param, state_idx=state_idx, source=status.source-1)
+
+                        self.param_accumulator.parameter_aggregate_counter[self.param_accumulator.state_id_mapper[state_idx]] += 1
+
+                    enough_params_received = True
+                    for j in self.param_accumulator.parameter_aggregate_counter:
+                        enough_params_received = enough_params_received and (j >= self._num_grad_to_collect)
+
+                self._filter_statistics()
+                network_state_keys = list(self.network.state_dict())
+                for stat_idx, param in enumerate(self._param_aggregate_buffer):
+                    assert ('running' in self.network.state_dict()[network_state_keys[self.param_accumulator.stat_id_mapper[stat_idx]]])
+                    assert (self.network.state_dict()[network_state_keys[self.param_accumulator.stat_id_mapper[stat_idx]]].shape.numel() == self._param_aggregate_buffer[stat_idx])
+                    self.network.state_dict()[network_state_keys[self.param_accumulator.stat_id_mapper[stat_idx]]].put_(torch.tensor(range(self._param_aggregate_buffer[stat_idx].size)), torch.tensor(self._param_aggregate_buffer[stat_idx]).float())
+
+                for state_key in network_state_keys:
+                    if 'num_batches_tracked' in state_key:
+                        self.network.state_dict()[state_key].add_(1)
+
             self.meset_grad_buffer()
             self.grad_accumulator.meset_everything()
 
@@ -352,6 +402,17 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
                 if self._accumulative == True:
                     self._historical_buffer.append(np.array([np.zeros(param.size()).reshape(-1)]*self.num_workers))
+
+        if 'ResNet' in self.network_config:
+            for state_idx, state_key in enumerate(self.network.state_dict()):
+                if 'running_mean' in state_key or 'running_var' in state_key:
+                    self._stat_shapes.append(self.network.state_dict()[state_key].size())
+                    if self._update_mode == 'normal':
+                        self._param_aggregate_buffer.append(np.zeros(self.network.state_dict()[state_key].size()))
+                    elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
+                                       'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
+                                       'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
+                        self._param_aggregate_buffer.append([np.zeros(self.network.state_dict()[state_key].size()).reshape(-1)]*self.num_workers)
 
     def async_bcast_step(self):
         """
@@ -397,6 +458,20 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 gradient_fetch_requests.append(req)
         return gradient_fetch_requests
 
+    def async_fetch_parameter_start(self):
+        param_fetch_requests = []
+        for state_idx, state_key in enumerate(self.network.state_dict()):
+            if 'running_mean' in state_key or 'running_var' in state_key:
+                for k in range(self._num_grad_to_collect):
+                    if self._compress_grad == 'compress':
+                        req = self.comm.irecv(self.param_accumulator.parameter_aggregator[layer_idx][k], source=k+1,
+                                              tag=10088+layer_idx)
+                    else:
+                        req = self.comm.Irecv([self.param_accumulator.parameter_aggregator[layer_idx][k], MPI.DOUBLE],
+                                              source=k+1, tag=10088+layer_idx)
+                    param_fetch_requests.append(req)
+        return param_fetch_requests
+
     def aggregate_gradient(self, gradient, layer_idx, source):
         if self._update_mode == 'normal':
             self._grad_aggregate_buffer[layer_idx] += gradient
@@ -413,6 +488,14 @@ class SyncReplicaMaster_NN(NN_Trainer):
             elif len(_shape) > 1:
                 self._grad_aggregate_buffer[layer_idx].append(gradient.reshape(-1))  # gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
             """
+
+    def aggregate_parameters(self, param, state_idx, source):
+        if self._update_mode == 'normal':
+            self._param_aggregate_buffer[self.param_accumulator.state_id_mapper[state_idx]] += param
+        elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
+                                   'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
+                                   'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
+            self._param_aggregate_buffer[self.param_accumulator.state_id_mapper[state_idx]][source] = param.reshape(-1)
 
     def model_update(self, tmp_module):
         new_state_dict = {}
@@ -435,6 +518,21 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
                                        'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
                 self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
+
+    def _filter_statistics(self):
+        if self._update_mode == 'normal':
+            for i in range(len(self._param_aggregate_buffer)):
+                self._param_aggregate_buffer[i] /= self._num_grad_to_collect            
+        if self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
+                               'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
+                               'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
+            cwtm_start = time.time()
+            for stat_idx, params in enumerate(self._param_aggregate_buffer):
+                trimmed_mean = np.mean(np.sort(np.array(params), axis=0)[self._t:self.num_workers-self._t], axis=0)
+                self._param_aggregate_buffer[stat_idx] = trimmed_mean
+            print("Master Step: {} Statistics filtering (coor wise trimmed mean) cost: {:.4f}".format(self.cur_step, time.time()-cwtm_start))
+            with open(self._train_dir+"logs-master",'a') as f:
+                f.write('{:.8f},'.format(time.time()-cwtm_start))
 
     def _err_simulator(self):
         print(self._err_mode)
@@ -1224,3 +1322,60 @@ class GradientAccumulator(object):
             for i, tmp_aggregator in enumerate(self.gradient_aggregator):
                 for j, buf in enumerate(tmp_aggregator):
                     self.gradient_aggregator[i][j] = np.zeros(self.gradient_aggregator[i][j].shape)
+
+class ParameterAccumulator(object):
+    """
+    Parameter accumulator like conditionalAccumulator in tensorflow
+    for collecting running_mean/var for ResNet
+    """
+
+    def __init__(self, module, num_worker, mode='None'):
+        self.parameter_aggregate_counter = []
+        self.model_index_range = []
+        self.parameter_aggregator = []
+        self._mode = mode
+        self._shape_counter = []
+        self.state_id_mapper = {}
+        self.accumulator_id_mapper = {}
+
+        #print("Creating receivers: ")
+        layer_counter = 0
+        for state_idx, state_key in enumerate(module.state_dict()):
+            tmp_aggregator = []
+            tmp_shape_counter = []
+            #print("param id:",param_idx)
+            if 'running_mean' in state_key or 'running_var' in state_key:
+                self.state_id_mapper[state_idx] = layer_counter
+                self.accumulator_id_mapper[layer_counter] = state_idx
+                layer_counter += 1
+                for worker_idx in range(num_worker):
+                    if self._mode == 'None':
+                        tmp_aggregator.append(np.zeros((module.state_dict()[state_key].size())))
+                        tmp_shape_counter.append(tmp_aggregator[worker_idx].shape)
+                        #print("adding a layer of size",param.size(),"for worker",worker_idx,tmp_aggregator[worker_idx].shape)
+                    elif self._mode == 'compress':
+                        _shape = module.state_dict()[state_key].size()
+                        if len(_shape) == 1:
+                            tmp_aggregator.append(bytearray(getsizeof(np.zeros((_shape[0],))) * 2))
+                        else:
+                            tmp_aggregator.append(bytearray(getsizeof(np.zeros(_shape)) * 2))
+                self.parameter_aggregator.append(tmp_aggregator)
+                self.parameter_aggregate_counter.append(0)
+                self.model_index_range.append(state_idx)
+                self._shape_counter.append(tmp_shape_counter)
+                #print(len(self.gradient_aggregator),self.gradient_aggregator[param_idx][0].shape)
+
+    def meset_everything(self):
+        self._meset_grad_counter()
+        self._meset_grad_aggregator()
+
+    def _meset_grad_counter(self):
+        self.parameter_aggregate_counter = [0 for _ in self.parameter_aggregate_counter]
+
+    def _meset_grad_aggregator(self):
+        if self._mode == 'compress':
+            pass
+        else:
+            for i, tmp_aggregator in enumerate(self.parameter_aggregator):
+                for j, buf in enumerate(tmp_aggregator):
+                    self.parameter_aggregator[i][j] = np.zeros(self.parameter_aggregator[i][j].shape)

@@ -360,6 +360,30 @@ class DistributedWorker(NN_Trainer):
             print("Normal node",self.rank,"sending gradient with norm=",np.linalg.norm(concatenated),
                   "Gradients:",printNorms)
         """
+        if "ResNet" in self.network_config:
+            for state_idx, state_key in enumerate(self.network.state_dict()):
+                if 'running_mean' in state_key or 'running_var' in state_key:
+                    params = self.network.state_dict()[state_key].data.numpy().astype(np.float64)
+                if len(req_send_check) != 0:
+                    req_send_check[-1].wait()
+                if self.rank in self._fail_workers[self.cur_step]:
+                    simulated_params = err_simulation(params, self._err_mode)
+                    if self._compress_grad == 'compress':
+                        _compressed_grad = compress(simulated_grad)
+                        req_isend = self.comm.isend(_compressed_grad, dest=0, tag=10088+param_idx)
+                        req_send_check.append(req_isend)
+                    else:
+                        req_isend = self.comm.Isend([simulated_grad, MPI.DOUBLE], dest=0, tag=10088+param_idx)
+                        req_send_check.append(req_isend)
+                else:
+                    if self._compress_grad == 'compress':
+                        _compressed_grad = compress(grad)
+                        req_isend = self.comm.isend(_compressed_grad, dest=0, tag=10088+param_idx)
+                        req_send_check.append(req_isend)
+                    else:
+                        req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=10088+param_idx)
+                        req_send_check.append(req_isend)
+
         req_send_check[-1].wait()
 
     def _load_model(self, file_path):
