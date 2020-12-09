@@ -9,7 +9,7 @@ model_names = ['normfilter']
 models = ['grad_norm']
 fault_types = ['rev_grad_2']
 fault_names = ['revgrad2']
-nums_faults = [2]
+nums_faults = [2,4,6,8,10,12]
 batch_sizes = ['32','128','256']
 #acc_alphas = ['20','40','60']
 
