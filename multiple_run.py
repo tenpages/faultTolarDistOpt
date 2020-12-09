@@ -7,9 +7,9 @@ import subprocess
 #models = ['bulyan_grad_norm']
 model_names = ['normfilter']
 models = ['grad_norm']
-fault_types = ['revgrad2']
+fault_types = ['rev_grad_2']
 nums_faults = [2]
-batch_sizes = ['64']
+batch_sizes = ['32','128','256']
 #acc_alphas = ['20','40','60']
 
 for batch_size in batch_sizes:
