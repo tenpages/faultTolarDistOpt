@@ -8,8 +8,8 @@ import subprocess
 model_names = ['normfilter']
 models = ['grad_norm']
 fault_types = ['revgrad2']
-nums_faults = [2,4,6,8,10,12]
-batch_sizes = ['32','128','256']
+nums_faults = [2]
+batch_sizes = ['64']
 #acc_alphas = ['20','40','60']
 
 for batch_size in batch_sizes:
