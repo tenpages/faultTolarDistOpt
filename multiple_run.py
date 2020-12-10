@@ -41,7 +41,7 @@ for batch_size in batch_sizes:
 				print(' '.join(args))
 				results = subprocess.run(args, capture_output=True)
 				if results.returncode==0 and results.stdout != None:
-					with open('logs-paper2-cifar-' + batch_size + '-' + fault_name + '-' + model_name + '-40-' + str(i) + '-acc-' + acc_alpha,'w') as f:
+					with open('logs-paper2-cifar-' + batch_size + '-' + fault_name + '-' + model_name + '-40-' + str(i),'w') as f:
 						f.write(results.stdout.decode())
 					print("finished")
 					print("========================")
@@ -85,7 +85,7 @@ for batch_size in batch_sizes:
 				print(' '.join(args))
 				results = subprocess.run(args, capture_output=True)
 				if results.returncode==0 and results.stdout != None:
-					with open('logs-paper2-cifar-' + batch_size + '-' + fault_name + '-' + model_name + '-40-' + str(i) + '-acc-' + acc_alpha,'w') as f:
+					with open('logs-paper2-cifar-' + batch_size + '-' + fault_name + '-' + model_name + '-40-' + str(i),'w') as f:
 						f.write(results.stdout.decode())
 					print("finished")
 					print("========================")
