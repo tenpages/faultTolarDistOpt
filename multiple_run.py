@@ -28,7 +28,7 @@ for batch_size in batch_sizes:
 						'--approach', 'baseline',
 						'--err-mode', fault_type,
 						'--lr', '0.01',
-						'--train-dir', 'output/models/paper2/CIFAR10-LeNet/' + batch_size + '/' + fault_name + '/' + model_name + '/40-' + str(i) + '/',
+						'--train-dir', 'output/models/paper2/CIFAR-LeNet/' + batch_size + '/' + fault_name + '/' + model_name + '/40-' + str(i) + '/',
 						'--accumulative', 'False',
 						#'--accumulative-alpha', '0.'+acc_alpha,
 						'--worker-fail', str(i),
@@ -72,7 +72,7 @@ for batch_size in batch_sizes:
 						'--approach', 'baseline',
 						'--err-mode', fault_type,
 						'--lr', '0.01',
-						'--train-dir', 'output/models/paper2/CIFAR10-LeNet/' + batch_size + '/' + fault_name + '/' + model_name + '/40-' + str(i) + '/',
+						'--train-dir', 'output/models/paper2/CIFAR-LeNet/' + batch_size + '/' + fault_name + '/' + model_name + '/40-' + str(i) + '/',
 						'--accumulative', 'False',
 						#'--accumulative-alpha', '0.'+acc_alpha,
 						'--worker-fail', str(i),
@@ -105,7 +105,7 @@ for batch_size in batch_sizes:
 	for i in nums_faults:
 		for fault_type, fault_name in zip(fault_types, fault_names):
 			for model_name, model in zip(model_names, models):
-				args = 'python distributed_eval.py --model-dir output/models/paper2/MNIST-LeNet/'+batch_size+'/'+fault_name+'/'+model_name \
+				args = 'python distributed_eval.py --model-dir output/models/paper2/CIFAR-LeNet/'+batch_size+'/'+fault_name+'/'+model_name \
 					+'/40-'+str(i)+'/ --dataset CIFAR10 --network LeNet --eval-freq 1 > results-paper2-cifar-'+batch_size+'-'+fault_name+'-'+model_name+'-40-'+str(i)+' 2>&1 &'
 				print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 				print(args)
@@ -120,7 +120,7 @@ for batch_size in batch_sizes:
 	for i in nums_faults:
 		for fault_type, fault_name in zip(fault_types, fault_names):
 			for model_name, model in zip(model_names, models):
-				args = 'python distributed_eval.py --model-dir output/models/paper2/MNIST-LeNet/'+batch_size+'/'+fault_name+'/'+model_name \
+				args = 'python distributed_eval.py --model-dir output/models/paper2/CIFAR-LeNet/'+batch_size+'/'+fault_name+'/'+model_name \
 					+'/40-'+str(i)+'/ --dataset CIFAR10 --network LeNet --eval-freq 1 > results-paper2-cifar-'+batch_size+'-'+fault_name+'-'+model_name+'-40-'+str(i)+' 2>&1 &'
 				print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 				print(args)
