@@ -36,7 +36,7 @@ for batch_size in batch_sizes:
 							'--fault-thrshld', str(i),
 							'--data-distribution', 'same',
 							'--calculate-cosine', 'False',
-							'--checkpoint-step', '500',
+							'--checkpoint-step', '0',
 							'--eval-freq', '1']
 					print("Now running experiments mpiron "+fault_name+" using "+model_name+" using command:")
 					print(' '.join(args))
