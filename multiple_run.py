@@ -25,11 +25,11 @@ for batch_size in batch_sizes:
 							'--epochs', '100',
 							'--network', 'LeNet',
 							'--mode', model, '--multi-krum-m','5',
-							'--dataset', 'MNSIT',
+							'--dataset', 'MNIST',
 							'--approach', 'baseline',
 							'--err-mode', fault_type,
 							'--lr', '0.01',
-							'--train-dir', 'output/models/paper2/MNSIT-LeNet/' + batch_size + '/' + fault_type + '/' + model_name + '/acc-' + acc_alpha + '/40-' + str(i) + '/',
+							'--train-dir', 'output/models/paper2/MNIST-LeNet/' + batch_size + '/' + fault_type + '/' + model_name + '/acc-' + acc_alpha + '/40-' + str(i) + '/',
 							'--accumulative', 'True',
 							'--accumulative-alpha', '0.'+acc_alpha,
 							'--worker-fail', str(i),
@@ -57,8 +57,8 @@ for batch_size in batch_sizes:
 		for fault_type, fault_name in zip(fault_types, fault_names):
 			for model_name, model in zip(model_names, models):
 				for acc_alpha in acc_alphas:
-					args = 'python distributed_eval.py --model-dir output/models/paper2/MNSIT-LeNet/'+batch_size+'/'+fault_name+'/'+model_name \
-						+'/acc-'+acc_alpha+'/40-'+str(i)+'/ --dataset MNSIT --network LeNet --eval-freq 1 > results-paper2-mnist-'+batch_size+'-'+fault_name+'-'+model_name+'-40-'+str(i)+'-acc-'+acc_alpha+' 2>&1 &'
+					args = 'python distributed_eval.py --model-dir output/models/paper2/MNIST-LeNet/'+batch_size+'/'+fault_name+'/'+model_name \
+						+'/acc-'+acc_alpha+'/40-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > results-paper2-mnist-'+batch_size+'-'+fault_name+'-'+model_name+'-40-'+str(i)+'-acc-'+acc_alpha+' 2>&1 &'
 					print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 					print(args)
 					results = subprocess.run(args, shell=True)
