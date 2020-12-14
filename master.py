@@ -499,11 +499,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
         elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
                                    'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
-            if state_idx == 3:
-                print(state_idx, self.param_accumulator.state_id_mapper[state_idx])
-                print(self._param_aggregate_buffer[self.param_accumulator.state_id_mapper[state_idx]][source])
-                print(len(param.reshape(-1)))
-                print(param.reshape(-1))
             self._param_aggregate_buffer[self.param_accumulator.state_id_mapper[state_idx]][source] = param.reshape(-1)
 
     def model_update(self, tmp_module):
