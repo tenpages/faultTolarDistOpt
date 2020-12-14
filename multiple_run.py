@@ -28,7 +28,7 @@ for batch_size in batch_sizes:
 						'--approach', 'baseline',
 						'--err-mode', fault_type,
 						'--lr', '0.01',
-						'--train-dir', 'output/models/paper2/MNIST-LeNet/' + batch_size + '/' + fault_type + '/' + model_name + '/40-' + str(i) + '/',
+						'--train-dir', 'output/models/paper2/MNIST-LeNet/' + batch_size + '/' + fault_name + '/' + model_name + '/40-' + str(i) + '/',
 						'--accumulative', 'False',
 						#'--accumulative-alpha', '0.'+acc_alpha,
 						'--worker-fail', str(i),
