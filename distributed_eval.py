@@ -92,6 +92,7 @@ class DistributedEvaluator(object):
                 break
                 # TODO(hwang): sleep appropriate period of time make sure to tune this parameter
                 # time.sleep(10)
+        np.save(self._model_dir+"results.npy",self.results)
         print(self.network.state_dict())
         print("finished evaluation.")
 
