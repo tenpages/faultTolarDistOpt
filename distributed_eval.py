@@ -69,6 +69,7 @@ class DistributedEvaluator(object):
         self.network_config = kwargs['network']
         # this one is going to be used to avoid fetch the weights for multiple times
         self._layer_cur_step = []
+        self.results = np.array([[0.],[1.]], dtype = np.float64)
         if self.network_config == "FC":
             self.network = Full_Connected(kwargs['input_size'])
 
@@ -84,7 +85,8 @@ class DistributedEvaluator(object):
             if os.path.isfile(model_dir_):
                 self._load_model(model_dir_)
                 print("Evaluator evaluating results on step {}".format(self._next_step_to_fetch))
-                self._evaluate_model(validation_loader)
+                test_loss = self._evaluate_model(validation_loader)
+                self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss], 1)
                 self._next_step_to_fetch += self._eval_freq
             else:
                 break
@@ -96,23 +98,15 @@ class DistributedEvaluator(object):
     def _evaluate_model(self, test_loader):
         self.network.eval()
         test_loss = 0
-        correct = 0
-        # prec1_counter_ = prec3_counter_ = 0
         batch_counter_ = 0
         for data, y_batch in test_loader:
             data, target = Variable(data, volatile=True), Variable(y_batch)
             output = self.network(data)
             test_loss += F.mse_loss(output, target, size_average=False).item()  # sum up batch loss
-            # pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
-            # correct += pred.eq(target.data.view_as(pred)).cpu().sum()
-            # prec1_tmp, prec3_tmp = accuracy(output.data, y_batch, topk=(1, 3))
-            # prec1_counter_ += prec1_tmp.numpy()[0]
-            # prec3_counter_ += prec3_tmp.numpy()[0]
             batch_counter_ += 1
-        # prec1 = prec1_counter_ / batch_counter_
-        # prec3 = prec3_counter_ / batch_counter_
         test_loss /= len(test_loader.dataset)
         print('Test set: Average loss: {:.9f}'.format(test_loss))
+        return test_loss
 
     def _load_model(self, file_path):
         with open(file_path, "rb") as f_:
