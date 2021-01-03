@@ -90,6 +90,7 @@ class DistributedEvaluator(object):
                 break
                 # TODO(hwang): sleep appropriate period of time make sure to tune this parameter
                 # time.sleep(10)
+        print(self.network.state_dict())
         print("finished evaluation.")
 
     def _evaluate_model(self, test_loader):
