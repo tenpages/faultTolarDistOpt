@@ -19,6 +19,6 @@ distances = [np.linalg.norm(x_star-x) for x in x_S]
 epsilon = np.max(distances)
 
 import torch
-dataset = torch.utils.data.TensorDataset(torch.tensor(A).float(), torch.tensor(B).float())
+dataset = torch.utils.data.TensorDataset(torch.tensor(A).float(), torch.tensor(B).float().reshape(-1,1))
 with open("approximationDataset1","wb") as f:
     torch.save(dataset, f)
