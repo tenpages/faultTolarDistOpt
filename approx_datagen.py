@@ -21,4 +21,4 @@ epsilon = np.max(distances)
 import torch
 dataset = torch.utils.data.TensorDataset(torch.tensor(A).float(), torch.tensor(B).float())
 with open("approximationDataset1","wb") as f:
-    torch.save(dataset)
+    torch.save(dataset, f)
