@@ -149,8 +149,12 @@ if __name__ == "__main__":
         testing_set=torch.load("linRegDataset5")
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0]
-    elif args.dataset == "ApproxReg":
+    elif args.dataset == "ApproxReg1":
         testing_set=torch.load("approximationDataset1")
+        test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
+        data_shape = testing_set[0][0].size()[0]
+    elif args.dataset == "ApproxReg2":
+        testing_set=torch.load("approximationDataset2")
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0]
     print("testing set loaded.")
