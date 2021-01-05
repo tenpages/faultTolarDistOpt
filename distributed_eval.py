@@ -168,8 +168,8 @@ if __name__ == "__main__":
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0]
         honest = np.load(args.model_dir+"honest_list.npy")
-        A = n.tensors[0].numpy().astype('float64')
-        B = n.tensors[1].numpy().astype('float64')
+        A = testing_set.tensors[0].numpy().astype('float64')
+        B = testing_set.tensors[1].numpy().astype('float64')
         true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[honest]), A[honest])), np.matmul(np.transpose(A[honest]), B[honest]))
     print("testing set loaded.")
 
