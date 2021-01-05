@@ -69,7 +69,12 @@ class DistributedEvaluator(object):
         self.network_config = kwargs['network']
         # this one is going to be used to avoid fetch the weights for multiple times
         self._layer_cur_step = []
-        self.results = np.array([[0.],[1.]], dtype = np.float64)
+        if kwargs['true_minimum'] == None:
+            self.true_minimum = None
+            self.results = np.array([[0.],[1.]], dtype = np.float64)
+        else:
+            self.true_minimum = kwargs['true_minimum']
+            self.results = np.array([[0.],[1.],[2.]], dtype = np.float64)
         if self.network_config == "FC":
             self.network = Full_Connected(kwargs['input_size'])
 
@@ -86,7 +91,11 @@ class DistributedEvaluator(object):
                 self._load_model(model_dir_)
                 print("Evaluator evaluating results on step {}".format(self._next_step_to_fetch))
                 test_loss = self._evaluate_model(validation_loader)
-                self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss], 1)
+                if true_minimum == None:
+                    self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss], 1)
+                else:
+                    distance = np.linalg.norm(self.true_minimum-self.network.state_dict()['fc1.weight'].numpy().astype('float64'))
+                    self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss, distance], 1)
                 self._next_step_to_fetch += self._eval_freq
             else:
                 break
@@ -122,6 +131,7 @@ if __name__ == "__main__":
     args = add_fit_args(argparse.ArgumentParser(description='PyTorch Distributed Evaluator'))
 
     # load training and test set here:
+    true_minimum = None
     if args.dataset == "MNIST":
         testing_set=datasets.MNIST('./mnist_data', train=False, transform=transforms.Compose([
             transforms.ToTensor(),
@@ -157,11 +167,15 @@ if __name__ == "__main__":
         testing_set=torch.load("approximationDataset2")
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0]
+        honest = np.load(args.model_dir+"honest_list.npy")
+        A = n.tensors[0].numpy().astype('float64')
+        B = n.tensors[1].numpy().astype('float64')
+        true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[honest]), A[honest])), np.matmul(np.transpose(A[honest]), B[honest]))
     print("testing set loaded.")
 
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
                         'eval_batch_size': args.eval_batch_size, 'network': args.network,
-                        'input_size': data_shape}
+                        'input_size': data_shape, 'true_minimum': true_minimum}
     evaluator_nn = DistributedEvaluator(**kwargs_evaluator)
     print("evaluator initiated.")
     evaluator_nn.evaluate(validation_loader=test_loader)

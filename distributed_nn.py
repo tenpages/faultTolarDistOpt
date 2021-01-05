@@ -87,6 +87,8 @@ def add_fit_args(parser):
                         help='decide if when using gradient norm clipping, keep all gradients (True) or throw away the largest ones (False)')
     parser.add_argument('--grad-norm-clip-n', type=int, default=1, metavar='N',
                         help='specifying parameter n when using gradient norm clipping (multi-parts) with n piece')
+    parser.add_argument('--save-honest-list', type=ast.literal_eval, default=False, metavar='N',
+                        help='decide whether or not saving the honest agent list')
     args = parser.parse_args()
     return args
 
@@ -289,6 +291,8 @@ def prepare(args, rank, world_size):
     if args.approach == "baseline":
         # randomly select adversarial nodes
         adversaries = _generate_adversarial_nodes(args, world_size)
+        if args.save_honest_list:
+            np.save(args.train_dir+"honest_list", np.array(adversaries[0]))
         print("Faulty agents:", adversaries[0], "Total:", len(adversaries[0]))
         train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank,
                                                             world_size=world_size)
