@@ -69,8 +69,8 @@ class DistributedEvaluator(object):
         self.network_config = kwargs['network']
         # this one is going to be used to avoid fetch the weights for multiple times
         self._layer_cur_step = []
-        if kwargs['true_minimum'] == None:
-            self.true_minimum = None
+        if kwargs['true_minimum'].all() == None:
+            self.true_minimum = kwargs['true_minimum']
             self.results = np.array([[0.],[1.]], dtype = np.float64)
         else:
             self.true_minimum = kwargs['true_minimum']
@@ -91,7 +91,7 @@ class DistributedEvaluator(object):
                 self._load_model(model_dir_)
                 print("Evaluator evaluating results on step {}".format(self._next_step_to_fetch))
                 test_loss = self._evaluate_model(validation_loader)
-                if true_minimum == None:
+                if true_minimum.all() == None:
                     self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss], 1)
                 else:
                     distance = np.linalg.norm(self.true_minimum-self.network.state_dict()['fc1.weight'].numpy().astype('float64'))
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     args = add_fit_args(argparse.ArgumentParser(description='PyTorch Distributed Evaluator'))
 
     # load training and test set here:
-    true_minimum = None
+    true_minimum = np.array([None,None])
     if args.dataset == "MNIST":
         testing_set=datasets.MNIST('./mnist_data', train=False, transform=transforms.Compose([
             transforms.ToTensor(),
