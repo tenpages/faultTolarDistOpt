@@ -53,6 +53,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # the following information is only used for simulating fault agents and not used by filters.
         self._adversaries = kwargs['adversaries']
         self._err_mode = kwargs['err_mode']
+        self._omit_agents = kwargs['omit_agents']
 
     def build_model(self) :
         # print("building model, self._size ", self._size)
@@ -275,7 +276,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def aggregate_gradient(self, gradient, layer_idx, source):
         if self._update_mode == 'normal':
-            self._grad_aggregate_buffer[layer_idx] += gradient
+            #honest = np.delete(np.arange(self.world_size),self._adversaries[self.cur_step])
+            if source not in self._adversaries[self.cur_step]:
+                self._grad_aggregate_buffer[layer_idx] += gradient
         elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
                                    'grad_norm_multi_parts'):

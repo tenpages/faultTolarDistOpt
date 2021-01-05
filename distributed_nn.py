@@ -89,6 +89,8 @@ def add_fit_args(parser):
                         help='specifying parameter n when using gradient norm clipping (multi-parts) with n piece')
     parser.add_argument('--save-honest-list', type=ast.literal_eval, default=False, metavar='N',
                         help='decide whether or not saving the honest agent list')
+    parser.add_argument('--omit-agents', type=ast.literal_eval, default=False, metavar='N',
+                        help='decide whether to remove data according to corresponding agents')
     args = parser.parse_args()
     return args
 
@@ -319,6 +321,7 @@ def prepare(args, rank, world_size):
             # the following information is only used for simulating fault agents and not used by filters.
             'adversaries': adversaries,
             'err_mode': args.err_mode,
+            'omit_agents': args.omit_agents
         }
         kwargs_worker = {
             'batch_size': args.batch_size,
