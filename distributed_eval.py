@@ -171,6 +171,7 @@ if __name__ == "__main__":
         A = testing_set.tensors[0].numpy().astype('float64')
         B = testing_set.tensors[1].numpy().astype('float64')
         true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[honest]), A[honest])), np.matmul(np.transpose(A[honest]), B[honest]))
+        print("true minimum:",true_minimum)
     print("testing set loaded.")
 
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
