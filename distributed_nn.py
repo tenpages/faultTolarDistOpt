@@ -294,7 +294,7 @@ def prepare(args, rank, world_size):
         # randomly select adversarial nodes
         adversaries = _generate_adversarial_nodes(args, world_size)
         if args.save_honest_list and rank == 0:
-            np.save(args.train_dir+"honest_list", np.array(adversaries[0]))
+            np.save(args.train_dir+"honest_list", np.delete(np.arange(world_size-1), np.array(adversaries[0])))
         print("Faulty agents:", adversaries[0], "Total:", len(adversaries[0]))
         train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank,
                                                             world_size=world_size)
