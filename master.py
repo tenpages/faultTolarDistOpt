@@ -277,7 +277,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def aggregate_gradient(self, gradient, layer_idx, source):
         if self._update_mode == 'normal':
             #honest = np.delete(np.arange(self.world_size),self._adversaries[self.cur_step])
-            if source not in self._adversaries[self.cur_step]:
+            if source+1 not in self._adversaries[self.cur_step]:
                 self._grad_aggregate_buffer[layer_idx] += gradient
         elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
