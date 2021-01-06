@@ -94,9 +94,10 @@ class DistributedEvaluator(object):
                 if true_minimum.all() == None:
                     self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss], 1)
                 else:
-                    distance = np.linalg.norm(self.true_minimum-self.network.state_dict()['fc1.weight'].numpy().astype('float64'))
+                    weight = self.network.state_dict()['fc1.weight'].numpy().astype('float64').reshape(-1)
+                    distance = np.linalg.norm(self.true_minimum-weight)
                     print("Current weight:", self.network.state_dict()['fc1.weight'].numpy().astype('float64'),
-                          "\tDistance vector:", self.true_minimum-self.network.state_dict()['fc1.weight'].numpy().astype('float64'), "\tDistance:", distance)
+                          "\tDistance vector:", self.true_minimum-weight, "\tDistance:", distance)
                     self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss, distance], 1)
                 self._next_step_to_fetch += self._eval_freq
             else:
@@ -172,7 +173,7 @@ if __name__ == "__main__":
         honest = np.load(args.model_dir+"honest_list.npy")
         A = testing_set.tensors[0].numpy().astype('float64')
         B = testing_set.tensors[1].numpy().astype('float64')
-        true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[honest]), A[honest])), np.matmul(np.transpose(A[honest]), B[honest]))
+        true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[honest]), A[honest])), np.matmul(np.transpose(A[honest]), B[honest])).reshape(-1)
         print("true minimum:",true_minimum)
     print("testing set loaded.")
 
