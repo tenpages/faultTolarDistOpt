@@ -95,7 +95,8 @@ class DistributedEvaluator(object):
                     self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss], 1)
                 else:
                     distance = np.linalg.norm(self.true_minimum-self.network.state_dict()['fc1.weight'].numpy().astype('float64'))
-                    print("Current weight:", self.network.state_dict()['fc1.weight'].numpy().astype('float64'), "\tDistance:", distance)
+                    print("Current weight:", self.network.state_dict()['fc1.weight'].numpy().astype('float64'),
+                          "\tDistance vector:", self.true_minimum-self.network.state_dict()['fc1.weight'].numpy().astype('float64'), "\tDistance:", distance)
                     self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss, distance], 1)
                 self._next_step_to_fetch += self._eval_freq
             else:
