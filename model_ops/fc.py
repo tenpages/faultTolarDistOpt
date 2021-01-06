@@ -28,7 +28,7 @@ class Full_Connected(nn.Module):
 class Full_Connected_Split(nn.Module):
     def __init__(self, size):
         super(Full_Connected_Split, self).__init__()
-        self.fc1 = nn.Linear(size, 1, bias=False)
+        self.fc1 = nn.Linear(size, 1, bias=True)
 
         self.full_modules = [self.fc1]
         self._init_channel_index = len(self.full_modules)
