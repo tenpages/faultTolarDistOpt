@@ -14,7 +14,7 @@ from compress_gradient import compress
 class Full_Connected(nn.Module):
     def __init__(self, size):
         super(Full_Connected, self).__init__()
-        self.fc1 = nn.Linear(size, 1, bias=True)
+        self.fc1 = nn.Linear(size, 1, bias=False)
 
     def forward(self, x):
         out = x.view(-1, x.size()[1])
@@ -28,7 +28,7 @@ class Full_Connected(nn.Module):
 class Full_Connected_Split(nn.Module):
     def __init__(self, size):
         super(Full_Connected_Split, self).__init__()
-        self.fc1 = nn.Linear(size, 1, bias=True)
+        self.fc1 = nn.Linear(size, 1, bias=False)
 
         self.full_modules = [self.fc1]
         self._init_channel_index = len(self.full_modules)
