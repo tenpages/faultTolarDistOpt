@@ -19,16 +19,16 @@ N = np.load("matrixN.npy")
 
 B = np.matmul(A,x_star) + N
 np.save("matrixB",B)
-f = 2
+f = 1
 
-n_minus_2f_agents = [list(i) for i in list(combinations(list(range(100)), 96))]
+n_minus_2f_agents = [list(i) for i in list(combinations(list(range(100)), 98))]
 x_S_hat = []
 for agents in n_minus_2f_agents:
     x = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[agents]), A[agents])), np.matmul(np.transpose(A[agents]), B[agents]))
     x_S_hat.append(x)
 print("done")
 
-n_minus_f_agents = [list(i) for i in list(combinations(list(range(100)), 98))]
+n_minus_f_agents = [list(i) for i in list(combinations(list(range(100)), 99))]
 x_S = []
 for agents in n_minus_f_agents:
     x = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[agents]), A[agents])), np.matmul(np.transpose(A[agents]), B[agents]))
@@ -46,7 +46,7 @@ for pos, i in enumerate(x_S_hat):
 print("done")
 
 epsilon = np.max(distances)
-honest = [1,35]
+honest = [0]
 x_0 = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[honest]), A[honest])), np.matmul(np.transpose(A[honest]), B[honest]))
 print("epsilon=",epsilon)
 print("A=",A)
