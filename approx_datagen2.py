@@ -9,7 +9,7 @@ from itertools import combinations
 #            flag=True
 #
 #np.save("matrixA",a)
-#N = np.random.uniform(-.1,.1,100)
+#N = np.random.uniform(-1,1,100)
 #np.save("matrixN",N)
 
 A = np.load("matrixA.npy")
