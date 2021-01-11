@@ -39,3 +39,9 @@ import torch
 dataset = torch.utils.data.TensorDataset(torch.tensor(A).float(), torch.tensor(B).float().reshape(-1,1))
 with open("approximationDataset2","wb") as f:
     torch.save(dataset, f)
+
+v_top = []
+for Ai in A:
+    v_top.append(np.matmul(np.transpose(Ai),Ai))
+
+miu = np.max(v_top)

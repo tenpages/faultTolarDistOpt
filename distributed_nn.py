@@ -91,6 +91,8 @@ def add_fit_args(parser):
                         help='decide whether or not saving the honest agent list')
     parser.add_argument('--omit-agents', type=ast.literal_eval, default=False, metavar='N',
                         help='decide whether to remove data according to corresponding agents')
+    parser.add_argument('--faulty-list', type=ast.literal_eval, default=[], metavar='N',
+                        help='input to specify faulty agent list (range: 1 to number of agents)')
     args = parser.parse_args()
     return args
 
@@ -291,7 +293,13 @@ def load_data(dataset, seed, args, rank, world_size):
 def _generate_adversarial_nodes(args, world_size):
     np.random.seed(SEED_)
     if args.faulty_pattern == 'fixed':
-        return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False)] * (args.max_steps + 1)
+        if args.faulty_list == []:
+            return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False)] * (args.max_steps + 1)
+        else:
+            if len(args.faulty_list)==args.worker_fail and max(args.faulty_list)<=world_size and min(args.faulty_list)>0:
+                return [args.faulty_list] * (args.max_steps + 1)
+            else:
+                raise Exception("Wrong list of faulty agents")
     elif args.faulty_pattern == 'changing':
         return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
                 range(args.max_steps + 1)]
