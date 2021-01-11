@@ -296,7 +296,7 @@ def _generate_adversarial_nodes(args, world_size):
         if args.faulty_list == []:
             return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False)] * (args.max_steps + 1)
         else:
-            if len(args.faulty_list)==args.worker_fail and max(args.faulty_list)<=world_size and min(args.faulty_list)>0:
+            if len(args.faulty_list)==args.worker_fail and max(args.faulty_list)<world_size and min(args.faulty_list)>0:
                 return [args.faulty_list] * (args.max_steps + 1)
             else:
                 raise Exception("Wrong list of faulty agents")
