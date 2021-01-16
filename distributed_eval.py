@@ -184,6 +184,15 @@ if __name__ == "__main__":
         B = testing_set.tensors[1].numpy().astype('float64')
         true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[honest]), A[honest])), np.matmul(np.transpose(A[honest]), B[honest])).reshape(-1)
         print("true minimum:",true_minimum)
+    elif args.dataset == "ApproxReg4":
+        testing_set=torch.load("approximationDataset4")
+        test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
+        data_shape = testing_set[0][0].size()[0]
+        honest = np.load(args.model_dir+"honest_list.npy")
+        A = testing_set.tensors[0].numpy().astype('float64')
+        B = testing_set.tensors[1].numpy().astype('float64')
+        true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[honest]), A[honest])), np.matmul(np.transpose(A[honest]), B[honest])).reshape(-1)
+        print("true minimum:",true_minimum)
     print("testing set loaded.")
 
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
