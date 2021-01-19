@@ -1,5 +1,5 @@
 import time
-import sys
+import sys, os
 from sys import getsizeof
 import numpy as np
 import hdmedians as hd
@@ -123,6 +123,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def start(self):
         # np.set_printoptions(formatter={'float': lambda x: "{0:0.6f}".format(x)})
+
+        if os.path.exists(self._train_dir+"logfile.txt"):
+            print("Master... removing {}logfile.txt".format(self._train_dir))
+            os.remove(args.train_dir+"logfile.txt")
+
         self.async_bcast_step()
         if self._redundancy :
             # self.bcast_rand_nums()
@@ -180,6 +185,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 
                 MPI.Request.Waitall(requests=gradient_fetch_requests, statuses=statuses)
                 faulty_grad_datapoints=[]
+                faulty_worker_ranks = []
 
                 if self._s > 0 and (self._q == 1.0 or fault_check):
                     print("Master step {} check for faults".format(self.cur_step))
@@ -224,7 +230,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     MPI.Request.Waitall(requests=redundant_fetch_requests, statuses=statuses)
                     
                     # determine the correct grad via majority vote
-                    faulty_worker_ranks = []
                     for dpidx in range(self.batch_size):
                         curr_faulty_workers = []
     
@@ -354,6 +359,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 # accumulate # of used grads and total calculated grads
                 used_grads = used_grads + used_grads_t
                 total_grads = total_grads + total_grads_t
+        
+                lf = open(self._train_dir +"/logfile.txt", "a")
+                lf.write('M iter {} nByz {} fCheck {} nFault {} compEff {}/{}\n'.format(self.cur_step, len(self._byzantine_workers), int(self._q == 1.0 or fault_check), len(faulty_worker_ranks), used_grads_t,total_grads_t))
+                lf.close()
 
             # end if self.redundancy
             else:

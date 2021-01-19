@@ -84,8 +84,8 @@ class DistributedWorker(NN_Trainer):
             self._load_model(file_path)
 
         self.optimizer = torch.optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
-        # self.criterion = nn.CrossEntropyLoss()
-        self.criterion = nn.MSELoss()
+        self.criterion = nn.CrossEntropyLoss()
+        # self.criterion = nn.MSELoss()
 
         self.init_recv_buf()
 
@@ -121,8 +121,8 @@ class DistributedWorker(NN_Trainer):
 
         if self.redundancy:
             np.random.seed()
-            # print("Worker {}:\trandoms: {}".format(self.rank, [np.random.randn() for _ in range(10)]))
             self.rand_nums = [np.random.randn() for _ in range(self._max_steps)]
+            print("Worker {}:\trandoms: {}".format(self.rank, self.rand_nums[:10]))
             self.fetch_seed()                   # set self.red_seed
             # self.fetch_rand_nums()
             assert (self.red_seed >= 0)
@@ -137,7 +137,7 @@ class DistributedWorker(NN_Trainer):
                 if loader_step<self.cur_step and flag:
                     loader_step += 1
                     if self.rank == 1:
-                        # print("skipped")
+                        print("*** skipped")
                         """
                         with open("print-dataset-log-with-checkpoint"+str(self._checkpoint_step), "a+") as f:
                             f.write(str(self.cur_step)+": epoch="+str(num_epoch)+", batch_idx="+str(batch_idx)+" SKIPPED\n")
@@ -159,10 +159,10 @@ class DistributedWorker(NN_Trainer):
 
                         # receive empty list if  blacklisted
                         if not dp_list.tolist():
-                            print("Worker {} step {} received no datapoints".format(self.rank,self.cur_step))
+                            # print("Worker {} step {} received no datapoints".format(self.rank,self.cur_step))
                             red_flag = True
-                        else :
-                            print(f"Worker {self.rank} step {self.cur_step} datapoints {dp_list.tolist()}")
+                        # else :
+                        #     print(f"Worker {self.rank} step {self.cur_step} datapoints {dp_list.tolist()}")
 
                 X_batch, y_batch = Variable(train_input_batch), Variable(train_label_batch)
                 # print("Worker {} labels {}".format(self.rank, y_batch.tolist()))
@@ -195,6 +195,11 @@ class DistributedWorker(NN_Trainer):
                             f.write(str(train_label_batch)+"\n")
                             f.write("============================\n")
                         """
+
+                    if not dp_list.tolist():
+                        print("Worker {} step {} received no datapoints".format(self.rank,self.cur_step))
+                    else :
+                        print(f"Worker {self.rank} step {self.cur_step} datapoints {dp_list.tolist()}")
 
                     iteration_last_step = time.time() - iter_start_time
                     iter_start_time = time.time()
@@ -236,8 +241,8 @@ class DistributedWorker(NN_Trainer):
                     # print("Worker {} logits: {}".format(self.rank,logits))
                     if self.redundancy:
                         loss = self.criterion(logits,y_batch)
-                        send_err = None
-                        if self._p > 0.0 :
+                        send_err = 0
+                        if self._p > 0.0 and self.rank in self._fail_workers[self.cur_step]: 
                             send_err = self.p_decision(self._p,self.rand_nums.pop(0))
                         numlayers = 0
                         for _ in self.network.parameters():
@@ -248,7 +253,8 @@ class DistributedWorker(NN_Trainer):
                             # send_err = self.p_decision(self._p)       # if send_err == 1 then send error
                             # send_err = self.p_decision(self._p,self.rand_nums.pop(0))
 
-                            if self.rank in self._fail_workers[self.cur_step] and send_err:
+                            # if self.rank in self._fail_workers[self.cur_step] and send_err:
+                            if send_err:
                                 print("Worker {} step {} sending faulty gradient to master".format(self.rank,self.cur_step))
 
                             for idx, log in enumerate(logits):
@@ -264,7 +270,8 @@ class DistributedWorker(NN_Trainer):
 
                                     """  randomized error generation based on prob(send_error) < p """
                                     # if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p :
-                                    if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
+                                    # if self.rank in self._fail_workers[self.cur_step] and self._p and send_err:
+                                    if send_err:
                                         grad = err_simulation(grad, self._err_mode)
 
                                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(dp_list[idx]*numlayers)+param_idx)
@@ -274,6 +281,10 @@ class DistributedWorker(NN_Trainer):
                                 req.wait()
 
                         new_dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints_redundant())
+
+                        lf = open(self._train_dir +"/logfile.txt", "a")
+                        lf.write('W {} e {} iter {} nGrads {} nRedGrads {} byz {} fault {} loss {:.8f}\n'.format(self.rank, num_epoch, self.cur_step, len(dp_list), len(new_dp_list), int(self.rank in self._fail_workers[self.cur_step]), int(self.rank in self._fail_workers[self.cur_step] and send_err), loss.item()))
+                        lf.close()
 
                         if new_dp_list.tolist():
                             print(f"Worker {self.rank} step {self.cur_step} second datapoints received {new_dp_list.tolist()}")
@@ -305,7 +316,8 @@ class DistributedWorker(NN_Trainer):
 
                                     """  should this be determined by previous decision?   """
                                     # if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p:
-                                    if self.rank in self._fail_workers[self.cur_step] and send_err:
+                                    # if self.rank in self._fail_workers[self.cur_step] and send_err:
+                                    if send_err:
                                         print("Worker {} step {} sending faulty gradient to master again".format(self.rank,self.cur_step))
                                         grad = err_simulation(grad, self._err_mode)
 
@@ -375,6 +387,7 @@ class DistributedWorker(NN_Trainer):
                                                       time.time() - iter_start_time, computation_time,
                                                       c_duration + fetch_weight_duration,
                             "NA", "NA"))
+
 
                     if self.cur_step % self._eval_freq == 0 and self.rank == 1:
                         # save snapshots
