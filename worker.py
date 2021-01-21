@@ -181,8 +181,8 @@ class DistributedWorker(NN_Trainer):
                         # print("loss calculation", X_batch.shape, logits.shape, y_batch.shape)
                         loss = self.criterion(logits, y_batch)
                         # print(loss)
-                    else:
-                        raise Exception("No such network as " + self.network_config)
+                    elif "LinearSVM" in self.network_config:
+                        loss = self.criterion(logits, y_batch)
                     epoch_avg_loss += loss.item()
                     forward_duration = time.time() - forward_start_time
 
