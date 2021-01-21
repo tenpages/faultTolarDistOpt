@@ -6,12 +6,14 @@ from mpi4py import MPI
 from torch import nn
 from torch.autograd import Variable
 from torch.nn.modules.loss import _Loss
+from loss.hingeLoss import HingeLoss
 
 import numpy as np
 
 from compress_gradient import compress
 from model_ops.fc import Full_Connected
 from nn_ops import NN_Trainer
+from model_ops.linearsvm import LinearSVM
 
 STEP_START_ = 1
 
@@ -54,13 +56,18 @@ class DistributedWorker(NN_Trainer):
         # print("building model, self._size ", self._size)
         if self.network_config == 'FC':
             self.network = Full_Connected(self._size)
+            self.criterion = nn.MSELoss()
+        elif self.network_config == 'LinearSVM':
+            self.network = LinearSVM(self._size)
+            self.criterion = HingeLoss()
+        else:
+            raise ValueError("Network {} unsupported".format(self.network_config))
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
             self._load_model(file_path)
 
         self.optimizer = torch.optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
-        self.criterion = nn.MSELoss()
 
         self.init_recv_buf()
 

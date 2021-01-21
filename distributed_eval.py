@@ -9,14 +9,16 @@ from mpi4py import MPI
 import numpy as np
 
 from model_ops.fc import Full_Connected
+from model_ops.linearsvm import LinearSVM
 from nn_ops import NN_Trainer
 
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
+from torch.nn.modules.loss import MSELoss
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
-
+from loss.hingeLoss import HingeLoss
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
@@ -77,6 +79,12 @@ class DistributedEvaluator(object):
             self.results = np.array([[0.],[1.],[2.]], dtype = np.float64)
         if self.network_config == "FC":
             self.network = Full_Connected(kwargs['input_size'])
+            self.loss = MSELoss(reduction='sum')
+        elif self.network_config == "LinearSVM":
+            self.network = LinearSVM(kwargs['input_size'])
+            self.loss = HingeLoss(reduction='sum')
+        else:
+            raise ValueError("Network {} unsupported".format(self.network_config))
 
     def evaluate(self, validation_loader):
         # init objective to fetch at the begining
@@ -115,7 +123,7 @@ class DistributedEvaluator(object):
         for data, y_batch in test_loader:
             data, target = Variable(data, volatile=True), Variable(y_batch)
             output = self.network(data)
-            test_loss += F.mse_loss(output, target, size_average=False).item()  # sum up batch loss
+            test_loss += self.loss(output, target).item()#F.mse_loss(output, target, size_average=False).item()  # sum up batch loss
             batch_counter_ += 1
         test_loss /= len(test_loader.dataset)
         print('Test set: Average loss: {:.9f}'.format(test_loss))
@@ -193,6 +201,10 @@ if __name__ == "__main__":
         B = testing_set.tensors[1].numpy().astype('float64')
         true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[honest]), A[honest])), np.matmul(np.transpose(A[honest]), B[honest])).reshape(-1)
         print("true minimum:",true_minimum)
+    elif args.dataset == "SVMData":
+        testing_set=torch.load("svmDataset")
+        test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
+        data_shape = testing_set[0][0].size()[0]
     print("testing set loaded.")
 
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,

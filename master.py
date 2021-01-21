@@ -11,6 +11,7 @@ from compress_gradient import decompress
 from model_ops.fc import Full_Connected_Split
 from nn_ops import NN_Trainer, accuracy
 from optim.sgd_modified import SGDModified
+from model_ops.linearsvm import LinearSVM_Split
 
 from functools import reduce
 
@@ -59,6 +60,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # print("building model, self._size ", self._size)
         if self.network_config == "FC":
             self.network = Full_Connected_Split(self._size)
+        elif self.network_config == 'LinearSVM':
+            self.network = LinearSVM_Split(self._size)
+        else:
+            raise ValueError("Network {} unsupported".format(self.network_config))
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
