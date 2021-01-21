@@ -74,11 +74,11 @@ class DistributedEvaluator(object):
         if kwargs['true_minimum'].all() == None:
             self.true_minimum = kwargs['true_minimum']
             self.results = np.array([[0.],[1.]], dtype = np.float64)
-            self.out_of_w_list = []
-            self.out_of_w_value = []
         else:
             self.true_minimum = kwargs['true_minimum']
             self.results = np.array([[0.],[1.],[2.]], dtype = np.float64)
+            self.out_of_w_list = []
+            self.out_of_w_value = []
         if self.network_config == "FC":
             self.network = Full_Connected(kwargs['input_size'])
             self.loss = MSELoss(reduction='sum')
