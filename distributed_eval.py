@@ -74,6 +74,8 @@ class DistributedEvaluator(object):
         if kwargs['true_minimum'].all() == None:
             self.true_minimum = kwargs['true_minimum']
             self.results = np.array([[0.],[1.]], dtype = np.float64)
+            self.out_of_w_list = []
+            self.out_of_w_value = []
         else:
             self.true_minimum = kwargs['true_minimum']
             self.results = np.array([[0.],[1.],[2.]], dtype = np.float64)
@@ -106,6 +108,10 @@ class DistributedEvaluator(object):
                     distance = np.linalg.norm(self.true_minimum-weight)
                     print("Current weight:", self.network.state_dict()['fc1.weight'].numpy().astype('float64'),
                           "\tDistance vector:", self.true_minimum-weight, "\tDistance:", distance)
+                    if weight[0]<-1000 or weight[0]>1000 or \
+                        weight[1]<-1000 or weight[1]>1000:
+                        self.out_of_w_list.append(self._cur_step)
+                        self.out_of_w_value.append(weight)
                     self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss, distance], 1)
                 self._next_step_to_fetch += self._eval_freq
             else:
@@ -114,6 +120,9 @@ class DistributedEvaluator(object):
                 # time.sleep(10)
         np.save(self._model_dir+"results.npy",self.results)
         print(self.network.state_dict())
+        print("Steps and weights out of [-1000,1000]^2:")
+        print(self.out_of_w_list)
+        print(self.out_of_w_value)
         print("finished evaluation.")
 
     def _evaluate_model(self, test_loader):
