@@ -1,5 +1,6 @@
 import torch
 from torch.nn.modules.loss import _Loss
+from torch import tensor
 
 class HingeLoss(_Loss):
     def __init__(self, margin: float = 0., size_average=None, reduce=None, reduction: str = 'mean') -> None:
@@ -7,7 +8,7 @@ class HingeLoss(_Loss):
         self.margin = margin
         self.reduction = reduction
 
-    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+    def forward(self, input: tensor, target: tensor) -> tensor:
         loss = torch.clamp(1 - input.t() * target, min=0)
         if self.reduction == 'mean':
             loss = torch.mean(loss)
