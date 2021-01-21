@@ -39,6 +39,8 @@ def add_fit_args(parser):
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                         help='learning rate (default: 0.01)')
+    parser.add_argument('--diminishing-lr', type=ast.literal_eval, default=False, metavar='N',
+                        help='set diminishing learning rate (default: False)')
     parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
                         help='SGD momentum (default: 0.0)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -362,6 +364,7 @@ def prepare(args, rank, world_size):
         kwargs_master = {
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
+            'diminishing_lr': args.diminishing_lr,
             'max_epochs': args.epochs,
             'max_steps': args.max_steps,
             'momentum': args.momentum,
