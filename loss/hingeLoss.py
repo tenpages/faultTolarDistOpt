@@ -1,5 +1,5 @@
 import torch
-from torch.nn.modules.loss import *
+from torch.nn.modules.loss import _Loss
 
 class HingeLoss(_Loss):
     def __init__(self, margin: float = 0., size_average=None, reduce=None, reduction: str = 'mean') -> None:
