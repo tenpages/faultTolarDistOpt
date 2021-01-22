@@ -90,8 +90,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self.scheduler.load_state_dict(torch.load(self._train_dir+"scheduler_"+str(self._checkpoint_step)))
 
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
-            if self._diminishing_lr == True:
-                self.scheduler.step()
             self.network.train()
             self.optimizer.zero_grad()
             self._first_grad_received = False
@@ -235,6 +233,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                                                                        update_duration))
             if self._diminishing_lr == True:
                 print("Current step size: {}".format(self.scheduler.get_last_lr()))
+                self.scheduler.step()
             self.cur_step += 1
 
     def init_model_shapes(self):
