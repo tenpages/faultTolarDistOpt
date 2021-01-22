@@ -77,7 +77,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # optimizer can be others
         self.optimizer = SGDModified(self.network.parameters(), lr=self.lr, momentum=self.momentum)
         if self._diminishing_lr == True:
-            lr_lambda = lambda step: 100/(step+1)
+            lr_lambda = lambda step: 150/(step+1)
             self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
 
     def start(self):
@@ -233,6 +233,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                                                                        update_duration))
             if self._diminishing_lr == True:
                 print("Current step size: {}".format(self.scheduler.get_last_lr()))
+                print("Current step size in network: {}".format(self.optimizer.param_groups[0]['lr']))
                 self.scheduler.step()
             self.cur_step += 1
 
