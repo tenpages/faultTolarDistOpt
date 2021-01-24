@@ -9,7 +9,7 @@ class HingeLoss(_Loss):
         self.reduction = reduction
 
     def forward(self, input: tensor, target: tensor) -> tensor:
-        loss = torch.clamp(1 - input.t() * target, min=0)
+        loss = torch.clamp(1 - input * target, min=0)
         if self.reduction == 'mean':
             loss = torch.mean(loss)
         elif self.reduction == 'sum':
