@@ -95,6 +95,8 @@ def add_fit_args(parser):
                         help='decide whether to remove data according to corresponding agents')
     parser.add_argument('--faulty-list', type=ast.literal_eval, default=[], metavar='N',
                         help='input to specify faulty agent list (range: 1 to number of agents)')
+    parser.add_argument('--zero-initial-weights', type=ast.literal_eval, default=True, metavar='N',
+                        help='decide if to use 0 vector as inital weights')
     args = parser.parse_args()
     return args
 
@@ -380,6 +382,7 @@ def prepare(args, rank, world_size):
             'multi_krum_m': args.multi_krum_m,
             'grad_norm_keep_all': args.grad_norm_keep_all,
             'grad_norm_clip_n': args.grad_norm_clip_n,
+            'zero_initial_weights': args.zero_initial_weights,
             # the following information is only used for simulating fault agents and not used by filters.
             'adversaries': adversaries,
             'err_mode': args.err_mode,

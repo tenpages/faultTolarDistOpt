@@ -51,6 +51,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._multi_krum_m = kwargs['multi_krum_m']
         self._grad_norm_keep_all = kwargs['grad_norm_keep_all']
         self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
+        self._zero_initial_weights = kwargs['zero_initial_weights']
 
         # the following information is only used for simulating fault agents and not used by filters.
         self._adversaries = kwargs['adversaries']
@@ -65,7 +66,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.network = LinearSVM_Split(self._size)
         else:
             raise ValueError("Network {} unsupported".format(self.network_config))
-        self.network.init_constant(0.0)
+        if self._zero_initial_weights:
+            self.network.init_constant(0.0)
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
