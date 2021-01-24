@@ -16,6 +16,9 @@ class Full_Connected(nn.Module):
         super(Full_Connected, self).__init__()
         self.fc1 = nn.Linear(size, 1, bias=False)
 
+    def init_constant(self, value):
+        nn.init.constant_(list(self.fc1.parameters())[0], value)
+
     def forward(self, x):
         out = x.view(-1, x.size()[1])
         out = self.fc1(out)

@@ -64,7 +64,7 @@ class DistributedEvaluator(object):
     '''
 
     def __init__(self, **kwargs):
-        self._cur_step = 0
+        self._cur_step = -1
         self._model_dir = kwargs['model_dir']
         self._eval_freq = int(kwargs['eval_freq'])
         self._eval_batch_size = kwargs['eval_batch_size']
@@ -74,6 +74,7 @@ class DistributedEvaluator(object):
         if kwargs['true_minimum'].all() == None:
             self.true_minimum = kwargs['true_minimum']
             self.results = np.array([[0.],[1.]], dtype = np.float64)
+            #self.results = np.array([[0.],[1.]], dtype = np.float64)
         else:
             self.true_minimum = kwargs['true_minimum']
             self.results = np.array([[0.],[1.59999975],[1.89026521]], dtype = np.float64)

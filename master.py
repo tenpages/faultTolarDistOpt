@@ -65,11 +65,14 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.network = LinearSVM_Split(self._size)
         else:
             raise ValueError("Network {} unsupported".format(self.network_config))
+        self.network.init_constant(0.0)
 
         if self._checkpoint_step != 0:
             file_path = self._train_dir + "model_step_" + str(self._checkpoint_step)
             self._load_model(file_path)
             self.cur_step = int(self._checkpoint_step) + 1
+        else:
+            self._save_model(file_path=self._train_dir + "model_step_0")
 
         # gradient accumulator collects gradients from worker nodes
         self.grad_accumulator = GradientAccumulator(self.network, self.world_size - 1, mode=self._compress_grad)
