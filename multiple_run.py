@@ -5,25 +5,25 @@ models = ['coor_wise_trimmed_mean','grad_norm','normal']
 fault_types = ['rev_grad_2','gaussian']
 fault_names = ['revgrad2','gaussian']
 nums_faults = [1]
-batch_sizes = ['1']
+batch_sizes = ['10']
 #acc_alphas = ['20','40','60']
 
 for batch_size in batch_sizes:
 	for i in nums_faults:
 		for fault_type, fault_name in zip(fault_types, fault_names):
 			for model_name, model in zip(model_names, models):
-				args = ['mpirun', '-n', '7',
+				args = ['mpirun', '-n', '10',
 						'python', 'distributed_nn.py',
 						'--batch-size=' + batch_size,
-						'--max-steps', '2000',
+						'--max-steps', '1000',
 						'--epochs', '10000',
-						'--network', 'FC',
+						'--network', 'LinearSVM',
 						'--mode', model,
-						'--dataset', 'ApproxReg4',
+						'--dataset', 'SVMData',
 						'--approach', 'baseline',
 						'--err-mode', fault_type,
 						#'--lr', '0.01',
-						'--train-dir', 'output/models/apprx9/' + fault_name + '/' + model_name + '/',
+						'--train-dir', 'output/models/apprx-svm/' + fault_name + '/' + model_name + '/',
 						'--worker-fail', str(i),
 						'--data-distribution', 'distributed',
 						'--checkpoint-step', '0',
@@ -36,7 +36,7 @@ for batch_size in batch_sizes:
 				print(' '.join(args))
 				results = subprocess.run(args, capture_output=True)
 				if results.returncode==0 and results.stdout != None:
-					with open('logs-approx9-' + fault_name + '-' + model_name + '-2000-1','w') as f:
+					with open('logs-lsvm-' + fault_name + '-' + model_name + '-'+batch_size+'-'+str(i)+'-1000-1','w') as f:
 						f.write(results.stdout.decode())
 					print("finished")
 					print("========================")
@@ -50,8 +50,8 @@ for batch_size in batch_sizes:
 	for i in nums_faults:
 		for fault_type, fault_name in zip(fault_types, fault_names):
 			for model_name, model in zip(model_names, models):
-				args = 'python distributed_eval.py --model-dir output/models/apprx9/'+fault_name+'/'+model_name \
-					+'/ --dataset ApproxReg4 --network FC --eval-freq 1 > results-approx9-'+fault_name+'-'+model_name+'-2000-1 2>&1 &'
+				args = 'python distributed_eval.py --model-dir output/models/apprx-svm/'+fault_name+'/'+model_name \
+					+'/ --dataset SVMData --network LinearSVM --eval-freq 1 > results-lsvm-'+fault_name+'-'+model_name+'-'+batch_size+'-'+str(i)+'-1000-1 2>&1 &'
 				print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 				print(args)
 				results = subprocess.run(args, shell=True)
