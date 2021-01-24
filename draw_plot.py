@@ -3,11 +3,11 @@ import re
 import numpy as np
 
 #model_names = ['normal', 'krum', 'median_of_means', 'coor_wise_median', 'coor_wise_trimmed_mean', 'grad_norm']
-model_names = ['normal', 'krum']
+model_names = ['normal', 'medofmean', 'medofmean2']
 current_step = 0
-new_ticks = np.linspace(0,8850,178)
+new_ticks = np.linspace(0,2000,41)
 plt.figure(figsize=(10,9), dpi=1200)
-plt.xlim(0,8900)
+plt.xlim(0,2000)
 #plt.ylim(-1,1)
 #plt.xticks(new_ticks)
 plt.xlabel("Step")
@@ -17,9 +17,9 @@ for model_name in model_names:
     step=[]
     loss=[]
     if model_name=='normal':
-        filename = 'results-' + model_name + '-40-0-10000'
+        filename = 'results-paper1-' + model_name + '-40-0'
     else:
-        filename = 'results-'+model_name+'-40-15-10000'
+        filename = 'results-paper1-medofmean-'+model_name+'-40-10'
     print(model_name)
     with open(filename,"r") as f:
         for line in f:
@@ -27,15 +27,17 @@ for model_name in model_names:
             if t!=None:
                 current_step = int(t.groups()[0])
             else:
-                t=re.match("Test set: Average loss: (.+), Prec@1: (\d+\.\d+) Prec@5: (\d+\.\d+)",line)
+                t=re.match("Test set: Average loss: (.+)",line)
                 if t!=None:
                     current_loss = float(t.groups()[0])
                     step.append(current_step)
                     loss.append(current_loss)
-    plt.plot(step,loss,label=model_name)
+    plt.plot(step,loss,label=model_name,linewidth=.1)
+    step
+    loss
 
 plt.legend(loc="right")
-plt.savefig("loss-10000.pdf")
+plt.savefig("result/loss-medofmean-floor-ceiling-compare.pdf")
 plt.clf()
 
 plt.figure(figsize=(10,9), dpi=1200)
