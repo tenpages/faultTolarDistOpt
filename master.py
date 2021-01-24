@@ -77,8 +77,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # optimizer can be others
         self.optimizer = SGDModified(self.network.parameters(), lr=self.lr, momentum=self.momentum)
         if self._diminishing_lr == True:
-            #lr_lambda = lambda step: 150/(step+1)
-            lr_lambda = lambda step: 10/(int(step/50)+1)
+            lr_lambda = lambda step: 150/(step+1)
+            #lr_lambda = lambda step: 10/(int(step/50)+1)
             self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
 
     def start(self):
