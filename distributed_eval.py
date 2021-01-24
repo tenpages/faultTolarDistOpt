@@ -121,7 +121,7 @@ class DistributedEvaluator(object):
                 # time.sleep(10)
         np.save(self._model_dir+"results.npy",self.results)
         print(self.network.state_dict())
-        if kwargs['true_minimum'].all() != None:
+        if self.true_minimum.all() != None:
             print("Steps and weights out of [-1000,1000]^2:")
             print(self.out_of_w_list)
             print(self.out_of_w_value)
