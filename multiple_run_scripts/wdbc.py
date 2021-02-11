@@ -4,7 +4,7 @@ model_names = ['cwtm','normfilter','nofilter']
 models = ['coor_wise_trimmed_mean','grad_norm','normal']
 fault_types = ['rev_grad_2','gaussian']
 fault_names = ['revgrad2','gaussian']
-nums_faults = [2,3]
+nums_faults = [1,2,3]
 batch_sizes = ['40']
 #acc_alphas = ['20','40','60']
 
