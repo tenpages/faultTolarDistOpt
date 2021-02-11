@@ -29,7 +29,7 @@ def accuracy(output, target):
     for out, tar in zip(output, target):
         if out*tar>=0:
             correct += 1
-    return correct / (100 * batch_size)
+    return correct * 100 / batch_size
 
 
 def add_fit_args(parser):
