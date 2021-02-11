@@ -217,6 +217,10 @@ if __name__ == "__main__":
         testing_set=torch.load("svmDatasetEval")
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0]
+    elif args.dataset == "WDBC":
+        testing_set=torch.load("wdbcDatasetEval")
+        test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
+        data_shape = testing_set[0][0].size()[0]
     print("testing set loaded.")
 
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
