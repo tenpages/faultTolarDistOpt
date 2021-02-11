@@ -27,7 +27,7 @@ def accuracy(output, target):
 
     correct = 0
     for out, tar in zip(output, target):
-        if out*tar>=0:
+        if out*tar>0:
             correct += 1
     return correct * 100 / batch_size
 
