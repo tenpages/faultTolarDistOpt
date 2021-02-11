@@ -11,7 +11,7 @@ with open("wdbc.data","r") as f:
 			x.append(float(value))
 		X.append(x)
 		if line[0]=='B':
-			Y.append(0)
+			Y.append(-1)
 		else:
 			Y.append(1) 
 
