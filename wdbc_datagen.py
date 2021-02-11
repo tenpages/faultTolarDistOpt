@@ -7,7 +7,7 @@ with open("wdbc.data","r") as f:
 	for line in f:
 		line = line.split(",")[1:]
 		x = []
-		for value in line[2:]:
+		for value in line[1:]:
 			x.append(float(value))
 		X.append(x)
 		if line[0]=='B':
