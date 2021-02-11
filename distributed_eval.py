@@ -20,19 +20,16 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from loss.hingeLoss import HingeLoss
 
-def accuracy(output, target, topk=(1,)):
+
+def accuracy(output, target):
     """Computes the precision@k for the specified values of k"""
-    maxk = max(topk)
     batch_size = target.size(0)
 
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(target.view(1, -1).expand_as(pred))
-    res = []
-    for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-        res.append(correct_k.mul_(100.0 / batch_size))
-    return res
+    correct = 0
+    for out, tar in zip(output, target):
+        if out*tar>=0:
+            correct += 1
+    return correct / (100 * batch_size)
 
 
 def add_fit_args(parser):
@@ -69,11 +66,15 @@ class DistributedEvaluator(object):
         self._eval_freq = int(kwargs['eval_freq'])
         self._eval_batch_size = kwargs['eval_batch_size']
         self.network_config = kwargs['network']
+        self.dataset = kwargs['dataset']
         # this one is going to be used to avoid fetch the weights for multiple times
         self._layer_cur_step = []
         if kwargs['true_minimum'].all() == None:
             self.true_minimum = kwargs['true_minimum']
-            self.results = np.array([[0.],[1.]], dtype = np.float64)
+            if self.dataset == 'WDBC':
+                self.results = np.array([[0.],[1.],[2.]], dtype = np.float64)
+            else:
+                self.results = np.array([[0.],[1.]], dtype = np.float64)
             #self.results = np.array([[0.],[1.]], dtype = np.float64)
         else:
             self.true_minimum = kwargs['true_minimum']
@@ -104,7 +105,10 @@ class DistributedEvaluator(object):
                 print("Evaluator evaluating results on step {}".format(self._next_step_to_fetch))
                 test_loss = self._evaluate_model(validation_loader)
                 if true_minimum.all() == None:
-                    self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss], 1)
+                    if self.dataset == 'WDBC':
+                        prec = test_loss[1]
+                        test_loss = test_loss[0]
+                    self.results = np.insert(self.results, len(self.results[0]), [self._next_step_to_fetch, test_loss, prec], 1)
                 else:
                     weight = self.network.state_dict()['fc1.weight'].numpy().astype('float64').reshape(-1)
                     distance = np.linalg.norm(self.true_minimum-weight)
@@ -132,12 +136,20 @@ class DistributedEvaluator(object):
         self.network.eval()
         test_loss = 0
         batch_counter_ = 0
+        if self.dataset == 'WDBC':
+            prec_counter_ = 0
         for data, y_batch in test_loader:
             data, target = Variable(data, volatile=True), Variable(y_batch)
             output = self.network(data)
             test_loss += self.loss(output, target).item()#F.mse_loss(output, target, size_average=False).item()  # sum up batch loss
+            if self.dataset == 'WDBC':
+                prec_counter_ += accuracy(output.data, y_batch.data)
             batch_counter_ += 1
         test_loss /= len(test_loader.dataset)
+        if self.dataset == 'WDBC':
+            prec = prec_counter_ / batch_counter_
+            print('Test set: Average loss: {:.9f}, Prec: {}'.format(test_loss, prec))
+            return test_loss, prec
         print('Test set: Average loss: {:.9f}'.format(test_loss))
         return test_loss
 
@@ -225,7 +237,7 @@ if __name__ == "__main__":
 
     kwargs_evaluator = {'model_dir': args.model_dir, 'eval_freq': args.eval_freq,
                         'eval_batch_size': args.eval_batch_size, 'network': args.network,
-                        'input_size': data_shape, 'true_minimum': true_minimum}
+                        'input_size': data_shape, 'true_minimum': true_minimum, 'dataset': args.dataset}
     evaluator_nn = DistributedEvaluator(**kwargs_evaluator)
     print("evaluator initiated.")
     evaluator_nn.evaluate(validation_loader=test_loader)
