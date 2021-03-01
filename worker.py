@@ -84,13 +84,18 @@ class DistributedWorker(NN_Trainer):
             self._load_model(file_path)
 
         self.optimizer = torch.optim.SGD(self.network.parameters(), lr=self.lr, momentum=self.momentum)
-        self.criterion = nn.CrossEntropyLoss()
-        # self.criterion = nn.MSELoss()
+        # self.criterion = nn.CrossEntropyLoss()
+        if self.network_config == 'LinregTest':
+            self.criterion = nn.MSELoss()
+        else:
+            self.criterion = nn.CrossEntropyLoss()
 
         self.init_recv_buf()
 
     def train(self, train_loader, test_loader):
         global STEP_START_
+
+        fault_delay = 70 
 
         self.sync_fetch_step()
         assert (self.update_step())
@@ -196,11 +201,6 @@ class DistributedWorker(NN_Trainer):
                             f.write("============================\n")
                         """
 
-                    if not dp_list.tolist():
-                        print("Worker {} step {} received no datapoints".format(self.rank,self.cur_step))
-                    else :
-                        print(f"Worker {self.rank} step {self.cur_step} datapoints {dp_list.tolist()}")
-
                     iteration_last_step = time.time() - iter_start_time
                     iter_start_time = time.time()
                     first = False
@@ -240,9 +240,15 @@ class DistributedWorker(NN_Trainer):
                     logits = self.network(X_batch)
                     # print("Worker {} logits: {}".format(self.rank,logits))
                     if self.redundancy:
+                        if not dp_list.tolist():
+                            print("Worker {} step {} received no datapoints".format(self.rank,self.cur_step))
+                        else :
+                            print(f"Worker {self.rank} step {self.cur_step} datapoints {dp_list.tolist()}")
+
                         loss = self.criterion(logits,y_batch)
                         send_err = 0
-                        if self._p > 0.0 and self.rank in self._fail_workers[self.cur_step]: 
+                        ''' temporary-- Byzantine attack delay for __ steps '''
+                        if self.cur_step > fault_delay and self._p > 0.0 and self.rank in self._fail_workers[self.cur_step]: 
                             send_err = self.p_decision(self._p,self.rand_nums.pop(0))
                         numlayers = 0
                         for _ in self.network.parameters():
@@ -330,7 +336,7 @@ class DistributedWorker(NN_Trainer):
                             # end if new_dp_list
                         else :
                             print(f"Worker {self.rank} step {self.cur_step} received no redundant datapoints")
-                            break
+                            # break
                         
                     
                     elif "FC" in self.network_config:
@@ -367,6 +373,7 @@ class DistributedWorker(NN_Trainer):
 
                     # prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))
                     # prec1, prec3 = accuracy(logits.data, y_batch.long(), topk=(1, 3))
+
                     with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
                         f.write('{:.8f}\n'.format(time.time()-iter_start_time))
                     '''
@@ -388,11 +395,10 @@ class DistributedWorker(NN_Trainer):
                                                       c_duration + fetch_weight_duration,
                             "NA", "NA"))
 
-
-                    if self.cur_step % self._eval_freq == 0 and self.rank == 1:
-                        # save snapshots
-                        if "FC" in self.network_config:
-                            pass
+                    # if self.cur_step % self._eval_freq == 0 and self.rank == 1:
+                    #     # save snapshots
+                    #     if "FC" in self.network_config:
+                    #         pass
                     break
 
     def init_recv_buf(self):

@@ -105,6 +105,13 @@ def add_fit_args(parser):
                         help='the probability from 0 to 1 that byzantine workers will send errors in redundancy scheme')
     parser.add_argument('--q', type=float, default=1.00,
                         help='the probability from 0 to 1 that the master will check for errors in redundancy scheme')
+    ''' add to distributed_nn.py '''
+    parser.add_argument('--adapt-q', action='store_true',default=False,
+                        help='Use adaptive fault-checking (increase over time)')
+    parser.add_argument('--roll-freq',type=int,default=0,
+                        help='frequency of storing rollback states; no rollback when 0')
+    # parser.add_argument('',type=,default=,
+    #                     help='')
 
     args = parser.parse_args()
     return args
@@ -154,66 +161,8 @@ def load_data(dataset, seed, args, rank, world_size):
         torch.manual_seed(seed)
         random.seed(seed)
     #print("dataset: " + dataset)
-    if dataset == "MNIST":
-        if rank==0:
-            training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,))
-            ]))
-            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-        else:
-            if args.data_distribution == 'distributed':
-                group_size = int(60000 / (world_size - 1))
-                training_set = MNISTSubLoader('./mnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.1307,), (0.3081,))
-                ]), group_size=group_size, start_from=group_size*(rank-1))
-                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(True))
-            elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
-                training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.1307,), (0.3081,))
-                ]))
-                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(True))
-        test_loader = None
-        return train_loader, training_set, test_loader
 
-    elif dataset == "CIFAR10":
-        if rank==0:
-            training_set = datasets.CIFAR10('./cifar10_data', train=True, download=True, transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-            ]))
-            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-        else:
-            if args.data_distribution == 'distributed':
-                group_size = int(50000 / (world_size - 1))
-                training_set = CIFAR10SubLoader('./cifar10_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                ]), group_size=group_size, start_from=group_size*(rank-1))
-                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-            elif args.data_distribution == 'overlapping':
-                if (50000 % (world_size-1))!=0:
-                    raise ValueError("The number of agents should divide the number of data samples (50000)")
-                group_size = int(50000 / (world_size - 1))
-                training_set = CIFAR10SubLoader('./cifar10_data_sub_ovlp/'+str(rank), train=True, download=True, transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                ]), group_size=group_size, start_from=group_size*(rank-1), ovlp=True)
-                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-            elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
-                training_set = datasets.CIFAR10('./cifar10_data', train=True, download=True, transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                ]))
-                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-        test_loader = None
-        return train_loader, training_set, test_loader
-
-    elif dataset == "dataset":
+    if dataset == "LinregTest":
         if rank==0:
             training_set = torch.load("linRegDataset")
             train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
@@ -226,6 +175,23 @@ def load_data(dataset, seed, args, rank, world_size):
             elif args.data_distribution == 'same':
                 torch.manual_seed(TORCH_SEED_+rank)
                 training_set = torch.load("linRegDataset")
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        test_loader = None
+        return train_loader, training_set, test_loader
+
+    else :
+        if rank==0:
+            training_set = torch.load(dataset)
+            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        else:
+            if args.data_distribution == 'distributed':
+                group_size = int(190 / (world_size - 1))
+                tmp_set = torch.load(dataset)[group_size*(rank-1):group_size*rank]
+                training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'same':
+                torch.manual_seed(TORCH_SEED_+rank)
+                training_set = torch.load(dataset)
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
         return train_loader, training_set, test_loader
@@ -263,6 +229,7 @@ def prepare(args, rank, world_size):
         
         # data_shape = training_set[0][0].size()[0]*training_set[0][0].size()[1]*training_set[0][0].size()[2]
         data_shape = training_set[0][0].size()[0]
+        print("dataset size {}".format(data_shape))
         kwargs_master = {
             'redundancy': args.redundancy,
             'batch_size': args.batch_size,
@@ -282,8 +249,10 @@ def prepare(args, rank, world_size):
             'checkpoint_step': args.checkpoint_step,
             'full_grad': args.full_grad,
             'total_size': data_shape,
-            'channel': training_set[0][0].size()[0],
-            '1d_size': training_set[0][0].size()[1],
+            # 'channel': training_set[0][0].size()[0],
+            # '1d_size': training_set[0][0].size()[1],
+            'channel': 0,
+            '1d_size': 0,
             'multi_krum_m': args.multi_krum_m,
             'grad_norm_keep_all': args.grad_norm_keep_all,
             'grad_norm_clip_n': args.grad_norm_clip_n,
@@ -295,6 +264,8 @@ def prepare(args, rank, world_size):
             'err_mode': args.err_mode,
             'dataset_size': len(training_set),
             'q': args.q,
+            'adapt_q': args.adapt_q,
+            'roll_freq': args.roll_freq
         }
         kwargs_worker = {
             'redundancy': args.redundancy,
@@ -316,12 +287,13 @@ def prepare(args, rank, world_size):
             'total_size': data_shape,
             # 'channel': training_set[0][0].size()[0],
             # '1d_size': training_set[0][0].size()[1],
+            'channel': 0,
+            '1d_size': 0,
             'p': args.p,
         }
     # print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)
     return datum, kwargs_master, kwargs_worker
-
 
 if __name__ == "__main__":
     comm = MPI.COMM_WORLD
@@ -330,13 +302,17 @@ if __name__ == "__main__":
     args = add_fit_args(argparse.ArgumentParser(description="Draco"))
     datum, kwargs_master, kwargs_worker = prepare(args, rank, world_size)
     if args.approach == 'baseline':
-        train_loader, _, test_loader = datum
+        train_loader, training_set, test_loader = datum
         if rank == 0:
             master_fc_nn = master.SyncReplicaMaster_NN(comm=comm, **kwargs_master)
             master_fc_nn.build_model()
             print("Master node: the world size is {}, cur step: {}".format(master_fc_nn.world_size,
                                                                            master_fc_nn.cur_step))
-            master_fc_nn.start()
+            # _, val_split = torch.utils.data.random_split(training_set, [180, 10])
+            # val_loader = torch.utils.data.DataLoader(val_split)
+            # master_fc_nn.start(val_loader)
+            master_fc_nn.start(train_loader)
+            # master_fc_nn.start()
             print("Done sending massage to workers!")
         else:
             worker_fc_nn = worker.DistributedWorker(comm=comm, **kwargs_worker)
@@ -350,3 +326,4 @@ if __name__ == "__main__":
             worker_fc_nn.train(train_loader=train_loader, test_loader=test_loader)
 
             print("Worrker {} Now the next step is: {}".format(rank,worker_fc_nn.next_step))
+            

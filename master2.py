@@ -4,6 +4,7 @@ from sys import getsizeof
 import numpy as np
 import hdmedians as hd
 import torch
+from torch import nn
 from torch.autograd import Variable
 import random
 
@@ -56,6 +57,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         self._redundancy = kwargs['redundancy']
         self._q = kwargs['q']
+        ''' temporary '''
+        self._roll_freq = kwargs['roll_freq'] 
+        self._rollback = {'loss': None, 'params': None}
+        self._adaptive = kwargs['adapt_q']
+
         self._byzantine_workers = []
         self._num_grad_to_collect = self.world_size - 1
         self._grad_aggregate_buffer = []
@@ -88,6 +94,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self.dataset_size = kwargs['dataset_size']
         self.batch_size = kwargs['batch_size']
 
+        # self.validation_criterion = nn.CrossEntropyLoss()
+        if self.network_config == 'LinregTest':
+            self.validation_criterion = nn.MSELoss()
+        else:
+            self.validation_criterion = nn.CrossEntropyLoss()
+
     def build_model(self) :
         # print("building model, self._size ", self._size)
         if self.network_config == "FC":
@@ -118,15 +130,18 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # optimizer can be others
         self.optimizer = SGDModified(self.network.parameters(), lr=self.lr, momentum=self.momentum)
         if self._diminishing_lr == True:
-            lr_lambda = lambda epoch: 10/((epoch/1000)+1)
-            self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
+            # lr_lambda = lambda epoch: 10/((epoch/1000)+1)
+            ''' diminishing learning rate-- half lr after epoch 200 '''
+            # lr_lambda = lambda epoch: 1.0 if epoch < 200 else .5**epoch
+            # self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
+            self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=10, gamma=.5)
 
-    def start(self):
+    def start(self, validation_loader):
         # np.set_printoptions(formatter={'float': lambda x: "{0:0.6f}".format(x)})
 
         if os.path.exists(self._train_dir+"logfile.txt"):
             print("Master... removing {}logfile.txt".format(self._train_dir))
-            os.remove(args.train_dir+"logfile.txt")
+            os.remove(self._train_dir+"logfile.txt")
 
         self.async_bcast_step()
         if self._redundancy :
@@ -138,12 +153,17 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.optimizer.load_state_dict(torch.load(self._train_dir+"optim_"+str(self._checkpoint_step)))
             if self._diminishing_lr == True:
                 self.scheduler.load_state_dict(torch.load(self._train_dir+"scheduler_"+str(self._checkpoint_step)))
+
+        ''' redundancy metrics '''
         total_grads = 0
         used_grads = 0
         comp_eff = [[],[],[]]
+        total_rolls = 0
+
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
             if self._diminishing_lr == True:
                 self.scheduler.step()
+                print("Master learning rate: ",self.optimizer.param_groups[0]['lr'])
             self.network.train()
             self.optimizer.zero_grad()
             self._first_grad_received = False
@@ -187,6 +207,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 faulty_grad_datapoints=[]
                 faulty_worker_ranks = []
 
+                ''' DEBUG print grads last 5 steps '''
+                print("[DEBUG] Master [{}] grads".format(self.cur_step))
+                if self._max_steps - self.cur_step < 5:
+                    for dpidx, dp_buffer in enumerate(self.coded_buffer):
+                        print(dp_buffer[0])
+
                 if self._s > 0 and (self._q == 1.0 or fault_check):
                     print("Master step {} check for faults".format(self.cur_step))
                     for dpidx, dp_buffer in enumerate(self.coded_buffer):
@@ -208,7 +234,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     print(f"Master step {self.cur_step} skipping fault check")
 
                 if faulty_grad_datapoints:
-                    print(f"Master step {self.cur_step} datapoints with faulty gradients: {faulty_grad_datapoints}") 
+                    print(f"Master step {self.cur_step} fault caught\ndatapoints with faulty gradients: {faulty_grad_datapoints}") 
                     # self._num_grad_to_collect = (self._s+1)*self.batch_size + self._s
                     # redistribute datapoints for second round 
                     # rule: datapoints must go to different workers than before
@@ -297,6 +323,20 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     for rank in faulty_worker_ranks:
                         self._byzantine_workers.append(rank)
                         self._s -= 1
+                    
+                   
+                    # fault was caught-- load rollback state if preferred
+                    val_loss = self._evaluate_model(validation_loader)
+                    if self._roll_freq and self._rollback['loss']:
+                        if val_loss > self._rollback['loss']:
+                            val_loss = self._evaluate_model(validation_loader)
+                            self._load_rollback()
+                            total_rolls += 1
+                            print("[DEBUG] loss at time of fault", val_loss)
+                            new_loss =  self._evaluate_model(validation_loader)
+                            print("[DEBUG] new loss",new_loss)
+                    else:
+                        print("Master {} no rollback to load".format(self.cur_step))
                             
                     print(f"Master {self.cur_step} used gradients: {used_grads_t}/{total_grads_t}")
 
@@ -328,20 +368,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         else:
                             if dpidx == 0:
                                 print(f"Master {self.cur_step} no faulty gradients")
-                            """
-                            temp_grad=[]
-                            for layer_index, param in enumerate(self.network.parameters()):
-                                temp_grad.append(np.zeros(param.size()))
-                            for widx, grad in enumerate(grad_list):
-                                for layer_index, param in enumerate(self.network.parameters()):
-                                    temp_grad[layer_index] += grad[layer_index]
-                            print("grad_list {}\ngrad_list[0] {}\ngrad_list[0][0] {}".format(len(grad_list),len(grad_list[0]),len(grad_list[0][0])))
-                            for idx, grad in enumerate(temp_grad):
-                                temp_grad[idx] /= len(grad_list)
-                            print(temp_grad) 
-                            for layer_idx, grad in enumerate(temp_grad):
-                                self.aggregate_gradient(gradient=grad,layer_idx=layer_idx,source=worker_list[dpidx][0]-1)
-                            """
 
                             for widx, grad in enumerate(grad_list):
                                 # add to total gradients calculated, greater than or equal to (batch_size) * (f+1)
@@ -573,9 +599,75 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     torch.save(self.scheduler.state_dict(), open(self._train_dir+"scheduler_"+str(self.cur_step),"wb"))
             print("Master Step: {}, Method Time Cost: {}, Update Time Cost: {}".format(self.cur_step, method_duration,
                                                                                        update_duration))
+
+            if (self._max_steps - self.cur_step)<5:
+                val_loss = self._evaluate_model(validation_loader, verbose=True)
+                print("[DEBUG] model params")
+                for pidx, param in enumerate(self.network.parameters()):
+                    print(param.data)
+
+            ''' rollback save state '''
+            if self._roll_freq and (self.cur_step==1):
+                print("[Master] Save initial state as rollback")
+                val_loss = self._evaluate_model(validation_loader,verbose=True)
+                self._save_rollback(val_loss)
+            elif self._roll_freq and ((self.cur_step%self._roll_freq)==0):
+                val_loss = self._evaluate_model(validation_loader)
+                if self._rollback['loss'] is None or val_loss < self._rollback['loss']:
+                    print("Master step {} replace old rollback".format(self.cur_step))
+                    self._save_rollback(val_loss)
+                else:
+                    ''' this should trigger something '''
+                    print("Master step {} old rollback retained".format(self.cur_step))
+            
+            if self._adaptive and self.cur_step%50==0:
+                self._adapt_q()
+                # self._q += .1
+                # print("q ==",self._q)
+
             with open(self._train_dir+"logs-master",'a') as f:
                 f.write('{:.8f},{:.8f}\n'.format(method_duration,update_duration))
+
+            '''
+            DEBUG MASTER VALIDATION 
+            '''
+            if self.cur_step%10==0:
+                # print("[DEBUG] Master learning rate: ",self.optimizer.param_groups[0]['lr'])
+                val_loss = self._evaluate_model(validation_loader, verbose=True)
+                '''temp'''
+                # if val_loss <= .0005:
+                    # print("Master {} validation loss {} <= .0005".format(self.cur_step,val_loss))
+                    # break
+
+                print("Master {} val_loss {}".format(self.cur_step, val_loss))
+            #     # with open("logs-validationloss", 'a') as f:
+            #     #     f.write('{} {:.4f}\n'.format(self.cur_step, val_loss))
+
             self.cur_step += 1
+
+            # ''' DEBUG EVAL '''
+            # if self._max_steps - self.cur_step<5:
+            #     val_loss = self._evaluate_model(validation_loader)
+            #     print("[DEBUG] model params")
+            #     for pidx, param in enumerate(self.network.parameters()):
+            #         print(param.data)
+
+            # ''' rollback save state '''
+            # if self.cur_step ==1:
+            #     print("************ Master first step is 1")
+
+            # if (self.cur_step==1) and self._roll_freq>0:
+            #     print("[Master] Save initial state as rollback")
+            #     val_loss = self._evaluate_model(validation_loader)
+            #     self._save_rollback(val_loss)
+            # elif self._roll_freq and ((self.cur_step%self._roll_freq)==0):
+            #     val_loss = self._evaluate_model(validation_loader)
+            #     if self._rollback['loss'] is None or val_loss < self._rollback['loss']:
+            #         print("Master step {} replace old rollback".format(self.cur_step))
+            #         self._save_rollback(val_loss)
+            #     else:
+            #         print("Master step {} old rollback retained".format(self.cur_step))
+
 
         if self._redundancy:
             # save computational efficiency calculations
@@ -585,6 +677,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             comp_eff = np.array(comp_eff)
             np.save(self._train_dir + "comp_eff.npy",comp_eff)        
             print("Master total gradients used: {}/{}".format(used_grads,total_grads))
+            print("total rollbacks: {}".format(total_rolls))
+            
         print('end of execution')
 
     def init_model_shapes(self):
@@ -1025,6 +1119,24 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     self._grad_aggregate_buffer[g_idx][i-1] = fault_gradient[g_idx]
             print(self._err_mode,"err sim finished")
 
+    def _save_rollback(self, loss):
+        # store the rollback params and loss in a dict
+        print("[DEBUG] Saving rollback with loss",loss)
+        with open('rollback', "wb") as f_:
+            roll_dict = {'params': self.network.state_dict(), 'loss': loss}
+            # torch.save(self.network.state_dict(), f_)
+            torch.save(roll_dict, f_)
+        # self._rollback['params'] = self.network.state_dict()
+        self._rollback['loss'] = loss
+
+    def _load_rollback(self):
+        with open('rollback', "rb") as f_:
+            model_state_dict = torch.load(f_)
+            print("Loading old rollback with loss",model_state_dict['loss'])
+            self.network.load_state_dict(model_state_dict['params'])
+        # model_state_dict = self._rollback['params']
+        # self.network.load_state_dict(model_state_dict)
+
     def _generate_model_path(self):
         return self._train_dir + "model_step_" + str(self.cur_step)
 
@@ -1038,24 +1150,46 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.network.load_state_dict(model_state_dict)
             print("Master loading checkpoint from {}".format(file_path))
 
-    def _evaluate_model(self, validation_loader):
+    def _adapt_q(self):
+        ''' simplest adaptation -- increase q by .1 '''
+        if self._q <= .9:
+            self._q += .1
+        print("[DEBUG] q ==",self._q)
+
+    def _evaluate_model(self, validation_loader, verbose=False):
+        strt = time.time()
         self.network.eval()
         prec1_counter_ = prec5_counter_ = batch_counter_ = 0
-        while validation_loader.dataset.epochs_completed <= self._epoch_counter:
-            eval_input_batch, eval_label_batch = validation_loader.next_batch(batch_size=self._eval_batch_size)
-            X_batch, y_batch = Variable(eval_input_batch.float()), Variable(eval_label_batch.long())
+        losses = []
+        # while validation_loader.dataset.epochs_completed <= self._epoch_counter:
+        for batch_idx,(eval_input_batch,eval_label_batch) in enumerate(validation_loader):
+            # eval_input_batch, eval_label_batch = validation_loader.next_batch(batch_size=self._eval_batch_size)
+            X_batch, y_batch = Variable(eval_input_batch.float()), Variable(eval_label_batch.float())
+            # X_batch, y_batch = Variable(eval_input_batch.float()), Variable(eval_label_batch.long())
             output = self.network(X_batch)
-            prec1_tmp, prec5_tmp = accuracy(output.data, eval_label_batch.long(), topk=(1, 5))
-            prec1_counter_ += prec1_tmp
-            prec5_counter_ += prec5_tmp
-            batch_counter_ += 1
+            # if batch_idx == 0: print("LOSS ",self.validation_criterion(output, y_batch).item())
+            losses.append(self.validation_criterion(output, y_batch).item())
+
+            ''' temporary for Linreg tests-- dimensions issue with linreg set? '''
+            if self.network_config != 'LinregTest':
+                prec1_tmp, prec5_tmp = accuracy(output.data, eval_label_batch.long(), topk=(1,5))
+                prec1_counter_ += prec1_tmp
+                prec5_counter_ += prec5_tmp
+            else :
+                # print(np.stack([np.array(output.cpu().detach()),np.array(y_batch)],1))
+                prec1_counter_ += 0
+                prec5_counter_ += 0
+                batch_counter_ += 1
+
         prec1 = prec1_counter_ / batch_counter_
         prec5 = prec5_counter_ / batch_counter_
-        self._epoch_counter = validation_loader.dataset.epochs_completed
-        print('Testset performance: Cur step:{}\tPrec@1: {}\tPrec@5: {}'.format(self.cur_step, prec1, prec5))
+        # self._epoch_counter = validation_loader.dataset.epochs_completed
+        if verbose:
+            print('Master {} validation set performance: \tPrec@1: {}\tPrec@5: {}\tAvg Loss: {}\t({:.4f})'.format(self.cur_step, prec1, prec5, np.mean(losses),time.time()-strt))
+        return np.mean(losses)
 
     def _avg_received_grads(self):
-        print("[{}] avg over {}".format(self.cur_step, self._num_grad_to_collect))
+        # print("[{}] avg over {}".format(self.cur_step, self._num_grad_to_collect))
         for i in range(len(self._grad_aggregate_buffer)):
             self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
 

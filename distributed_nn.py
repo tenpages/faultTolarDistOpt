@@ -153,8 +153,8 @@ def load_data(dataset, seed, args, rank, world_size):
     if seed:
         torch.manual_seed(seed)
         random.seed(seed)
-    #print("dataset: " + dataset)
     if dataset == "MNIST":
+        test_loader = None
         if rank==0:
             training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
                 transforms.ToTensor(),
@@ -176,7 +176,6 @@ def load_data(dataset, seed, args, rank, world_size):
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]))
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=(True))
-        test_loader = None
         return train_loader, training_set, test_loader
 
     elif dataset == "CIFAR10":
@@ -310,13 +309,15 @@ if __name__ == "__main__":
     args = add_fit_args(argparse.ArgumentParser(description="Draco"))
     datum, kwargs_master, kwargs_worker = prepare(args, rank, world_size)
     if args.approach == 'baseline':
-        train_loader, _, test_loader = datum
+        train_loader, training_set, test_loader = datum
         if rank == 0:
             master_fc_nn = master.SyncReplicaMaster_NN(comm=comm, **kwargs_master)
             master_fc_nn.build_model()
             print("Master node: the world size is {}, cur step: {}".format(master_fc_nn.world_size,
                                                                            master_fc_nn.cur_step))
-            master_fc_nn.start()
+            _, val_split = torch.utils.data.random_split(training_set, [50000.10000])
+            val_loader = torch.utils.data.DataLoader(
+            master_fc_nn.start(val_loader)
             print("Done sending massage to workers!")
         else:
             worker_fc_nn = worker.DistributedWorker(comm=comm, **kwargs_worker)
