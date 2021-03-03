@@ -37,7 +37,7 @@ def add_fit_args(parser):
                         help='the maximum number of iterations')
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 10)')
-    parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
+    parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                         help='learning rate (default: 0.01)')
     parser.add_argument('--diminishing-lr', type=ast.literal_eval, default=False, metavar='N',
                         help='set diminishing learning rate (default: False)')
@@ -105,6 +105,10 @@ def add_fit_args(parser):
                         help='the probability from 0 to 1 that byzantine workers will send errors in redundancy scheme')
     parser.add_argument('--q', type=float, default=1.00,
                         help='the probability from 0 to 1 that the master will check for errors in redundancy scheme')
+    parser.add_argument('--adapt-q', action='store_true',default=False,
+                        help='Use adaptive fault-checking (increase over time)')
+    parser.add_argument('--roll-freq',type=int,default=0,
+                        help='frequency of storing rollback states; no rollback when 0')
 
     args = parser.parse_args()
     return args
@@ -274,6 +278,8 @@ def prepare(args, rank, world_size):
             'err_mode': args.err_mode,
             'dataset_size': len(training_set),
             'q': args.q,
+            'adapt_q': args.adapt_q,
+            'roll_freq': args.roll_freq
         }
         kwargs_worker = {
             'redundancy': args.redundancy,
@@ -315,8 +321,9 @@ if __name__ == "__main__":
             master_fc_nn.build_model()
             print("Master node: the world size is {}, cur step: {}".format(master_fc_nn.world_size,
                                                                            master_fc_nn.cur_step))
-            _, val_split = torch.utils.data.random_split(training_set, [50000.10000])
-            val_loader = torch.utils.data.DataLoader(
+            ''' use random subset of training as validation split '''
+            _, val_split = torch.utils.data.random_split(training_set, [50000, 10000])
+            val_loader = torch.utils.data.DataLoader(val_split)
             master_fc_nn.start(val_loader)
             print("Done sending massage to workers!")
         else:
@@ -324,9 +331,6 @@ if __name__ == "__main__":
             worker_fc_nn.build_model()
             print("Worker node: {} in all {}, next step: {}".format(worker_fc_nn.rank, worker_fc_nn.world_size,
                                                                     worker_fc_nn.next_step))
-            #for indx, (img, target) in enumerate(train_loader):
-            #    if indx < 5:
-            #        print(worker_fc_nn.rank,indx,target)
 
             worker_fc_nn.train(train_loader=train_loader, test_loader=test_loader)
 
