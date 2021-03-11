@@ -39,8 +39,10 @@ def add_fit_args(parser):
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
                         help='learning rate (default: 0.01)')
-    parser.add_argument('--diminishing-lr', type=ast.literal_eval, default=False, metavar='N',
-                        help='set diminishing learning rate (default: False)')
+    # parser.add_argument('--diminishing-lr', type=ast.literal_eval, default=False, metavar='N',
+    #                     help='set diminishing learning rate (default: False)')
+    parser.add_argument('--diminishing-lr', type=int, default=0, 
+                        help='set diminishing learning rate type (default: 0)\n\t0 <-- none\n\t1 <-- linear decrease (lr -= dimSize each step)\n\t2 <-- decrease exponentially with time (lr -= dimSize^step)')
     parser.add_argument('--momentum', type=float, default=0, metavar='M',
                         help='SGD momentum (default: 0)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -112,6 +114,10 @@ def add_fit_args(parser):
                         help='frequency of storing rollback states; no rollback when 0')
     # parser.add_argument('',type=,default=,
     #                     help='')
+    parser.add_argument('--targeted',action='store_true',default=False,
+                        help='frequency of storing rollback states; no rollback when 0')
+    parser.add_argument('--delay',type=int,default=0,
+                        help='delay of Byzantine worker attacks (defaults=0)')
 
     args = parser.parse_args()
     return args
@@ -265,7 +271,8 @@ def prepare(args, rank, world_size):
             'dataset_size': len(training_set),
             'q': args.q,
             'adapt_q': args.adapt_q,
-            'roll_freq': args.roll_freq
+            'roll_freq': args.roll_freq,
+            'targeted': args.targeted
         }
         kwargs_worker = {
             'redundancy': args.redundancy,
@@ -290,6 +297,7 @@ def prepare(args, rank, world_size):
             'channel': 0,
             '1d_size': 0,
             'p': args.p,
+            'delay': args.delay
         }
     # print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)

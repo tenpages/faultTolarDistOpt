@@ -38,6 +38,8 @@ class DistributedWorker(NN_Trainer):
 
         self.rand_nums = []
         self.redundancy = kwargs['redundancy']
+        self._delay = kwargs['delay']
+
         self.red_seed = -1
         self._p = kwargs['p']
         self.batch_size = kwargs['batch_size']
@@ -95,7 +97,7 @@ class DistributedWorker(NN_Trainer):
     def train(self, train_loader, test_loader):
         global STEP_START_
 
-        fault_delay = 70 
+        fault_delay = self._delay 
 
         self.sync_fetch_step()
         assert (self.update_step())
@@ -126,8 +128,8 @@ class DistributedWorker(NN_Trainer):
 
         if self.redundancy:
             np.random.seed()
-            self.rand_nums = [np.random.randn() for _ in range(self._max_steps)]
-            print("Worker {}:\trandoms: {}".format(self.rank, self.rand_nums[:10]))
+            self.rand_nums = [randn() for _ in range(self._max_steps)]
+            # print("Worker {}:\trandoms: {}".format(self.rank, self.rand_nums[:10]))
             self.fetch_seed()                   # set self.red_seed
             # self.fetch_rand_nums()
             assert (self.red_seed >= 0)
@@ -250,6 +252,8 @@ class DistributedWorker(NN_Trainer):
                         ''' temporary-- Byzantine attack delay for __ steps '''
                         if self.cur_step > fault_delay and self._p > 0.0 and self.rank in self._fail_workers[self.cur_step]: 
                             send_err = self.p_decision(self._p,self.rand_nums.pop(0))
+                        else:
+                            _ = self.rand_nums.pop(0)
                         numlayers = 0
                         for _ in self.network.parameters():
                             numlayers = numlayers + 1
@@ -288,7 +292,7 @@ class DistributedWorker(NN_Trainer):
 
                         new_dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints_redundant())
 
-                        lf = open(self._train_dir +"/logfile.txt", "a")
+                        lf = open(self._train_dir +"logfile.txt", "a")
                         lf.write('W {} e {} iter {} nGrads {} nRedGrads {} byz {} fault {} loss {:.8f}\n'.format(self.rank, num_epoch, self.cur_step, len(dp_list), len(new_dp_list), int(self.rank in self._fail_workers[self.cur_step]), int(self.rank in self._fail_workers[self.cur_step] and send_err), loss.item()))
                         lf.close()
 
@@ -673,12 +677,11 @@ def err_simulation(grad, mode, cyclic=False):
             return ADVERSARY_ * grad
 
 
-def make_decision(p) :
+def make_decision(p, r) :
     mu = 0.00
     sigma = 1.00
 
-    r = randn()
-
+    # r = randn()
     quantile = mu + sigma * sqrt(2)*erfinv(2*p-1)
 
     if quantile >= r :
@@ -691,12 +694,12 @@ if __name__ == "__main__":
     x=0
     y=0
 
-    for i in range(1000):
-        if make_decision(p):
-            if x==0:
-                print("first x @ i={}".format(i))
+    test_random_list = [randn() for _ in range(1000)]
+    for i in test_random_list:
+        if make_decision(p, i):
             x+=1
         else:
             y+=1
 
-    print("x = {}%".format(x/1000))
+    print("x = {}%".format(x/(x+y)))
+    print("y = {}%".format(y/(x+y)))

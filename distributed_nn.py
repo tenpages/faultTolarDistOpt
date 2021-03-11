@@ -109,6 +109,8 @@ def add_fit_args(parser):
                         help='Use adaptive fault-checking (increase over time)')
     parser.add_argument('--roll-freq',type=int,default=0,
                         help='frequency of storing rollback states; no rollback when 0')
+    parser.add_argument('--targeted',action='store_true',default=False,
+                        help='frequency of storing rollback states; no rollback when 0')
 
     args = parser.parse_args()
     return args
@@ -279,7 +281,8 @@ def prepare(args, rank, world_size):
             'dataset_size': len(training_set),
             'q': args.q,
             'adapt_q': args.adapt_q,
-            'roll_freq': args.roll_freq
+            'roll_freq': args.roll_freq,
+            'targeted': args.targeted
         }
         kwargs_worker = {
             'redundancy': args.redundancy,
