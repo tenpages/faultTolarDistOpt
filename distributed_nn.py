@@ -111,6 +111,8 @@ def add_fit_args(parser):
                         help='frequency of storing rollback states; no rollback when 0')
     parser.add_argument('--targeted',action='store_true',default=False,
                         help='frequency of storing rollback states; no rollback when 0')
+    parser.add_argument('--delay',type=int,default=0,
+                        help='delay of Byzantine worker attacks (defaults=0)')
 
     args = parser.parse_args()
     return args
@@ -305,6 +307,7 @@ def prepare(args, rank, world_size):
             'channel': training_set[0][0].size()[0],
             '1d_size': training_set[0][0].size()[1],
             'p': args.p,
+            'delay': args.delay
         }
     # print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)

@@ -236,7 +236,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         #     for layer in worker:
                         #         print("layer size", len(layer))
                         prev_grad_avg = np.array([[[[np.mean(layer)] for layer in worker] for worker in dp] for dp in self.coded_buffer])
-                        print(prev_grad_avg.shape)
+                        print('gradient average shape:', prev_grad_avg.shape)
                     else:
                         # print("gradient avg change:", np.mean(self.coded_buffer,2)-prev_grad_avg)
                         # prev_grad_avg = np.mean(self.coded_buffer,2)
@@ -277,7 +277,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                             # print('[DEBUG] {}\ttargeted fault-check'.format(self.cur_step))
 
                         if self._targeted and self.cur_step > 20:
-                            print('[DEBUG]',self.cur_step,abs(mu-grad_diffs[-1])/std)
+                            print('[DEBUG] grad diff:',self.cur_step,abs(mu-grad_diffs[-1])/std)
 
                 if faulty_grad_datapoints:
                     print(f"Master step {self.cur_step} fault caught\ndatapoints with faulty gradients: {faulty_grad_datapoints}") 
@@ -372,8 +372,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     
                    
                     # fault was caught-- load rollback state if preferred
-                    val_loss = self._evaluate_model(validation_loader)
                     if self._roll_freq and self._rollback['loss']:
+                        val_loss = self._evaluate_model(validation_loader)
                         if val_loss > self._rollback['loss']:
                             val_loss = self._evaluate_model(validation_loader)
                             self._load_rollback()
@@ -381,7 +381,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                             print("[DEBUG] loss at time of fault", val_loss)
                             new_loss =  self._evaluate_model(validation_loader)
                             print("[DEBUG] new loss",new_loss)
-                    else:
+                    elif self._roll_freq:
                         print("Master {} no rollback to load".format(self.cur_step))
                             
                     print(f"Master {self.cur_step} used gradients: {used_grads_t}/{total_grads_t}")
@@ -687,10 +687,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 elif val_loss > self._rollback['loss']:
                     # rollback is strictly better than current state
                     self._load_rollback()
-                    # print("Master step {} old rollback retained".format(self.cur_step))
+                    total_rolls += 1
+                    print("Master step {} old rollback preserved.".format(self.cur_step))
             
             # if self._adaptive and self.cur_step > 60 and self.cur_step%20==0:
-            if self._adaptive and self.cur_step%20==0:
+            if self._adaptive and self.cur_step%10==0:
                 self._adapt_q()
                 # self._q += .1
                 # print("q ==",self._q)
@@ -699,16 +700,15 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 f.write('{:.8f},{:.8f}\n'.format(method_duration,update_duration))
 
             '''
-            DEBUG MASTER VALIDATION 
+            [DEBUG] MASTER VALIDATION 
             '''
-            if self.cur_step%10==0:
-                val_loss = self._evaluate_model(validation_loader, verbose=True)
-                '''temp'''
-                # if val_loss <= .0005:
-                    # print("Master {} validation loss {} <= .0005".format(self.cur_step,val_loss))
-                    # break
-
-                print("Master {} val_loss {}".format(self.cur_step, val_loss))
+            # if self.cur_step%10==0:
+            #     val_loss = self._evaluate_model(validation_loader, verbose=True)
+            #     '''temp'''
+            #     # if val_loss <= .0005:
+            #         # print("Master {} validation loss {} <= .0005".format(self.cur_step,val_loss))
+            #         # break
+            #     print("Master {} val_loss {}".format(self.cur_step, val_loss))
             #     # with open("logs-validationloss", 'a') as f:
             #     #     f.write('{} {:.4f}\n'.format(self.cur_step, val_loss))
 
@@ -1230,8 +1230,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def _adapt_q(self):
         ''' simplest adaptation -- increase q by .1 '''
-        if self._q <= .96:
-            self._q += .04
+        if self._q <= .98:
+            self._q += .02
         print("[DEBUG] q ==",self._q)
 
     def _evaluate_model(self, validation_loader, verbose=False):
