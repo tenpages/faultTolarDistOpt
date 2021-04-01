@@ -53,7 +53,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
         self._zero_initial_weights = kwargs['zero_initial_weights']
         if 'async' in self._update_mode:
-            self.async_scheduler = kwargs['async_scheduler']
+            self.async_scheduler = kwargs['adversaries']
 
         # the following information is only used for simulating fault agents and not used by filters.
         self._adversaries = kwargs['adversaries']

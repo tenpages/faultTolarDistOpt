@@ -372,7 +372,7 @@ def _generate_adversarial_nodes(args, world_size):
                 return [np.array(args.faulty_list)] * (args.max_steps + 1)
             else:
                 raise Exception("Wrong list of faulty agents")
-    elif args.faulty_pattern == 'changing':
+    elif args.faulty_pattern == 'changing' or 'async' in args.err_mode:
         return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
                 range(args.max_steps + 1)]
     elif args.faulty_pattern == 'median_of_means':
