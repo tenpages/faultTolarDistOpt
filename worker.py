@@ -399,6 +399,8 @@ def err_simulation(grad, mode, cyclic=False):
             return np.add(adv, grad)
         else:
             return np.ones(grad.shape, dtype=np.float64) * CONST_
+    elif 'async' in mode:
+        return grad # no error is needed
     else:
         if cyclic:
             adv = ADVERSARY_ * grad

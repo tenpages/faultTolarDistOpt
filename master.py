@@ -52,6 +52,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_norm_keep_all = kwargs['grad_norm_keep_all']
         self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
         self._zero_initial_weights = kwargs['zero_initial_weights']
+        if 'async' in self._update_mode:
+            self.async_scheduler = kwargs['async_scheduler']
 
         # the following information is only used for simulating fault agents and not used by filters.
         self._adversaries = kwargs['adversaries']
@@ -213,6 +215,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
             elif self._update_mode == 'ensemble_normfilter_cwtm':
                 method_start = time.time()
                 self._ensemble_normfilter_cwtm()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'asynchronous_drop_f':
+                method_start = time.time()
+                self._asynchronous_drop_f()
                 method_duration = time.time() - method_start
 
             """
@@ -467,6 +473,15 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             trimed_mean = np.mean(np.sort(np.array(grads), axis=0)[self._s:self.num_workers-self._s], axis=0)
             self._grad_aggregate_buffer[g_idx] = trimed_mean
+
+    def _asynchronous_drop_f(self):
+        """
+        randomly drop f gradients according to the asynchronous scheduler, to simulate
+        the scenario where f agents respond slower than others
+        """
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            mean = np.mean(np.array(grads[self.async_scheduler[self.cur_step]]), axis=0)
+            self._grad_aggregate_buffer[g_idx] = mean
 
     """
     def _median_of_means(self):
