@@ -225,6 +225,14 @@ if __name__ == "__main__":
         B = testing_set.tensors[1].numpy().astype('float64')
         true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A[honest]), A[honest])), np.matmul(np.transpose(A[honest]), B[honest])).reshape(-1)
         print("true minimum:",true_minimum)
+    elif args.dataset == "PreciseReg":
+        testing_set=torch.load("regressionDataset")
+        test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
+        data_shape = testing_set[0][0].size()[0]
+        A = testing_set.tensors[0].numpy().astype('float64')
+        B = testing_set.tensors[1].numpy().astype('float64')
+        true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A), A)), np.matmul(np.transpose(A), B)).reshape(-1)
+        print("true minimum:",true_minimum)
     elif args.dataset == "SVMData":
         testing_set=torch.load("svmDatasetEval")
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
