@@ -480,7 +480,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         the scenario where f agents respond slower than others
         """
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            mean = np.mean(np.array(grads[self.async_scheduler[self.cur_step]]), axis=0)
+            mean = np.mean(np.array(grads)[self.async_scheduler[self.cur_step]], axis=0)
             self._grad_aggregate_buffer[g_idx] = mean
 
     """
