@@ -347,19 +347,17 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
 
     def _err_simulator(self):
+        _honest = list(set(range(1,self.num_workers+1)) - set(self._adversaries[self.cur_step]))
+        _honest = (np.array(_honest)-1).tolist()
         if self._err_mode == 'cwtm':
-            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
-
             for g_idx, grads in enumerate(self._grad_aggregate_buffer):
                 coor_wise_sorted = np.sort(np.array(grads)[_honest], axis=0)
                 fault_gradient = coor_wise_sorted[min(self._s, len(_honest)-1)]
                 print(type(fault_gradient))
                 print(type(self._grad_aggregate_buffer[g_idx][0]))
                 for i in self._adversaries[self.cur_step]:
-                    self._grad_aggregate_buffer[g_idx][i] = fault_gradient
+                    self._grad_aggregate_buffer[g_idx][i-1] = fault_gradient
         if self._err_mode == 'normfilter':
-            _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]))
-
             concatenated_gradients = None
             separator = []
             #print('concatenation')
@@ -375,9 +373,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
             # note that reverse direction is done in err_simulation() in worker.py. Only need to adjust norm here.
             for i in self._adversaries[self.cur_step]:
-                fault_gradient = np.split(concatenated_gradients[i] * fault_norm / np.linalg.norm(concatenated_gradients[i]), separator[:len(separator)-1])
+                fault_gradient = np.split(concatenated_gradients[i-1] * fault_norm / np.linalg.norm(concatenated_gradients[i-1]), separator[:len(separator)-1])
                 for g_idx in range(len(self._grad_aggregate_buffer)):
-                    self._grad_aggregate_buffer[g_idx][i] = fault_gradient[g_idx]
+                    self._grad_aggregate_buffer[g_idx][i-1] = fault_gradient[g_idx]
             print(self._err_mode,"err sim finished")
 
     def _generate_model_path(self):
@@ -481,8 +479,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
         randomly drop f gradients according to the asynchronous scheduler, to simulate
         the scenario where f agents respond slower than others
         """
+        _honest = list(set(range(1,self.num_workers+1)) - set(self._adversaries[self.cur_step]))
+        _honest = (np.array(_honest)-1).tolist()
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            mean = np.mean(np.array(grads)[self.async_scheduler[self.cur_step]], axis=0)
+            mean = np.mean(np.array(grads)[_honest], axis=0)
             self._grad_aggregate_buffer[g_idx] = mean
 
     """
