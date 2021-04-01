@@ -256,7 +256,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer.append(np.zeros(param.size()))
             elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
-                                       'grad_norm_multi_parts'):
+                                       'grad_norm_multi_parts','asynchronous_drop_f'):
                 self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
 
     def async_bcast_step(self):
@@ -310,7 +310,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer[layer_idx] += gradient
         elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
-                                   'grad_norm_multi_parts'):
+                                   'grad_norm_multi_parts','asynchronous_drop_f'):
             # print(self._grad_aggregate_buffer[layer_idx][source].shape, gradient.shape)
             # print(self._grad_aggregate_buffer[layer_idx][source].dtype, gradient.dtype)
             self._grad_aggregate_buffer[layer_idx][source] = gradient.reshape(-1)
@@ -341,7 +341,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
             elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
                                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
-                                       'grad_norm_multi_parts'):
+                                       'grad_norm_multi_parts','asynchronous_drop_f'):
                 self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
 
     def _err_simulator(self):

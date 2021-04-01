@@ -33,7 +33,7 @@ class SGDModified(Optimizer):
                 elif mode=='geometric_median' or mode=='maj_vote' or mode=='cyclic' or mode=='krum' or mode=='multi_krum'\
                         or mode=='median_of_means' or mode=='grad_norm' or mode=='coor_wise_median'\
                         or mode=='coor_wise_trimmed_mean' or mode=='grad_norm_coor_wise' or mode=='grad_norm_full_grad'\
-                        or mode=='grad_norm_multi_parts':
+                        or mode=='grad_norm_multi_parts' or mode=='asynchronous_drop_f':
                     d_p=torch.from_numpy(grads[i].reshape(p.size())).float()
                 if weight_decay != 0:
                     d_p.add_(weight_decay, p.data)
