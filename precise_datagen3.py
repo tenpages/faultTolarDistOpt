@@ -7,7 +7,7 @@ x_star = np.array([1,1])
 #N = np.array([0.00281975,-0.00889553,-0.00534664,0.00518008,0.00247871,-0.00331871])
 #N = np.array([-0.0892,0.0349,0.0376,0.0033,-0.0858,-0.0615])
 
-B = np.matmul(A,x_star) + N
+B = np.matmul(A,x_star)
 f = 1
 
 # n_minus_2f_agents = [list(i) for i in list(combinations([0,1,2,3,4,5], 4))]
