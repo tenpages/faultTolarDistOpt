@@ -7,7 +7,7 @@ import subprocess
 #models = ['bulyan_grad_norm']
 #model_names = ['mkrum5','cwtm',"medofmeans"]
 #models = ['multi_krum','coor_wise_trimmed_mean','median_of_means']
-model_names = ['mkurm2', 'normfilter']
+model_names = ['mkrum2', 'normfilter']
 models = ['multi_krum', 'grad_norm']
 fault_types = ['rev_grad_2']#,'normfilter','labelflipping']
 fault_names = ['revgrad2']#,'normfilter','labelflipping']
