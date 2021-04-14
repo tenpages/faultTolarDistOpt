@@ -51,7 +51,7 @@ class DistributedWorker(NN_Trainer):
         self._diff_privacy_param = kwargs['diff_privacy_param']
         self._diff_privacy_sigma = kwargs['diff_privacy_sigma']
         if self._diff_privacy_param != 0:
-            self._privacy_rv = gennorm.rvs(self._diff_privacy_param)
+            self._privacy_rv = gennorm(self._diff_privacy_param)
 
     def build_model(self):
         # print("building model, self._size ", self._size)
@@ -348,7 +348,7 @@ class DistributedWorker(NN_Trainer):
                 """
                 if self._diff_privacy_param != 0:
                     # privacy noise injection
-                    noise = self._privacy_rv(size=grad.size)
+                    noise = self._privacy_rv.rvs(size=grad.size)
                     grad = grad + noise * self._diff_privacy_sigma
 
                 if self._compress_grad == 'compress':
