@@ -346,11 +346,11 @@ class DistributedWorker(NN_Trainer):
                 """
                 printNorms.append(np.linalg.norm(grad.reshape(-1)))
                 """
-                if self.diff_privacy_param != 0:
+                if self._diff_privacy_param != 0:
                     # privacy noise injection
                     noise = self._privacy_rv(size=len(grad))
                     for i in len(grad):
-                        grad[i] = grad[i] + noise[i] * self.diff_privacy_sigma
+                        grad[i] = grad[i] + noise[i] * self._diff_privacy_sigma
 
                 if self._compress_grad == 'compress':
                     _compressed_grad = compress(grad)
