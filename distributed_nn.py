@@ -99,6 +99,10 @@ def add_fit_args(parser):
                         help='specifying parameter n when using gradient norm clipping (multi-parts) with n piece')
     parser.add_argument('--calculate-cosine', type=ast.literal_eval, default=False, metavar='N',
                         help='calculate or not the cosine distance between received gradients and the filtered gradient')
+    parser.add_argument('--diff-privacy-param', type=int, default=0, metavar='N',
+                        help='provide bata value for generalized Gaussian mechanism injecting noise to honest gradients. 0 implies no privacy noise injection')
+    parser.add_argument('--diff-privacy-sigma', type=float, default=0, metavar='N',
+                        help='provide sigma value for generalized Gaussian mechanism injecting noise to honest gradients, as variance or std')
     args = parser.parse_args()
     return args
 
@@ -294,6 +298,8 @@ def prepare(args, rank, world_size):
             'total_size': data_shape,
             'channel': training_set[0][0].size()[0],
             '1d_size': training_set[0][0].size()[1],
+            'diff_privacy_param': args.diff_privacy_param,
+            'diff_privacy_sigma': args.diff_privacy_sigma
         }
     # print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)

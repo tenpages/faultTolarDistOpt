@@ -7,6 +7,7 @@ from torch import nn
 from torch.autograd import Variable
 
 import numpy as np
+from scipy.stats import gennorm
 
 from compress_gradient import compress
 from model_ops.fc import Full_Connected
@@ -47,6 +48,10 @@ class DistributedWorker(NN_Trainer):
 
         self._layer_cur_step = []
         self._fail_workers = kwargs['adversaries']
+        self._diff_privacy_param = kwargs['diff_privacy_param']
+        self._diff_privacy_sigma = kwargs['diff_privacy_sigma']
+        if self._diff_privacy_param != 0:
+            self._privacy_rv = gennorm.rvs(self._diff_privacy_param)
 
     def build_model(self):
         # print("building model, self._size ", self._size)
@@ -341,6 +346,11 @@ class DistributedWorker(NN_Trainer):
                 """
                 printNorms.append(np.linalg.norm(grad.reshape(-1)))
                 """
+                if self.diff_privacy_param != 0:
+                    # privacy noise injection
+                    noise = self._privacy_rv(size=len(grad))
+                    for i in len(grad):
+                        grad[i] = grad[i] + noise[i] * self.diff_privacy_sigma
 
                 if self._compress_grad == 'compress':
                     _compressed_grad = compress(grad)
