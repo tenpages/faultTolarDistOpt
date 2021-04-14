@@ -33,7 +33,7 @@ for df_beta in df_betas:
 							'--approach', 'baseline',
 							'--err-mode', fault_type,
 							'--lr', '0.01',
-							'--train-dir', 'output/models/df/df/' + fault_name + '/' + model_name + '/10-' + str(i) + '/',
+							'--train-dir', 'output/models/df/df' + df_beta + '/' + fault_name + '/' + model_name + '/10-' + str(i) + '/',
 							'--accumulative', 'False',
 							#'--accumulative-alpha', '0.'+acc_alpha,
 							'--worker-fail', str(i),
@@ -63,7 +63,7 @@ for df_beta in df_betas:
 		for i in nums_faults:
 			for fault_type, fault_name in zip(fault_types, fault_names):
 				for model_name, model in zip(model_names, models):
-					args = 'python distributed_eval.py --model-dir output/models/df/df/'+fault_name+'/'+model_name \
+					args = 'python distributed_eval.py --model-dir output/models/df/df'+df_beta+'/'+fault_name+'/'+model_name \
 						+'/10-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > results-df-MNIST-LeNet-df(' + df_beta + ',' + str(df_sigma) + ')'+batch_size+'-'+fault_name+'-'+model_name+'-10-'+str(i)+' 2>&1 &'
 					print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 					print(args)
