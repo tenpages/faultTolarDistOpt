@@ -99,6 +99,8 @@ def add_fit_args(parser):
                         help='specifying parameter n when using gradient norm clipping (multi-parts) with n piece')
     parser.add_argument('--calculate-cosine', type=ast.literal_eval, default=False, metavar='N',
                         help='calculate or not the cosine distance between received gradients and the filtered gradient')
+    parser.add_argument('--diminishing-lr', type=ast.literal_eval, default=False, metavar='N',
+                        help='decide if uses diminishing learning rate')
     parser.add_argument('--diff-privacy-param', type=int, default=0, metavar='N',
                         help='provide bata value for generalized Gaussian mechanism injecting noise to honest gradients. 0 implies no privacy noise injection')
     parser.add_argument('--diff-privacy-sigma', type=float, default=0, metavar='N',
@@ -275,6 +277,7 @@ def prepare(args, rank, world_size):
             'calculate_cosine': args.calculate_cosine,
             'accumulative': args.accumulative,
             'accumulative_alpha': args.accumulative_alpha,
+            'diminishing_lr': args.diminishing_lr,
             # the following information is only used for simulating fault agents and not used by filters.
             'adversaries': adversaries,
             'err_mode': args.err_mode,
