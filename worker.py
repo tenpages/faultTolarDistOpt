@@ -352,7 +352,7 @@ class DistributedWorker(NN_Trainer):
                         noise = self._privacy_rv.rvs(size=1)
                         grad = grad + noise * self._diff_privacy_sigma
                     else:
-                        noise = self._privacy_rv.rvs(size=grad.shape())
+                        noise = self._privacy_rv.rvs(size=grad.shape)
                         grad = grad + noise * self._diff_privacy_sigma
 
                 if self._compress_grad == 'compress':
