@@ -51,6 +51,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self.cur_step = STEP_START_
         self.lr = kwargs['learning_rate']
         self._diminishing_lr = kwargs['diminishing_lr']
+        self._dim_lr_freq = kwargs['dim_lr_freq']
         self.momentum = kwargs['momentum']
         self.network_config = kwargs['network']
         self.comm_type = kwargs['comm_method']
@@ -62,6 +63,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._rollback = {'loss': None, 'params': None}
         self._adaptive = kwargs['adapt_q']
         self._targeted = kwargs['targeted']
+        self._target_thresh = kwargs['target_thresh']
 
         self._byzantine_workers = []
         self._num_grad_to_collect = self.world_size - 1
@@ -133,16 +135,20 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # if self._diminishing_lr == True:
         if self._diminishing_lr:
             # lr_lambda = lambda epoch: 10/((epoch/1000)+1)
-            ''' diminishing learning rate-- half lr after epoch 200 '''
             if self._diminishing_lr == 1:
                 dimin_size = self.lr/(self._max_steps + 1)
                 lr_lambda = lambda epoch: (1.0 - (dimin_size*epoch)/self.lr)
                 self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
-            # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=15, gamma=.5)
+                # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=15, gamma=.5)
             elif self._diminishing_lr == 2:
-                self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=10, gamma=.8)
+                print("exponential LR schedule with frequency ",self._dim_lr_freq)
+                self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=self._dim_lr_freq, gamma=.9)
+            elif self._diminishing_lr ==3:
+                # print('dimin-lr = 3')
+                lr_lambda = lambda epoch: 1.0 if epoch==0 else 1.0/epoch
+                self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
             else:
-                print('ERROR: invalid --diminish-lr input')
+                print('ERROR: invalid --diminishing-lr input')
 
     def start(self, validation_loader):
         # np.set_printoptions(formatter={'float': lambda x: "{0:0.6f}".format(x)})
@@ -159,7 +165,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
         if self._checkpoint_step != 0:
             # torch.set_rng_state(torch.load(self._train_dir+"rng_state_"+str(self._checkpoint_step)))
             self.optimizer.load_state_dict(torch.load(self._train_dir+"optim_"+str(self._checkpoint_step)))
-            # if self._diminishing_lr == True:
             if self._diminishing_lr:
                 self.scheduler.load_state_dict(torch.load(self._train_dir+"scheduler_"+str(self._checkpoint_step)))
 
@@ -175,10 +180,15 @@ class SyncReplicaMaster_NN(NN_Trainer):
         grad_diffs = []
 
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
-            # if self._diminishing_lr == True:
-            if self._diminishing_lr:
+            # exponentially decreasing LR schedule
+            if self._diminishing_lr == 2:
                 self.scheduler.step()
                 print("[DEBUG] Master learning rate: ",self.optimizer.param_groups[0]['lr'])
+            # linear decreasing LR schedule
+            elif self._diminishing_lr == 1 or self._diminishing_lr == 3:
+                if (self.cur_step%self._dim_lr_freq==0): self.scheduler.step()
+                print("[DEBUG] Master learning rate: ",self.optimizer.param_groups[0]['lr'])
+
             self.network.train()
             self.optimizer.zero_grad()
             self._first_grad_received = False
@@ -193,16 +203,19 @@ class SyncReplicaMaster_NN(NN_Trainer):
             fault_check = None
 
             if self._redundancy:
+                self._num_grad_to_collect = self.batch_size
                 # q_decision 
                 fault_check = self.q_decision(self._q)
+                if self._s == 0:
+                    fault_check = 0
                 dp_list, worker_list = (None,None)
                 # print("_q == {} {}".format(self._q,type(self._q)))
-                if self._q == 1.0 or fault_check:
-                    fault_check == 1 
-                    self._num_grad_t_collect = (self.batch_size)*(self._s + 1)
+                if (self._q == 1.0 or fault_check): 
+                    fault_check = 1 
+                    # self._num_grad_to_collect = (self.batch_size)*(self._s + 1)
                     dp_list, worker_list = self.async_bcast_datapoints_redundant()
                 else:
-                    self._num_grad_to_collect = self.batch_size
+                    # self._num_grad_to_collect = self.batch_size
                     dp_list, worker_list = self.async_bcast_datapoints_singular()
 
                 self.set_coded_buffer(worker_list)
@@ -221,33 +234,28 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 MPI.Request.Waitall(requests=gradient_fetch_requests, statuses=statuses)
                 faulty_grad_datapoints=[]
                 faulty_worker_ranks = []
-
-                # ''' DEBUG print grads last 5 steps '''
-                # print("[DEBUG] Master [{}] grads".format(self.cur_step))
-                # if self._max_steps - self.cur_step < 5:
-                #     for dpidx, dp_buffer in enumerate(self.coded_buffer):
-                #         print(dp_buffer[0])
+                targeted_flag=False
+                roll_flag = False
 
                 if self._targeted:
                     if prev_grad_avg is None:
-                        print("first grad avg")
-                        # prev_grad_avg = np.mean(self.coded_buffer,2)
-                        # for worker in self.coded_buffer[0]:
-                        #     for layer in worker:
-                        #         print("layer size", len(layer))
-                        prev_grad_avg = np.array([[[[np.mean(layer)] for layer in worker] for worker in dp] for dp in self.coded_buffer])
-                        print('gradient average shape:', prev_grad_avg.shape)
-                    else:
-                        # print("gradient avg change:", np.mean(self.coded_buffer,2)-prev_grad_avg)
-                        # prev_grad_avg = np.mean(self.coded_buffer,2)
-                        # print("gradient avg change:", np.mean(self.coded_buffer,1)-prev_grad_avg)
-                        # grad_diffs.append(np.abs(prev_grad_avg - np.mean(np.mean(self.coded_buffer))))
-                        grad_diffs.append(np.mean(np.abs(prev_grad_avg - np.array([[[[np.mean(layer)] for layer in worker] for worker in dp] for dp in self.coded_buffer]))))
-                        # prev_grad_avg = np.mean(self.coded_buffer,1)
-                        # prev_grad_avg = np.mean(np.mean(self.coded_buffer))
-                        prev_grad_avg = np.array([[[[np.mean(layer)] for layer in worker] for worker in dp] for dp in self.coded_buffer])
+                        # average across gradient layers
+                        # len(prev_grad_avg) = number of layers in network
+                        prev_grad_avg = np.mean([np.mean([list(map(np.mean, worker)) for worker in dp],0) for dp in self.coded_buffer], 0)
 
-                if self._s > 0 and (self._q == 1.0 or fault_check):
+                        # print('gradient average shape:', prev_grad_avg.shape)
+                        # print('gradient average :', prev_grad_avg)
+                    else:
+                        # get the new aggregate grad (one value per layer of network)
+                        new_grad_list = [np.mean([list(map(np.mean, worker)) for worker in dp],0) for dp in self.coded_buffer]
+                        new_grad_avg = np.mean(new_grad_list, 0)
+                        # new_grad_avg = np.mean([np.mean([list(map(np.mean, worker)) for worker in dp],0) for dp in self.coded_buffer], 0)
+
+                        grad_diffs.append(np.mean(np.abs(prev_grad_avg - new_grad_avg)))
+                        prev_grad_avg = new_grad_avg
+
+
+                if self._s > 0 and fault_check:
                     print("Master step {} check for faults".format(self.cur_step))
                     for dpidx, dp_buffer in enumerate(self.coded_buffer):
                         dp_flag = True
@@ -264,29 +272,43 @@ class SyncReplicaMaster_NN(NN_Trainer):
                                    break
                             if not dp_flag:
                                 break
+
                 else:
                     print(f"Master step {self.cur_step} skipping fault check")
-                    ''' DEBUG
-                        targeted fault-checking
-                        using gradient norm
-                    '''
-                    if self._targeted:
-                        mu = np.mean(grad_diffs[:len(grad_diffs)-1])
-                        std = np.std(grad_diffs[:len(grad_diffs)-1])
-                        # if self.cur_step > 20 and abs(grad_diffs[-1] - mu)/std >= 5.0:
-                            # print('[DEBUG] {}\ttargeted fault-check'.format(self.cur_step))
 
-                        if self._targeted and self.cur_step > 20:
-                            print('[DEBUG] grad diff:',self.cur_step,abs(mu-grad_diffs[-1])/std)
+                    # targeted fault-check?
+                    # populate faulty_grad_datapoints with indexes of outlier gradients
+                    # (process should mirror baseline fault-check)
+                    if self._s and self._targeted and self.cur_step > 21:
+                        history_start = len(grad_diffs)-21
+                        # fullhistory
+                        mu_ = np.mean(grad_diffs[:-1])
+                        std_ = np.std(grad_diffs[:-1])
+                        # 20 step window
+
+                        mu = np.mean(grad_diffs[history_start:-1])
+                        std = np.std(grad_diffs[history_start:-1])
+                        std_diff = abs(mu-grad_diffs[-1])/std
+
+                        # print('[DEBUG] grad diff (full):',self.cur_step,abs(mu_-grad_diffs[-1])/std_)
+                        if std_diff > self._target_thresh:
+                            # add all points to fault_grad_datapoints
+                            faulty_grad_datapoints = [i for i in range(self.batch_size)]
+                            print('[DEBUG] grad diff std_dev from mean:',std_diff)
+                            print("        targeted fault-check", self.cur_step)
+                            targeted_flag=True
+
+                            # pop the possibly faulty grad?
+                            # grad_diffs.pop(-1)
 
                 if faulty_grad_datapoints:
-                    print(f"Master step {self.cur_step} fault caught\ndatapoints with faulty gradients: {faulty_grad_datapoints}") 
+                    # print(f"Master step {self.cur_step} fault caught\ndatapoints with faulty gradients: {faulty_grad_datapoints}") 
                     # self._num_grad_to_collect = (self._s+1)*self.batch_size + self._s
                     # redistribute datapoints for second round 
                     # rule: datapoints must go to different workers than before
-                    new_dp_list, new_worker_list = self.async_bcast_redundant_datapoints(dp_list, faulty_grad_datapoints)
-                    print('old_worker_list', worker_list)
-                    print("new_worker_list",new_worker_list)
+                    new_dp_list, new_worker_list = self.async_bcast_redundant_datapoints(dp_list, faulty_grad_datapoints, targeted=targeted_flag)
+                    # print('old_worker_list', worker_list)
+                    # print("new_worker_list",new_worker_list)
 
                     combined_list = [[] for _ in new_worker_list]
                     for dp in range(len(worker_list)):
@@ -354,33 +376,52 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                             # print(f"Master step {self.cur_step} faulty workers from dp {dpidx} : {curr_faulty_workers}")
                             
-                    print(f"Master: step {self.cur_step} faulty worker ranks: ",faulty_worker_ranks)
 
-                    # aggregate gradients of all non-faulty workers
+                    # aggregate one non-faulty gradient per buffer
                     for dpidx, grad_list in enumerate(self.coded_buffer):
-                        used_grads_t = used_grads_t + 1
+                        # used_grads_t = used_grads_t + 1
+                        grad_aggregated = False
                         for widx, grad in enumerate(grad_list):
                             total_grads_t = total_grads_t + 1
-                            if combined_list[dpidx][widx] not in faulty_worker_ranks:
+                            if (not grad_aggregated) and (combined_list[dpidx][widx] not in faulty_worker_ranks):
+                                used_grads_t = used_grads_t + 1
+                                grad_aggregated = True
                                 for layer_index, param in enumerate(self.network.parameters()):
                                     self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=combined_list[dpidx][widx] - 1)
 
                     # add ranks of Byzantine workers to blacklist and reduce f = "possible Byzantine workers"
-                    for rank in faulty_worker_ranks:
-                        self._byzantine_workers.append(rank)
-                        self._s -= 1
+                    if len(faulty_worker_ranks) > 0:
+                        # if self._targeted and targeted_flag:
+                        if self._targeted :
+                            # if a targeted fault-check was triggered, pop off this step's gradient or fix it
+                            # print('popping last grad diff')
+                            _ = grad_diffs.pop(-1)
+
+                            # get new change in gradients
+                            # exclude faulty grads
+                            new_grad_list = [np.mean([list(map(np.mean, worker)) for widx,worker in enumerate(dp) if combined_list[didx][widx] not in faulty_worker_ranks],0) for didx,dp in enumerate(self.coded_buffer)]
+                            new_grad_avg = np.mean(new_grad_list, 0)
+                            new_diff = np.mean(np.abs(prev_grad_avg - new_grad_avg))
+                            # print(grad_diffs[-5:],'\nold diff', _, '\nnew diff', new_diff)
+                            grad_diffs.append(new_diff)
+
+                        print(f"Master: step {self.cur_step} faulty worker ranks: ",faulty_worker_ranks)
+                        for rank in faulty_worker_ranks:
+                            self._byzantine_workers.append(rank)
+                            self._s -= 1
                     
                    
                     # fault was caught-- load rollback state if preferred
-                    if self._roll_freq and self._rollback['loss']:
+                    if self._roll_freq > 0 and self._rollback['loss'] is not None:
                         val_loss = self._evaluate_model(validation_loader)
                         if val_loss > self._rollback['loss']:
+                            roll_flag = True
                             val_loss = self._evaluate_model(validation_loader)
                             self._load_rollback()
                             total_rolls += 1
-                            print("[DEBUG] loss at time of fault", val_loss)
+                            # print("[DEBUG] loss at time of fault", val_loss)
                             new_loss =  self._evaluate_model(validation_loader)
-                            print("[DEBUG] new loss",new_loss)
+                            # print("[DEBUG] new loss",new_loss)
                     elif self._roll_freq:
                         print("Master {} no rollback to load".format(self.cur_step))
                             
@@ -396,30 +437,37 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         redundancy_requests.append(self.comm.isend([], dest=rank, tag=8))
                     for i in range(len(redundancy_requests)):
                         redundancy_requests[i].wait()
-                    count = 0
+                    # count = 0
                     # aggregate gradient
                     for dpidx, grad_list in enumerate(self.coded_buffer):
                         # tally total gradients used for update
                         # for each dpidx, accumulated grads are averaged
                         used_grads_t = used_grads_t + 1
+                        total_grads_t = total_grads_t + len(grad_list)
+                        grad = grad_list[0]
+                        for layer_index, param in enumerate(self.network.parameters()):
+                            self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][0] - 1)
 
+                        '''
+                        # non-redundant step
                         if len(grad_list) == 1:
                             total_grads_t = total_grads_t + 1
                             grad = grad_list[0]
-                            count += 1
+                            # count += 1
                             for layer_index, param in enumerate(self.network.parameters()):
-                                #if layer_index < 2:
-                                #    print("[{}] worker={} layer={}\t{}".format(self.cur_step,worker_list[dpidx][0],layer_index,grad[layer_index].tolist()))
                                 self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][0] - 1)
+                        # redundant step, no faults
                         else:
-                            if dpidx == 0:
-                                print(f"Master {self.cur_step} no faulty gradients")
-
+                            grad_aggregated = False
+                            # if dpidx == 0:
+                            #     print(f"Master {self.cur_step} no faulty gradients")
                             for widx, grad in enumerate(grad_list):
                                 # add to total gradients calculated, greater than or equal to (batch_size) * (f+1)
+                                # used_grads_t = used_grads_t + 1
                                 total_grads_t = total_grads_t + 1
                                 for layer_index, param in enumerate(self.network.parameters()):
                                     self.aggregate_gradient(gradient=grad[layer_index], layer_idx=layer_index, source=worker_list[dpidx][widx] - 1)
+                        '''
 
                     print(f"Master {self.cur_step} used gradients: {used_grads_t}/{total_grads_t}")
                 
@@ -433,7 +481,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 total_grads = total_grads + total_grads_t
         
                 lf = open(self._train_dir +"/logfile.txt", "a")
-                lf.write('M iter {} nByz {} fCheck {} nFault {} compEff {}/{} lr {} q {}\n'.format(self.cur_step, len(self._byzantine_workers), int(self._q == 1.0 or fault_check), len(faulty_worker_ranks), used_grads_t,total_grads_t, self.optimizer.param_groups[0]['lr'], self._q))
+                lf.write('M i {} nb {} fc {} fn {} ce {}/{} lr {} q {} r {} t {}\n'.format(self.cur_step, len(self._byzantine_workers), int(fault_check), len(faulty_worker_ranks), used_grads_t,total_grads_t, self.optimizer.param_groups[0]['lr'], self._q, int(roll_flag), int(targeted_flag)))
                 lf.close()
 
             # end if self.redundancy
@@ -652,27 +700,27 @@ class SyncReplicaMaster_NN(NN_Trainer):
             #     print(param.data)
 
             ''' DEBUG param-change triggered fault check '''
-            if self._targeted:
-                current_params=[]
-                for pidx, param in enumerate(self.network.parameters()):
-                    # print(param.data)
-                    current_params.append(np.array(param.data))
-                current_params = np.array(current_params)
-                if prev_params is None:
-                    prev_params = current_params
-                    print("first params shape ",current_params.shape)
-                    for i in range(len(current_params)):
-                        print("current_params[{}].shape".format(i), current_params[i].shape)
-                else:
-                    # print('param diff')
-                    pdiff = current_params - prev_params
-                    # print(tmp - prev_params)
-                    # print(type(tmp))
-                    # print(tmp.shape)
-                    prev_params = current_params
+            # if self._targeted:
+            #     current_params=[]
+            #     for pidx, param in enumerate(self.network.parameters()):
+            #         # print(param.data)
+            #         current_params.append(np.array(param.data))
+            #     current_params = np.array(current_params)
+            #     if prev_params is None:
+            #         prev_params = current_params
+            #         # print("first params shape ",current_params.shape)
+            #         for i in range(len(current_params)):
+            #             print("current_params[{}].shape".format(i), current_params[i].shape)
+            #     else:
+            #         # print('param diff')
+            #         pdiff = current_params - prev_params
+            #         # print(tmp - prev_params)
+            #         # print(type(tmp))
+            #         # print(tmp.shape)
+            #         prev_params = current_params
 
-                    # get the average difference between parameters
-                    param_diffs.append(np.mean([np.mean(_) for _ in np.abs(pdiff)]))
+            #         # get the average difference between parameters
+            #         param_diffs.append(np.mean([np.mean(_) for _ in np.abs(pdiff)]))
 
             ''' rollback save state '''
             if self._roll_freq and (self.cur_step==1):
@@ -687,6 +735,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 elif val_loss > self._rollback['loss']:
                     # rollback is strictly better than current state
                     self._load_rollback()
+                    roll_flag = True
                     total_rolls += 1
                     print("Master step {} old rollback preserved.".format(self.cur_step))
             
@@ -699,44 +748,13 @@ class SyncReplicaMaster_NN(NN_Trainer):
             with open(self._train_dir+"logs-master",'a') as f:
                 f.write('{:.8f},{:.8f}\n'.format(method_duration,update_duration))
 
-            '''
-            [DEBUG] MASTER VALIDATION 
-            '''
+            # '''
+            # [DEBUG] MASTER VALIDATION 
+            # '''
             # if self.cur_step%10==0:
             #     val_loss = self._evaluate_model(validation_loader, verbose=True)
-            #     '''temp'''
-            #     # if val_loss <= .0005:
-            #         # print("Master {} validation loss {} <= .0005".format(self.cur_step,val_loss))
-            #         # break
-            #     print("Master {} val_loss {}".format(self.cur_step, val_loss))
-            #     # with open("logs-validationloss", 'a') as f:
-            #     #     f.write('{} {:.4f}\n'.format(self.cur_step, val_loss))
 
             self.cur_step += 1
-
-            # ''' DEBUG EVAL '''
-            # if self._max_steps - self.cur_step<5:
-            #     val_loss = self._evaluate_model(validation_loader)
-            #     print("[DEBUG] model params")
-            #     for pidx, param in enumerate(self.network.parameters()):
-            #         print(param.data)
-
-            # ''' rollback save state '''
-            # if self.cur_step ==1:
-            #     print("************ Master first step is 1")
-
-            # if (self.cur_step==1) and self._roll_freq>0:
-            #     print("[Master] Save initial state as rollback")
-            #     val_loss = self._evaluate_model(validation_loader)
-            #     self._save_rollback(val_loss)
-            # elif self._roll_freq and ((self.cur_step%self._roll_freq)==0):
-            #     val_loss = self._evaluate_model(validation_loader)
-            #     if self._rollback['loss'] is None or val_loss < self._rollback['loss']:
-            #         print("Master step {} replace old rollback".format(self.cur_step))
-            #         self._save_rollback(val_loss)
-            #     else:
-            #         print("Master step {} old rollback retained".format(self.cur_step))
-
 
         if self._redundancy:
             # save computational efficiency calculations
@@ -752,8 +770,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             # save .npy of parameter diffs
             # param_diffs <-- array of difference in parameter values between steps
             if self._targeted:
-                print('param diffs', len(param_diffs))
-                np.save(self._train_dir + 'param_diff.npy', np.array(param_diffs))
+                # print('param diffs', len(param_diffs))
+                # np.save(self._train_dir + 'param_diff.npy', np.array(param_diffs))
                 print('grad diffs', len(grad_diffs))
                 np.save(self._train_dir + 'grad_diff.npy', np.array(grad_diffs))
             
@@ -842,16 +860,17 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 break
         return res 
 
-    def async_bcast_redundant_datapoints(self, old_dp_list, datapoints):
+    def async_bcast_redundant_datapoints(self, old_dp_list, datapoints, targeted=False):
         new_dp_list = [[] for _ in range(self.world_size)]      
         new_worker_list = [[] for _ in range(self.batch_size)]
         req_list = []
-        avg_size = ceil((len(datapoints)*(self._s))/self.world_size)
         avail = [i for i in range(1,self.world_size)]
         avail = list(set(avail) - set(self._byzantine_workers))
+        
+        bcast_size = 2*self._s if targeted else self._s 
 
         for dp in datapoints:   
-            for i in range(self._s):
+            for i in range(bcast_size):
                 dst = random.choice(avail)
                 while dp in new_dp_list[dst] or dp in old_dp_list[dst]: 
                     dst = random.choice(avail)
@@ -865,16 +884,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
         return new_dp_list, new_worker_list
 
     def async_bcast_datapoints_redundant(self):
-        """
-        ADD HANDLING OF BYZANTINE WORKERS
-        """
         # print(f"Master {self.cur_step} begin sending datapoints")
         dp_list = [[] for _ in range(self.world_size)]      # list of datapoints (indices) for each worker
                                                             # dp_list[i] = datapoints for ith worker
         worker_list = [[] for _ in range(self.batch_size)]  # list of workers (ranks) for each datapoint index 
                                                             # worker_list[i] = ranks of workers for ith datapoint
         req_list = []
-        avg_size = ceil((self.batch_size*(self._s + 1))/self.world_size)
         avail = [i for i in range(1,self.world_size)]
         avail = list(set(avail) - set(self._byzantine_workers))
         count = 0
@@ -890,9 +905,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                 dp_list[dst].append(dp)
                 worker_list[dp].append(dst)
-                
-                # if len(dp_list[dst]) >= avg_size :
-                #    avail.remove(dst)
 
         for i in range(self.world_size):
             if i != 0:
@@ -906,7 +918,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
         dp_list = [[] for _ in range(self.world_size)]
         worker_list = [[] for _ in range(self.batch_size)]
         req_list = []
-        avg_size = ceil((self.batch_size*(self._s + 1))/self.world_size)
         avail = [i for i in range(1,self.world_size)]
         avail = list(set(avail) - set(self._byzantine_workers))
         count = 0
@@ -1200,7 +1211,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def _save_rollback(self, loss):
         # store the rollback params and loss in a dict
         print("[DEBUG] Saving rollback with loss",loss)
-        with open('rollback', "wb") as f_:
+        with open(self._train_dir+'rollback', "wb") as f_:
             roll_dict = {'params': self.network.state_dict(), 'loss': loss}
             # torch.save(self.network.state_dict(), f_)
             torch.save(roll_dict, f_)
@@ -1208,7 +1219,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._rollback['loss'] = loss
 
     def _load_rollback(self):
-        with open('rollback', "rb") as f_:
+        with open(self._train_dir+'rollback', "rb") as f_:
             model_state_dict = torch.load(f_)
             print("Loading old rollback with loss",model_state_dict['loss'])
             self.network.load_state_dict(model_state_dict['params'])
@@ -1255,6 +1266,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 prec1_tmp, prec5_tmp = accuracy(output.data, eval_label_batch.long(), topk=(1,5))
                 prec1_counter_ += prec1_tmp
                 prec5_counter_ += prec5_tmp
+                batch_counter_ += 1
             else :
                 losses.append(self.validation_criterion(output, y_batch).item())
                 # if batch_idx == 1: print(np.stack([np.array(output.cpu().detach()),np.array(y_batch)],1))

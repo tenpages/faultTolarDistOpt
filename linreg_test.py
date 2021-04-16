@@ -108,14 +108,15 @@ def add_fit_args(parser):
     parser.add_argument('--q', type=float, default=1.00,
                         help='the probability from 0 to 1 that the master will check for errors in redundancy scheme')
     ''' add to distributed_nn.py '''
+    parser.add_argument('--diminishing-lr-freq', type=int, default=10, help='Frequency of LR schedule. Default = 10')
     parser.add_argument('--adapt-q', action='store_true',default=False,
                         help='Use adaptive fault-checking (increase over time)')
     parser.add_argument('--roll-freq',type=int,default=0,
                         help='frequency of storing rollback states; no rollback when 0')
-    # parser.add_argument('',type=,default=,
-    #                     help='')
     parser.add_argument('--targeted',action='store_true',default=False,
-                        help='frequency of storing rollback states; no rollback when 0')
+                        help='targeted fault-checking triggered by outlier gradients in non-redudant steps.')
+    parser.add_argument('--target-thresh',type=float, default=5.00,
+                        help='distance in std_dev from the mean triggering a targeted fault-check')
     parser.add_argument('--delay',type=int,default=0,
                         help='delay of Byzantine worker attacks (defaults=0)')
 
@@ -272,7 +273,9 @@ def prepare(args, rank, world_size):
             'q': args.q,
             'adapt_q': args.adapt_q,
             'roll_freq': args.roll_freq,
-            'targeted': args.targeted
+            'targeted': args.targeted,
+            'dim_lr_freq' : args.diminishing_lr_freq,
+            'target_thresh' : args.target_thresh
         }
         kwargs_worker = {
             'redundancy': args.redundancy,

@@ -293,7 +293,7 @@ class DistributedWorker(NN_Trainer):
                         new_dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints_redundant())
 
                         lf = open(self._train_dir +"logfile.txt", "a")
-                        lf.write('W {} e {} iter {} nGrads {} nRedGrads {} byz {} fault {} loss {:.8f}\n'.format(self.rank, num_epoch, self.cur_step, len(dp_list), len(new_dp_list), int(self.rank in self._fail_workers[self.cur_step]), int(self.rank in self._fail_workers[self.cur_step] and send_err), loss.item()))
+                        lf.write('W {} e {} i {} ng {} nrg {} b {} f {} l {:.8f}\n'.format(self.rank, num_epoch, self.cur_step, len(dp_list), len(new_dp_list), int(self.rank in self._fail_workers[self.cur_step]), int(self.rank in self._fail_workers[self.cur_step] and send_err), loss.item()))
                         lf.close()
 
                         if new_dp_list.tolist():
@@ -313,6 +313,9 @@ class DistributedWorker(NN_Trainer):
                             # get new logits and new losses
                             new_logits = self.network(red_X_batch)
 
+                            if send_err:
+                                print("Worker {} step {} sending faulty gradient to master (redundant)".format(self.rank,self.cur_step))
+
                             # send back gradients of new losses in PARALLEL to new_dp_list
                             for idx, log in enumerate(new_logits):
                                 self.optimizer.zero_grad()
@@ -328,7 +331,6 @@ class DistributedWorker(NN_Trainer):
                                     # if self.rank in self._fail_workers[self.cur_step] and self._p and not_p < self._p:
                                     # if self.rank in self._fail_workers[self.cur_step] and send_err:
                                     if send_err:
-                                        print("Worker {} step {} sending faulty gradient to master again".format(self.rank,self.cur_step))
                                         grad = err_simulation(grad, self._err_mode)
 
                                     req_isend = self.comm.Isend([grad, MPI.DOUBLE], dest=0, tag=88+(new_dp_list[idx]*numlayers)+param_idx)
