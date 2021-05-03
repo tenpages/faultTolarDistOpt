@@ -7,8 +7,8 @@ import subprocess
 #models = ['bulyan_grad_norm']
 #model_names = ['mkrum5','cwtm',"medofmeans"]
 #models = ['multi_krum','coor_wise_trimmed_mean','median_of_means']
-model_names = ['cwtm', 'medofmeans']
-models = ['coor_wise_trimmed_mean', 'median_of_means']
+model_names = ['cwtm', 'medofmeans', 'mkrum2', 'normfilter']
+models = ['coor_wise_trimmed_mean', 'median_of_means', 'multi_krum', 'grad_norm']
 fault_types = ['rev_grad_2']#,'normfilter','labelflipping']
 fault_names = ['revgrad2']#,'normfilter','labelflipping']
 nums_faults = [3]
@@ -57,8 +57,8 @@ for df_beta in df_betas:
 						print("failed")
 						print("========================")
 
-model_names = ['cwtm', 'medofmeans']
-models = ['coor_wise_trimmed_mean', 'median_of_means']
+model_names = ['cwtm', 'medofmeans', 'mkrum2', 'normfilter']
+models = ['coor_wise_trimmed_mean', 'median_of_means', 'multi_krum', 'grad_norm']
 fault_types = ['rev_grad_2']#,'normfilter','labelflipping']
 fault_names = ['revgrad2']#,'normfilter','labelflipping']
 nums_faults = [3]
@@ -108,8 +108,8 @@ for df_beta in df_betas:
 						print("========================")
 
 print()
-model_names = ['cwtm', 'medofmeans']
-models = ['coor_wise_trimmed_mean', 'median_of_means']
+model_names = ['cwtm', 'medofmeans', 'mkrum2', 'normfilter']
+models = ['coor_wise_trimmed_mean', 'median_of_means', 'multi_krum', 'grad_norm']
 fault_types = ['rev_grad_2']#,'normfilter','labelflipping']
 fault_names = ['revgrad2']#,'normfilter','labelflipping']
 nums_faults = [3]
@@ -128,8 +128,8 @@ for df_beta in df_betas:
 					print(args)
 					results = subprocess.run(args, shell=True)
 
-model_names = ['cwtm', 'medofmeans']
-models = ['coor_wise_trimmed_mean', 'median_of_means']
+model_names = ['cwtm', 'medofmeans', 'mkrum2', 'normfilter']
+models = ['coor_wise_trimmed_mean', 'median_of_means', 'multi_krum', 'grad_norm']
 fault_types = ['rev_grad_2']#,'normfilter','labelflipping']
 fault_names = ['revgrad2']#,'normfilter','labelflipping']
 nums_faults = [3]
