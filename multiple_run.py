@@ -15,6 +15,7 @@ nums_faults = [3]
 batch_sizes = ['32']
 df_betas = ['0']
 df_sigma = 0
+acc_alpha = '60'
 #acc_alphas = ['20','40','60']
 
 for df_beta in df_betas:
@@ -35,7 +36,7 @@ for df_beta in df_betas:
 							'--lr', '0.01',
 							'--train-dir', 'output/models/df/normal-acc-60/' + fault_name + '/' + model_name + '/10-' + str(i) + '/',
 							'--accumulative', 'False',
-							#'--accumulative-alpha', '0.'+acc_alpha,
+							'--accumulative-alpha', '0.'+acc_alpha,
 							'--worker-fail', str(i),
 							'--fault-thrshld', str(i),
 							'--data-distribution', 'same',
@@ -48,7 +49,7 @@ for df_beta in df_betas:
 					print(' '.join(args))
 					results = subprocess.run(args, capture_output=True)
 					if results.returncode==0 and results.stdout != None:
-						with open('logs-df-MNIST-LeNet-df(' + df_beta + ',' + str(df_sigma) + ')' + batch_size + '-' + fault_name + '-' + model_name + '-10-' + str(i),'w') as f:
+						with open('logs-df-MNIST-LeNet-df(' + df_beta + ',' + str(df_sigma) + ')-acc' + acc_alpha + '-' + batch_size + '-' + fault_name + '-' + model_name + '-10-' + str(i),'w') as f:
 							f.write(results.stdout.decode())
 						print("finished")
 						print("========================")
@@ -85,7 +86,7 @@ for df_beta in df_betas:
 							'--lr', '0.01',
 							'--train-dir', 'output/models/df/df' + df_beta + '-acc-60/' + fault_name + '/' + model_name + '/10-' + str(i) + '/',
 							'--accumulative', 'False',
-							#'--accumulative-alpha', '0.'+acc_alpha,
+							'--accumulative-alpha', '0.'+acc_alpha,
 							'--worker-fail', str(i),
 							'--fault-thrshld', str(i),
 							'--data-distribution', 'same',
@@ -98,7 +99,7 @@ for df_beta in df_betas:
 					print(' '.join(args))
 					results = subprocess.run(args, capture_output=True)
 					if results.returncode==0 and results.stdout != None:
-						with open('logs-df-MNIST-LeNet-df(' + df_beta + ',' + str(df_sigma) + ')' + batch_size + '-' + fault_name + '-' + model_name + '-10-' + str(i),'w') as f:
+						with open('logs-df-MNIST-LeNet-df(' + df_beta + ',' + str(df_sigma) + ')-acc' + acc_alpha + '-' + batch_size + '-' + fault_name + '-' + model_name + '-10-' + str(i),'w') as f:
 							f.write(results.stdout.decode())
 						print("finished")
 						print("========================")
@@ -123,7 +124,7 @@ for df_beta in df_betas:
 			for fault_type, fault_name in zip(fault_types, fault_names):
 				for model_name, model in zip(model_names, models):
 					args = 'python distributed_eval.py --model-dir output/models/df/normal-acc-60/'+fault_name+'/'+model_name \
-						+'/10-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-df-MNIST-LeNet-df(' + df_beta + ',' + str(df_sigma) + ')'+batch_size+'-'+fault_name+'-'+model_name+'-10-'+str(i)+'" 2>&1 &'
+						+'/10-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-df-MNIST-LeNet-df(' + df_beta + ',' + str(df_sigma) + ')-acc'+acc_alpha+'-'+batch_size+'-'+fault_name+'-'+model_name+'-10-'+str(i)+'" 2>&1 &'
 					print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 					print(args)
 					results = subprocess.run(args, shell=True)
@@ -143,7 +144,7 @@ for df_beta in df_betas:
 			for fault_type, fault_name in zip(fault_types, fault_names):
 				for model_name, model in zip(model_names, models):
 					args = 'python distributed_eval.py --model-dir output/models/df/df'+df_beta+'-acc-60/'+fault_name+'/'+model_name \
-						+'/10-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-df-MNIST-LeNet-df(' + df_beta + ',' + str(df_sigma) + ')'+batch_size+'-'+fault_name+'-'+model_name+'-10-'+str(i)+'" 2>&1 &'
+						+'/10-'+str(i)+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-df-MNIST-LeNet-df(' + df_beta + ',' + str(df_sigma) + ')-acc'+acc_alpha+'-'+batch_size+'-'+fault_name+'-'+model_name+'-10-'+str(i)+'" 2>&1 &'
 					print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 					print(args)
 					results = subprocess.run(args, shell=True)
