@@ -113,6 +113,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             elif self.comm_type == 'Async':
                 self.async_bcast_layer_weights_async()
 
+            communication_start = time.time()
+            communication_duration = 0
             gradient_fetch_requests = self.async_fetch_gradient_start()
 
             while not enough_gradients_received:
@@ -153,11 +155,21 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         self.aggregate_gradient(gradient=received_grad, layer_idx=layer_index, source=status.source-1)
 
                     self.grad_accumulator.gradient_aggregate_counter[layer_index] += 1
+                    self.grad_accumulator.agent_aggregate_counter[status.source-1] += 1
 
                 enough_gradients_received = True
                 for j in self.grad_accumulator.gradient_aggregate_counter:
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
 
+                agents_received = 0
+                for j in self.grad_accumulator.agent_aggregate_counter:
+                    if j >= self.grad_accumulator.model_size:
+                        agents_received += 1
+                if 'async' in self._update_mode and communication_duration == 0:
+                    communication_duration = time.time() - communication_start
+
+            if 'async' not in self._update_mode:
+                communication_duration = time.time() - communication_start
             """
             if self.cur_step >= 8:
                 for idx, grads in enumerate(self._grad_aggregate_buffer):
@@ -241,8 +253,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 torch.save(self.optimizer.state_dict(), open(self._train_dir+"optim_"+str(self.cur_step),"wb"))
                 if self._diminishing_lr == True:
                     torch.save(self.scheduler.state_dict(), open(self._train_dir+"scheduler_"+str(self.cur_step),"wb"))
-            print("Master Step: {}, Method Time Cost: {}, Update Time Cost: {}".format(self.cur_step, method_duration,
-                                                                                       update_duration))
+            print("Master Step: {}, Method Time Cost: {}, Update Time Cost: {}, Comm Time Cost: {}".format(self.cur_step, method_duration,
+                                                                                       update_duration, communication_duration))
+            with open(self._train_dir+"comm_time.csv","a") as f:
+                f.write(str(communication_duration)+",")
+
             if self._diminishing_lr == True:
                 print("Current step size: {}".format(self.scheduler.get_last_lr()))
                 print("Current step size in network: {}".format(self.optimizer.param_groups[0]['lr']))
@@ -627,7 +642,9 @@ class GradientAccumulator(object):
     """
 
     def __init__(self, module, num_worker, mode='None'):
-        self.gradient_aggregate_counter = []
+        self.num_worker = num_worker
+        self.gradient_aggregate_counter = []  # count for enough message for each layer in the model
+        self.agent_aggregate_counter = np.zeros(self.num_worker, dtype=int)  # count for enough message for each agent in the system
         self.model_index_range = []
         self.gradient_aggregator = []
         self._mode = mode
@@ -655,6 +672,7 @@ class GradientAccumulator(object):
             self._shape_counter.append(tmp_shape_counter)
             #print(len(self.gradient_aggregator),self.gradient_aggregator[param_idx][0].shape)
 
+        self.model_size = len(self.gradient_aggregate_counter)
         #print()
         #for param_idx, param in enumerate(module.parameters()):
         #    for worker_idx in range(num_worker):
@@ -663,6 +681,7 @@ class GradientAccumulator(object):
     def meset_everything(self):
         self._meset_grad_counter()
         self._meset_grad_aggregator()
+        self.agent_aggregate_counter = np.zeros(self.num_worker, dtype=int)
 
     def _meset_grad_counter(self):
         self.gradient_aggregate_counter = [0 for _ in self.gradient_aggregate_counter]
