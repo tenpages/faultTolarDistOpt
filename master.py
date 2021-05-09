@@ -267,12 +267,13 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def init_model_shapes(self):
         for param_idx, param in enumerate(self.network.parameters()):
             self._model_shapes.append(param.size())
-            if self._update_mode == 'normal':
-                self._grad_aggregate_buffer.append(np.zeros(param.size()))
-            elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
-                                       'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
-                                       'grad_norm_multi_parts','asynchronous_drop_f'):
-                self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
+            # if self._update_mode == 'normal':
+            #     self._grad_aggregate_buffer.append(np.zeros(param.size()))
+            # elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
+            #                            'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
+            #                            'grad_norm_multi_parts','asynchronous_drop_f'):
+            #     self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
+            self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
 
     def async_bcast_step(self):
         """
@@ -319,25 +320,26 @@ class SyncReplicaMaster_NN(NN_Trainer):
         return gradient_fetch_requests
 
     def aggregate_gradient(self, gradient, layer_idx, source):
-        if self._update_mode == 'normal':
-            #honest = np.delete(np.arange(self.world_size),self._adversaries[self.cur_step])
-            if source+1 not in self._adversaries[self.cur_step] and self._omit_agents:
-                self._grad_aggregate_buffer[layer_idx] += gradient
-            elif not self._omit_agents:
-                self._grad_aggregate_buffer[layer_idx] += gradient
-        elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
-                                   'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
-                                   'grad_norm_multi_parts','asynchronous_drop_f'):
-            # print(self._grad_aggregate_buffer[layer_idx][source].shape, gradient.shape)
-            # print(self._grad_aggregate_buffer[layer_idx][source].dtype, gradient.dtype)
-            self._grad_aggregate_buffer[layer_idx][source] = gradient.reshape(-1)
-            """
-            _shape = gradient.shape
-            if len(_shape) == 1:
-                self._grad_aggregate_buffer[layer_idx].append(gradient)
-            elif len(_shape) > 1:
-                self._grad_aggregate_buffer[layer_idx].append(gradient.reshape(-1))  # gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
-            """
+        # if self._update_mode == 'normal':
+        #     #honest = np.delete(np.arange(self.world_size),self._adversaries[self.cur_step])
+        #     if source+1 not in self._adversaries[self.cur_step] and self._omit_agents:
+        #         self._grad_aggregate_buffer[layer_idx] += gradient
+        #     elif not self._omit_agents:
+        #         self._grad_aggregate_buffer[layer_idx] += gradient
+        # elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
+        #                            'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
+        #                            'grad_norm_multi_parts','asynchronous_drop_f'):
+        #     # print(self._grad_aggregate_buffer[layer_idx][source].shape, gradient.shape)
+        #     # print(self._grad_aggregate_buffer[layer_idx][source].dtype, gradient.dtype)
+        #     self._grad_aggregate_buffer[layer_idx][source] = gradient.reshape(-1)
+        #     """
+        #     _shape = gradient.shape
+        #     if len(_shape) == 1:
+        #         self._grad_aggregate_buffer[layer_idx].append(gradient)
+        #     elif len(_shape) > 1:
+        #         self._grad_aggregate_buffer[layer_idx].append(gradient.reshape(-1))  # gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
+        #     """
+        self._grad_aggregate_buffer[layer_idx][source] = gradient.reshape(-1)
 
     def model_update(self, tmp_module):
         new_state_dict = {}
@@ -354,12 +356,13 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def meset_grad_buffer(self):
         for i in range(len(self._grad_aggregate_buffer)):
-            if self._update_mode == 'normal':
-                self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
-            elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
-                                       'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
-                                       'grad_norm_multi_parts','asynchronous_drop_f'):
-                self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
+            # if self._update_mode == 'normal':
+            #     self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
+            # elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'coor_wise_median', 'coor_wise_trimmed_mean',
+            #                            'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad',
+            #                            'grad_norm_multi_parts','asynchronous_drop_f'):
+            #     self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
+            self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
 
     def _err_simulator(self):
         _honest = list(set(range(1,self.num_workers+1)) - set(self._adversaries[self.cur_step]))
@@ -423,8 +426,19 @@ class SyncReplicaMaster_NN(NN_Trainer):
         print('Testset performance: Cur step:{}\tPrec@1: {}\tPrec@5: {}'.format(self.cur_step, prec1, prec5))
 
     def _avg_received_grads(self):
-        for i in range(len(self._grad_aggregate_buffer)):
-            self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
+        # for i in range(len(self._grad_aggregate_buffer)):
+        #     self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
+        #     if source+1 not in self._adversaries[self.cur_step] and self._omit_agents:
+        #         self._grad_aggregate_buffer[layer_idx] += gradient
+        #     elif not self._omit_agents:
+        #         self._grad_aggregate_buffer[layer_idx] += gradient
+        _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]-1))
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            if self._omit_agents:
+                averaged = np.mean(np.array(grads), axis=0)
+            else:
+                averaged = np.mean(np.array(grads)[_honest], axis=0)
+            self._grad_aggregate_buffer[g_idx] = averaged
 
     def _get_geo_median(self):
         geo_median_start = time.time()
