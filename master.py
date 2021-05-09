@@ -89,6 +89,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
 
     def start(self):
+        with open(self._train_dir+"comm_time.csv", "w"):
+            pass
         self.async_bcast_step()
 
         if self._checkpoint_step != 0:
