@@ -130,6 +130,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
             assert (i == self.cur_step)
             print("Master node is entering step: {}".format(i))
+            communication_start = time.time()
 
             self.async_bcast_step()
 
