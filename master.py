@@ -67,6 +67,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._grad_norm_keep_all = kwargs['grad_norm_keep_all']
         self._grad_norm_clip_n = kwargs['grad_norm_clip_n']
         self._calculate_cosine = kwargs['calculate_cosine']
+        if 'async' in self._update_mode:
+            self.async_scheduler = kwargs['adversaries']
 
         self._accumulative = kwargs['accumulative']
         self._accumulative_alpha = kwargs['accumulative_alpha']
@@ -112,6 +114,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
 
     def start(self):
+        with open(self._train_dir+"comm_time.csv", "w"):
+            pass
         self.async_bcast_step()
 
         if self._checkpoint_step != 0:
@@ -121,8 +125,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 self.scheduler.load_state_dict(torch.load(self._train_dir+"scheduler_"+str(self._checkpoint_step)))
         
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
-            if self._diminishing_lr == True:
-                self.scheduler.step()
             self.network.train()
             self.optimizer.zero_grad()
             self._first_grad_received = False
@@ -139,6 +141,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             elif self.comm_type == 'Async':
                 self.async_bcast_layer_weights_async()
 
+            communication_start = time.time()
+            communication_duration = 0
             gradient_fetch_requests = self.async_fetch_gradient_start()
             if 'ResNet' in self.network_config:
                 param_fetch_requests = self.async_fetch_parameter_start()
@@ -185,6 +189,16 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 enough_gradients_received = True
                 for j in self.grad_accumulator.gradient_aggregate_counter:
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
+
+                agents_received = 0
+                for j in self.grad_accumulator.agent_aggregate_counter:
+                    if j >= self.grad_accumulator.model_size:
+                        agents_received += 1
+                if 'async' in self._update_mode and communication_duration == 0:
+                    communication_duration = time.time() - communication_start
+
+            if 'async' not in self._update_mode:
+                communication_duration = time.time() - communication_start
 
             if self._err_mode in ['cwtm', 'krum', 'krum2', 'normfilter', 'normfilter2', 'normfilter3']:
                 self._err_simulator()
@@ -279,6 +293,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
             elif self._update_mode == 'ensemble_normfilter_medofmeans':
                 method_start = time.time()
                 self._ensemble_normfilter_medofmeans()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'asynchronous_drop_f':
+                method_start = time.time()
+                self._asynchronous_drop_f()
                 method_duration = time.time() - method_start
 
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
@@ -389,36 +407,47 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 torch.save(self.optimizer.state_dict(), open(self._train_dir+"optim_"+str(self.cur_step),"wb"))
                 if self._diminishing_lr == True:
                     torch.save(self.scheduler.state_dict(), open(self._train_dir+"scheduler_"+str(self.cur_step),"wb"))
-            print("Master Step: {}, Method Time Cost: {}, Update Time Cost: {}".format(self.cur_step, method_duration,
-                                                                                       update_duration))
+            print("Master Step: {}, Method Time Cost: {}, Update Time Cost: {}, Comm Time Cost: {}".format(self.cur_step, method_duration,
+                                                                                       update_duration, communication_duration))
+            with open(self._train_dir+"comm_time.csv","a") as f:
+                f.write(str(communication_duration)+",")
+
             with open(self._train_dir+"logs-master",'a') as f:
                 f.write('{:.8f},{:.8f}\n'.format(method_duration,update_duration))
+            if self._diminishing_lr == True:
+                print("Current step size: {}".format(self.scheduler.get_last_lr()))
+                print("Current step size in network: {}".format(self.optimizer.param_groups[0]['lr']))
+                self.scheduler.step()
             self.cur_step += 1
 
     def init_model_shapes(self):
         for param_idx, param in enumerate(self.network.parameters()):
             self._model_shapes.append(param.size())
-            if self._update_mode == 'normal':
-                self._grad_aggregate_buffer.append(np.zeros(param.size()))
-                if self._accumulative == True:
-                    self._historical_buffer.append(np.zeros(param.size()))
-            elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
-                                       'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
-                                       'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
-                self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
-                if self._accumulative == True:
-                    self._historical_buffer.append(np.array([np.zeros(param.size()).reshape(-1)]*self.num_workers))
+            # if self._update_mode == 'normal':
+            #     self._grad_aggregate_buffer.append(np.zeros(param.size()))
+            #     if self._accumulative == True:
+            #         self._historical_buffer.append(np.zeros(param.size()))
+            # elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
+            #                            'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
+            #                            'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
+            #     self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
+            #     if self._accumulative == True:
+            #         self._historical_buffer.append(np.array([np.zeros(param.size()).reshape(-1)]*self.num_workers))
+            self._grad_aggregate_buffer.append([np.zeros(param.size()).reshape(-1)]*self.num_workers)
+            if self._accumulative == True:
+                self._historical_buffer.append(np.array([np.zeros(param.size()).reshape(-1)]*self.num_workers))
 
         if 'ResNet' in self.network_config:
             for state_idx, state_key in enumerate(self.network.state_dict()):
                 if 'running_mean' in state_key or 'running_var' in state_key:
                     self._stat_shapes.append(self.network.state_dict()[state_key].size())
-                    if self._update_mode == 'normal':
-                        self._param_aggregate_buffer.append(np.zeros(self.network.state_dict()[state_key].size()))
-                    elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
-                                       'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
-                                       'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
-                        self._param_aggregate_buffer.append([np.zeros(self.network.state_dict()[state_key].size()).reshape(-1)]*self.num_workers)
+                    # if self._update_mode == 'normal':
+                    #     self._param_aggregate_buffer.append(np.zeros(self.network.state_dict()[state_key].size()))
+                    # elif self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
+                    #                    'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
+                    #                    'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
+                    #     self._param_aggregate_buffer.append([np.zeros(self.network.state_dict()[state_key].size()).reshape(-1)]*self.num_workers)
+                    self._param_aggregate_buffer.append([np.zeros(self.network.state_dict()[state_key].size()).reshape(-1)]*self.num_workers)
 
     def async_bcast_step(self):
         """
@@ -479,21 +508,22 @@ class SyncReplicaMaster_NN(NN_Trainer):
         return param_fetch_requests
 
     def aggregate_gradient(self, gradient, layer_idx, source):
-        if self._update_mode == 'normal':
-            self._grad_aggregate_buffer[layer_idx] += gradient
-        elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
-                                   'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
-                                   'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
-            # print(self._grad_aggregate_buffer[layer_idx][source].shape, gradient.shape)
-            # print(self._grad_aggregate_buffer[layer_idx][source].dtype, gradient.dtype)
-            self._grad_aggregate_buffer[layer_idx][source] = gradient.reshape(-1)
-            """
-            _shape = gradient.shape
-            if len(_shape) == 1:
-                self._grad_aggregate_buffer[layer_idx].append(gradient)
-            elif len(_shape) > 1:
-                self._grad_aggregate_buffer[layer_idx].append(gradient.reshape(-1))  # gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
-            """
+        # if self._update_mode == 'normal':
+        #     self._grad_aggregate_buffer[layer_idx] += gradient
+        # elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
+        #                            'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
+        #                            'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
+        #     # print(self._grad_aggregate_buffer[layer_idx][source].shape, gradient.shape)
+        #     # print(self._grad_aggregate_buffer[layer_idx][source].dtype, gradient.dtype)
+        #     self._grad_aggregate_buffer[layer_idx][source] = gradient.reshape(-1)
+        #     """
+        #     _shape = gradient.shape
+        #     if len(_shape) == 1:
+        #         self._grad_aggregate_buffer[layer_idx].append(gradient)
+        #     elif len(_shape) > 1:
+        #         self._grad_aggregate_buffer[layer_idx].append(gradient.reshape(-1))  # gradient.reshape((reduce(lambda x, y: x * y, _shape),)))
+        #     """
+        self._grad_aggregate_buffer[layer_idx][source] = gradient.reshape(-1)
 
     def aggregate_parameters(self, param, state_idx, source):
         if self._update_mode == 'normal':
@@ -518,36 +548,49 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
     def meset_grad_buffer(self):
         for i in range(len(self._grad_aggregate_buffer)):
-            if self._update_mode == 'normal':
-                self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
-            elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
-                                       'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
-                                       'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
-                self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
+            # if self._update_mode == 'normal':
+            #     self._grad_aggregate_buffer[i] = np.zeros(self._grad_aggregate_buffer[i].shape)
+            # elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
+            #                            'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
+            #                            'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
+            #     self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
+            self._grad_aggregate_buffer[i] = [np.zeros(self._grad_aggregate_buffer[i].shape)]*self.num_workers
 
     def meset_param_buffer(self):
         for i in range(len(self._param_aggregate_buffer)):
-            if self._update_mode == 'normal':
-                self._param_aggregate_buffer[i] = np.zeros(self._param_aggregate_buffer[i].shape)
-            elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
-                                       'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
-                                       'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
-                self._param_aggregate_buffer[i] = [np.zeros(self._param_aggregate_buffer[i].shape)]*self.num_workers
+            # if self._update_mode == 'normal':
+            #     self._param_aggregate_buffer[i] = np.zeros(self._param_aggregate_buffer[i].shape)
+            # elif self._update_mode in ("geometric_median", "krum", 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
+            #                            'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
+            #                            'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
+            #     self._param_aggregate_buffer[i] = [np.zeros(self._param_aggregate_buffer[i].shape)]*self.num_workers
+            self._param_aggregate_buffer[i] = [np.zeros(self._param_aggregate_buffer[i].shape)]*self.num_workers
 
     def _filter_statistics(self):
-        if self._update_mode == 'normal':
-            for i in range(len(self._param_aggregate_buffer)):
-                self._param_aggregate_buffer[i] /= self._num_grad_to_collect            
-        if self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
-                               'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
-                               'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
-            cwtm_start = time.time()
-            for stat_idx, params in enumerate(self._param_aggregate_buffer):
-                trimmed_mean = np.mean(np.sort(np.array(params), axis=0)[self._t:self.num_workers-self._t], axis=0)
-                self._param_aggregate_buffer[stat_idx] = trimmed_mean
-            print("Master Step: {} Statistics filtering (coor wise trimmed mean) cost: {:.4f}".format(self.cur_step, time.time()-cwtm_start))
-            with open(self._train_dir+"logs-master",'a') as f:
-                f.write('{:.8f},'.format(time.time()-cwtm_start))
+        """
+        Process the collected statistic layers (running var/running mean) using coor-wise trimmed mean, given t
+        Plain (coor-wise) average if t=0
+        """
+        # if self._update_mode == 'normal':
+        #     for i in range(len(self._param_aggregate_buffer)):
+        #         self._param_aggregate_buffer[i] /= self._num_grad_to_collect
+        # if self._update_mode in ('geometric_median', 'krum', 'multi_krum', 'multi_krum_multi_rounds', 'coor_wise_median', 'coor_wise_trimmed_mean',
+        #                        'median_of_means', 'grad_norm', 'grad_norm_coor_wise', 'grad_norm_full_grad', 'bulyan_grad_norm',
+        #                        'grad_norm_multi_parts', 'ensemble_normfilter_multikrum', 'ensemble_normfilter_cwtm', 'ensemble_normfilter_medofmeans'):
+        #     cwtm_start = time.time()
+        #     for stat_idx, params in enumerate(self._param_aggregate_buffer):
+        #         trimmed_mean = np.mean(np.sort(np.array(params), axis=0)[self._t:self.num_workers-self._t], axis=0)
+        #         self._param_aggregate_buffer[stat_idx] = trimmed_mean
+        #     print("Master Step: {} Statistics filtering (coor wise trimmed mean) cost: {:.4f}".format(self.cur_step, time.time()-cwtm_start))
+        #     with open(self._train_dir+"logs-master",'a') as f:
+        #         f.write('{:.8f},'.format(time.time()-cwtm_start))
+        cwtm_start = time.time()
+        for stat_idx, params in enumerate(self._param_aggregate_buffer):
+            trimmed_mean = np.mean(np.sort(np.array(params), axis=0)[self._t:self.num_workers-self._t], axis=0)
+            self._param_aggregate_buffer[stat_idx] = trimmed_mean
+        print("Master Step: {} Statistics filtering (coor wise trimmed mean) cost: {:.4f}".format(self.cur_step, time.time()-cwtm_start))
+        with open(self._train_dir+"logs-master",'a') as f:
+            f.write('{:.8f},'.format(time.time()-cwtm_start))
 
     def _err_simulator(self):
         print(self._err_mode)
@@ -977,6 +1020,18 @@ class SyncReplicaMaster_NN(NN_Trainer):
         with open(self._train_dir+"logs-master",'a') as f:
             f.write('{:.8f},'.format(time.time()-cwtm_start))
 
+    def _asynchronous_drop_f(self):
+        """
+        Randomly drop f gradients according to the asynchronous scheduler, to simulate
+        the scenario where f agents respond slower than others
+        Randomness achieved by using the array of iteration-wise adversary list
+        """
+        _honest = list(set(range(1,self.num_workers+1)) - set(self.async_scheduler[self.cur_step]))
+        _honest = (np.array(_honest)-1).tolist()
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            mean = np.mean(np.array(grads)[_honest], axis=0)
+            self._grad_aggregate_buffer[g_idx] = mean
+
     """
     def _median_of_means(self):
         b = math.ceil(self.num_workers / (2*self._t+0.5))
@@ -1290,7 +1345,9 @@ class GradientAccumulator(object):
     """
 
     def __init__(self, module, num_worker, mode='None'):
-        self.gradient_aggregate_counter = []
+        self.num_worker = num_worker
+        self.gradient_aggregate_counter = []  # count for enough message for each layer in the model
+        self.agent_aggregate_counter = np.zeros(self.num_worker, dtype=int)  # count for enough message for each agent in the system
         self.model_index_range = []
         self.gradient_aggregator = []
         self._mode = mode
@@ -1318,6 +1375,7 @@ class GradientAccumulator(object):
             self._shape_counter.append(tmp_shape_counter)
             #print(len(self.gradient_aggregator),self.gradient_aggregator[param_idx][0].shape)
 
+        self.model_size = len(self.gradient_aggregate_counter)
         #print()
         #for param_idx, param in enumerate(module.parameters()):
         #    for worker_idx in range(num_worker):
@@ -1326,6 +1384,7 @@ class GradientAccumulator(object):
     def meset_everything(self):
         self._meset_grad_counter()
         self._meset_grad_aggregator()
+        self.agent_aggregate_counter = np.zeros(self.num_worker, dtype=int)
 
     def _meset_grad_counter(self):
         self.gradient_aggregate_counter = [0 for _ in self.gradient_aggregate_counter]

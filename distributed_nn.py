@@ -240,11 +240,11 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
 
 def _generate_adversarial_nodes(args, world_size):
     np.random.seed(SEED_)
-    if args.faulty_pattern == 'fixed':
-        return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False)] * (args.max_steps + 1)
-    elif args.faulty_pattern == 'changing':
+    if args.faulty_pattern == 'changing' or 'async' in args.err_mode:
         return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
                 range(args.max_steps + 1)]
+    elif args.faulty_pattern == 'fixed':
+        return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False)] * (args.max_steps + 1)
     elif args.faulty_pattern == 'median_of_means':
         b = math.ceil((world_size - 1) / (2*args.worker_fail+0.5))
         adversaries = [i*b for i in range(args.worker_fail)]

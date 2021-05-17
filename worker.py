@@ -458,7 +458,9 @@ def err_simulation(grad, mode, cyclic=False):
         adv = np.random.normal(0,200,grad.shape)
         return adv
     elif mode == 'labelflipping':
-        return grad # error is introduced by wrong label, but calculation is correct
+        return grad  # error is introduced by wrong label, but calculation is correct
+    elif 'async' in mode:
+        return grad  # no error is needed
     else:
         if cyclic:
             adv = ADVERSARY_ * grad
