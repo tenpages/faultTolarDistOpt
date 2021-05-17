@@ -780,8 +780,15 @@ class SyncReplicaMaster_NN(NN_Trainer):
         print('Testset performance: Cur step:{}\tPrec@1: {}\tPrec@5: {}'.format(self.cur_step, prec1, prec5))
 
     def _avg_received_grads(self):
-        for i in range(len(self._grad_aggregate_buffer)):
-            self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
+        # for i in range(len(self._grad_aggregate_buffer)):
+        #     self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
+        _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]-1))
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            if self._omit_agents:
+                averaged = np.mean(np.array(grads), axis=0)
+            else:
+                averaged = np.mean(np.array(grads)[_honest], axis=0)
+            self._grad_aggregate_buffer[g_idx] = averaged
 
     def _geo_median(self):
         geo_median_start = time.time()
