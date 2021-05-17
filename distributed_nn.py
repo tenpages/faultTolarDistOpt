@@ -119,6 +119,18 @@ class MNISTSubLoader(datasets.MNIST):
             self.targets = self.targets[start_from:start_from + group_size]
 
 
+class FashionMNISTSubLoader(datasets.FashionMNIST):
+    def __init__(self, *args, group_size=0, start_from=0, err_mode="rev_grad", **kwargs):
+        super(FashionMNISTSubLoader, self).__init__(*args, **kwargs)
+        if group_size == 0:
+            return
+        if self.train:
+            #print(self.train_data.shape)
+            #print(self.train_labels.shape)
+            self.data = self.data[start_from:start_from + group_size]
+            self.targets = self.targets[start_from:start_from + group_size]
+
+
 class CIFAR10SubLoader(datasets.CIFAR10):
     def __init__(self, *args, group_size=0, start_from=0, ovlp=False, **kwargs):
         super(CIFAR10SubLoader, self).__init__(*args, **kwargs)
@@ -182,7 +194,7 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
 
     elif dataset == "Fashion-MNIST":
         if rank==0:
-            training_set = datasets.MNIST('./fmnist_data', train=True, download=True, transform=transforms.Compose([
+            training_set = datasets.FashionMNIST('./fmnist_data', train=True, download=True, transform=transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,), (0.5,))
             ]))
@@ -190,7 +202,7 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
         else:
             if args.data_distribution == 'distributed':
                 group_size = int(60000 / (world_size - 1))
-                training_set = MNISTSubLoader('./fmnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
+                training_set = FashionMNISTSubLoader('./fmnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.5,), (0.5,))
                 ]), group_size=group_size, start_from=group_size*(rank-1), err_mode=args.err_mode)
@@ -199,7 +211,7 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
                 torch.manual_seed(TORCH_SEED_+rank)
-                training_set = datasets.MNIST('./fmnist_data', train=True, download=True, transform=transforms.Compose([
+                training_set = datasets.FashionMNIST('./fmnist_data', train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.5,), (0.5,))
                 ]))
