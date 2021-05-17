@@ -7,8 +7,8 @@ import subprocess
 #models = ['bulyan_grad_norm']
 #model_names = ['mkrum5','cwtm',"medofmeans"]
 #models = ['multi_krum','coor_wise_trimmed_mean','median_of_means']
-model_names = ['asynchronous_drop_f']
-models = ['async']
+model_names = ['async']
+models = ['asynchronous_drop_f']
 fault_types = ['async']#,'normfilter','labelflipping']
 fault_names = ['async']#,'normfilter','labelflipping']
 nums_faults = [5, 10, 15]
@@ -91,8 +91,8 @@ for batch_size in batch_sizes:
 					print("========================")
 
 print()
-model_names = ['asynchronous_drop_f']
-models = ['async']
+model_names = ['async']
+models = ['asynchronous_drop_f']
 fault_types = ['async']#,'normfilter','labelflipping']
 fault_names = ['async']#,'normfilter','labelflipping']
 nums_faults = [5, 10, 15]
