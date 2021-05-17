@@ -180,6 +180,35 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
         test_loader = None
         return train_loader, training_set, test_loader
 
+    elif dataset == "Fashion-MNIST":
+        if rank==0:
+            training_set = datasets.MNIST('./fmnist_data', train=True, download=True, transform=transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,), (0.5,))
+            ]))
+            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        else:
+            if args.data_distribution == 'distributed':
+                group_size = int(60000 / (world_size - 1))
+                training_set = MNISTSubLoader('./fmnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5,), (0.5,))
+                ]), group_size=group_size, start_from=group_size*(rank-1), err_mode=args.err_mode)
+                if args.err_mode == 'labelflipping' and rank in adversaries:
+                    training_set.targets = 9 - training_set.targets
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'same':
+                torch.manual_seed(TORCH_SEED_+rank)
+                training_set = datasets.MNIST('./fmnist_data', train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5,), (0.5,))
+                ]))
+                if args.err_mode == 'labelflipping' and rank in adversaries:
+                    training_set.targets = 9 - training_set.targets
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        test_loader = None
+        return train_loader, training_set, test_loader
+
     elif dataset == "CIFAR10":
         if rank==0:
             training_set = datasets.CIFAR10('./cifar10_data', train=True, download=True, transform=transforms.Compose([
