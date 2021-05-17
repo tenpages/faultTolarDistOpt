@@ -328,7 +328,7 @@ if __name__ == "__main__":
     world_size = comm.Get_size()
 
     args = add_fit_args(argparse.ArgumentParser(description="Draco"))
-    if args.err_mode not in ['normal','rev_grad','rev_grad_2','constant','gaussian','labelflipping','cwtm','krum','krum2','normfilter','normfilter2','normfilter3']:
+    if args.err_mode not in ['normal','rev_grad','rev_grad_2','constant','gaussian','labelflipping','cwtm','krum','krum2','normfilter','normfilter2','normfilter3','async']:
         raise ValueError("Error mode cannot be {}".format(args.err_mode))
 
     datum, kwargs_master, kwargs_worker = prepare(args, rank, world_size)
