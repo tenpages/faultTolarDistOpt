@@ -62,7 +62,7 @@ for batch_size in batch_sizes:
 					'--max-steps', '1000',
 					'--epochs', '100',
 					'--network', 'LeNet',
-					'--mode', model,
+					'--mode', 'normal',
 					'--dataset', 'MNIST',
 					'--approach', 'baseline',
 					'--err-mode', fault_type,
@@ -97,15 +97,15 @@ fault_names = ['async']#,'normfilter','labelflipping']
 nums_faults = [5, 10, 15]
 batch_sizes = ['128']
 
-for batch_size in batch_sizes:
-	for i in nums_faults:
-		for fault_type, fault_name in zip(fault_types, fault_names):
-			for model_name, model in zip(model_names, models):
-				args = 'python distributed_eval.py --model-dir output/models/async/'+fault_name+'-'+str(i)\
-						+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-async-MNIST-LeNet-'+batch_size+'-'+fault_name+'-20-'+str(i)+'" 2>&1 &'
-				print("Now evaluating "+fault_name+" using "+model_name+" using command:")
-				print(args)
-				results = subprocess.run(args, shell=True)
+# for batch_size in batch_sizes:
+# 	for i in nums_faults:
+# 		for fault_type, fault_name in zip(fault_types, fault_names):
+# 			for model_name, model in zip(model_names, models):
+# 				args = 'python distributed_eval.py --model-dir output/models/async/'+fault_name+'-'+str(i)\
+# 						+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-async-MNIST-LeNet-'+batch_size+'-'+fault_name+'-20-'+str(i)+'" 2>&1 &'
+# 				print("Now evaluating "+fault_name+" using "+model_name+" using command:")
+# 				print(args)
+# 				results = subprocess.run(args, shell=True)
 
 for batch_size in batch_sizes:
 	for fault_type, fault_name in zip(fault_types, fault_names):
