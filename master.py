@@ -185,6 +185,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                         self.aggregate_gradient(gradient=received_grad, layer_idx=layer_index, source=status.source-1)
 
                     self.grad_accumulator.gradient_aggregate_counter[layer_index] += 1
+                    self.grad_accumulator.agent_aggregate_counter[status.source-1] += 1
 
                 enough_gradients_received = True
                 for j in self.grad_accumulator.gradient_aggregate_counter:
