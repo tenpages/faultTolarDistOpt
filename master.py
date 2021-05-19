@@ -113,8 +113,6 @@ class SyncReplicaMaster_NN(NN_Trainer):
             lr_lambda = lambda step: 10/(int(step/50)+1)
             self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
 
-        self.async_time = np.zeros([-1,0,1,3,5,10,15])
-
     def start(self):
         with open(self._train_dir+"comm_time.csv", "w"):
             pass
