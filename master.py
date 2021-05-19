@@ -113,6 +113,8 @@ class SyncReplicaMaster_NN(NN_Trainer):
             lr_lambda = lambda step: 10/(int(step/50)+1)
             self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
 
+        self.async_time = np.zeros([-1,0,1,3,5,10,15])
+
     def start(self):
         with open(self._train_dir+"comm_time.csv", "w"):
             pass
@@ -194,11 +196,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for j in self.grad_accumulator.agent_aggregate_counter:
                     if j >= self.grad_accumulator.model_size:
                         agents_received += 1
-                if 'async' in self._update_mode and communication_duration == 0:
+                if communication_duration == 0 and agents_received == self.num_workers - self._t:
                     communication_duration = time.time() - communication_start
 
-            if 'async' not in self._update_mode:
-                communication_duration = time.time() - communication_start
+            # if 'async' not in self._update_mode:
+            #     communication_duration = time.time() - communication_start
 
             if self._err_mode in ['cwtm', 'krum', 'krum2', 'normfilter', 'normfilter2', 'normfilter3']:
                 self._err_simulator()
