@@ -11,7 +11,7 @@ model_names = ['async']
 models = ['asynchronous_drop_f']
 fault_types = ['async']#,'normfilter','labelflipping']
 fault_names = ['async']#,'normfilter','labelflipping']
-nums_faults = [1,3]
+nums_faults = [1,3,5,10,15]
 batch_sizes = ['128']
 #acc_alpha = '60'
 #acc_alphas = ['20','40','60']
@@ -131,7 +131,7 @@ model_names = ['async']
 models = ['asynchronous_drop_f']
 fault_types = ['async']#,'normfilter','labelflipping']
 fault_names = ['async']#,'normfilter','labelflipping']
-nums_faults = [1,3]
+nums_faults = [1,3,5,10,15]
 batch_sizes = ['128']
 
 for batch_size in batch_sizes:
