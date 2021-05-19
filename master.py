@@ -167,7 +167,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 for j in self.grad_accumulator.agent_aggregate_counter:
                     if j >= self.grad_accumulator.model_size:
                         agents_received += 1
-                if 'async' in self._update_mode and communication_duration == 0:
+                if 'async' in self._update_mode and communication_duration == 0 and agents_received == self.num_workers - self._s:
                     communication_duration = time.time() - communication_start
 
             if 'async' not in self._update_mode:
