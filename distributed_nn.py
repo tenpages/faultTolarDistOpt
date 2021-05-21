@@ -119,7 +119,8 @@ def load_data(dataset, seed, args, rank, world_size):
     if seed:
         torch.manual_seed(seed)
         random.seed(seed)
-        TORCH_SEED_ = seed
+    else:
+        seed = TORCH_SEED_
     print("dataset: " + dataset)
     if dataset == "MNIST":
         if rank==0:
@@ -137,7 +138,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 ]), group_size=group_size, start_from=group_size*(rank-1))
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
@@ -167,7 +168,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("linRegDataset")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -184,7 +185,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("linRegDataset2")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -201,7 +202,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("linRegDataset3")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -218,7 +219,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("linRegDataset4")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -235,7 +236,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("linRegDataset5")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -252,7 +253,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("approximationDataset1")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -269,7 +270,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("approximationDataset2")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -286,7 +287,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("approximationDataset3")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -303,7 +304,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("approximationDataset4")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -320,7 +321,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("approximationDataset5")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -337,7 +338,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("regressionDataset")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -354,7 +355,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("svmDataset")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -371,7 +372,7 @@ def load_data(dataset, seed, args, rank, world_size):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("wdbcDataset")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
