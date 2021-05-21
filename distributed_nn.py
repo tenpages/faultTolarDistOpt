@@ -45,7 +45,7 @@ def add_fit_args(parser):
                         help='SGD momentum (default: 0.0)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
-    parser.add_argument('--seed', type=int, default=1, metavar='S',
+    parser.add_argument('--seed', type=int, default=None, metavar='S',
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
@@ -119,6 +119,7 @@ def load_data(dataset, seed, args, rank, world_size):
     if seed:
         torch.manual_seed(seed)
         random.seed(seed)
+        TORCH_SEED_ = seed
     print("dataset: " + dataset)
     if dataset == "MNIST":
         if rank==0:
@@ -380,7 +381,10 @@ def load_data(dataset, seed, args, rank, world_size):
 
 
 def _generate_adversarial_nodes(args, world_size):
-    np.random.seed(SEED_)
+    if args.seed is None:
+        np.random.seed(SEED_)
+    else:
+        np.random.seed(args.seed)
     if args.faulty_pattern == 'changing' or 'async' in args.err_mode:
         return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
                 range(args.max_steps + 1)]
@@ -410,7 +414,7 @@ def prepare(args, rank, world_size):
         if args.save_honest_list and rank == 0:
             np.save(args.train_dir+"honest_list", np.delete(np.arange(world_size-1), np.array(adversaries[0]-1)))
         print("Faulty agents:", adversaries[0], "Total:", len(adversaries[0]))
-        train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank,
+        train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=args.seed, args=args, rank=rank,
                                                             world_size=world_size)
         data_shape = training_set[0][0].size()[0]
         print("datashape=",training_set[0][0].size())
