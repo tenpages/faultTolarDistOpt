@@ -45,7 +45,7 @@ def add_fit_args(parser):
                         help='SGD momentum (default: 0)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
-    parser.add_argument('--seed', type=int, default=1, metavar='S',
+    parser.add_argument('--seed', type=int, default=None, metavar='S',
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
@@ -162,6 +162,8 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
     if seed:
         torch.manual_seed(seed)
         random.seed(seed)
+    else:
+        seed = TORCH_SEED_
     #print("dataset: " + dataset)
     if dataset == "MNIST":
         if rank==0:
@@ -181,7 +183,7 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                     training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = datasets.MNIST('./mnist_data', train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
@@ -210,7 +212,7 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                     training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = datasets.FashionMNIST('./fmnist_data', train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.5,), (0.5,))
@@ -248,7 +250,7 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                     training_set.targets = (9 - np.array(training_set.targets)).tolist()
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = datasets.CIFAR10('./cifar10_data', train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -270,7 +272,7 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                 training_set = torch.utils.data.TensorDataset(tmp_set[0], tmp_set[1])
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'same':
-                torch.manual_seed(TORCH_SEED_+rank)
+                torch.manual_seed(seed+rank)
                 training_set = torch.load("wdbcDataset")
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
@@ -280,7 +282,10 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
 
 
 def _generate_adversarial_nodes(args, world_size):
-    np.random.seed(SEED_)
+    if args.seed is None:
+        np.random.seed(SEED_)
+    else:
+        np.random.seed(args.seed)
     if args.faulty_pattern == 'changing' or 'async' in args.err_mode:
         return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
                 range(args.max_steps + 1)]
@@ -303,7 +308,7 @@ def prepare(args, rank, world_size):
         # randomly select adversarial nodes
         adversaries = _generate_adversarial_nodes(args, world_size)
         print("Faulty agents:", adversaries[0], "Total:", len(adversaries[0]))
-        train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=None, args=args, rank=rank,
+        train_loader, training_set, test_loader = load_data(dataset=args.dataset, seed=args.seed, args=args, rank=rank,
                                                             world_size=world_size, adversaries=adversaries[0])
         data_shape = training_set[0][0].size()[0]*training_set[0][0].size()[1]*training_set[0][0].size()[2]
         kwargs_master = {
