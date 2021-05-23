@@ -55,7 +55,7 @@ batch_sizes = ['128']
 # 						print("failed")
 # 						print("========================")
 
-for k in [5]:
+for k in [6]:
 	for batch_size in batch_sizes:
 		for i in nums_faults:
 			for fault_type, fault_name in zip(fault_types, fault_names):
@@ -113,7 +113,7 @@ batch_sizes = ['128']
 # 					print(args)
 # 					results = subprocess.run(args, shell=True)
 
-for k in [5]:
+for k in [6]:
 	for batch_size in batch_sizes:
 		for i in nums_faults:
 			for fault_type, fault_name in zip(fault_types, fault_names):
