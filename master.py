@@ -299,6 +299,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_start = time.time()
                 self._asynchronous_drop_f()
                 method_duration = time.time() - method_start
+            elif self._update_mode == 'asynchronous_drop_f_sum':
+                method_start = time.time()
+                self._asynchronous_drop_f_sum()
+                method_duration = time.time() - method_start
 
             if self._calculate_cosine and self.cur_step % self._eval_freq == 0:
                 self._filtered_grad = self._grad_aggregate_buffer.copy()
@@ -1036,6 +1040,18 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             mean = np.mean(np.array(grads)[_honest], axis=0)
             self._grad_aggregate_buffer[g_idx] = mean
+
+    def _asynchronous_drop_f_sum(self):
+        """
+        Randomly drop f gradients according to the asynchronous scheduler, to simulate
+        the scenario where f agents respond slower than others
+        Randomness achieved by using the array of iteration-wise adversary list
+        """
+        _honest = list(set(range(1,self.num_workers+1)) - set(self.async_scheduler[self.cur_step]))
+        _honest = (np.array(_honest)-1).tolist()
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            sum = np.sum(np.array(grads)[_honest], axis=0)
+            self._grad_aggregate_buffer[g_idx] = sum
 
     """
     def _median_of_means(self):

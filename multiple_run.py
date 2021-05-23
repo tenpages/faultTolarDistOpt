@@ -8,7 +8,7 @@ import subprocess
 #model_names = ['mkrum5','cwtm',"medofmeans"]
 #models = ['multi_krum','coor_wise_trimmed_mean','median_of_means']
 model_names = ['async']
-models = ['asynchronous_drop_f']
+models = ['asynchronous_drop_f_sum']
 fault_types = ['async']#,'normfilter','labelflipping']
 fault_names = ['async']#,'normfilter','labelflipping']
 nums_faults = [0,1,3,5,10,15]
@@ -55,7 +55,7 @@ batch_sizes = ['128']
 # 						print("failed")
 # 						print("========================")
 
-for k in [1,2,3,4]:
+for k in [5]:
 	for batch_size in batch_sizes:
 		for i in nums_faults:
 			for fault_type, fault_name in zip(fault_types, fault_names):
@@ -96,7 +96,7 @@ for k in [1,2,3,4]:
 
 print()
 model_names = ['async']
-models = ['asynchronous_drop_f']
+models = ['asynchronous_drop_f_sum']
 fault_types = ['async']#,'normfilter','labelflipping']
 fault_names = ['async']#,'normfilter','labelflipping']
 nums_faults = [0,1,3,5,10,15]
@@ -113,7 +113,7 @@ batch_sizes = ['128']
 # 					print(args)
 # 					results = subprocess.run(args, shell=True)
 
-for k in [1,2,3,4]:
+for k in [5]:
 	for batch_size in batch_sizes:
 		for i in nums_faults:
 			for fault_type, fault_name in zip(fault_types, fault_names):
