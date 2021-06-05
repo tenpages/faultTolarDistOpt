@@ -103,6 +103,8 @@ def add_fit_args(parser):
                         help='provide bata value for generalized Gaussian mechanism injecting noise to honest gradients. 0 implies no privacy noise injection')
     parser.add_argument('--diff-privacy-sigma', type=float, default=0, metavar='N',
                         help='provide sigma value for generalized Gaussian mechanism injecting noise to honest gradients, as variance or std')
+    parser.add_argument('--omit-faults', type=ast.literal_eval, default=False, metavar='N',
+                        help='decide whether to remove fixed faulty agents')
     args = parser.parse_args()
     return args
 
@@ -340,6 +342,7 @@ def prepare(args, rank, world_size):
             # the following information is only used for simulating fault agents and not used by filters.
             'adversaries': adversaries,
             'err_mode': args.err_mode,
+            'omit_faults': args.omit_faults
         }
         kwargs_worker = {
             'batch_size': args.batch_size,

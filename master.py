@@ -76,6 +76,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         # the following information is only used for simulating fault agents and not used by filters.
         self._adversaries = kwargs['adversaries']
         self._err_mode = kwargs['err_mode']
+        self._omit_faults = kwargs['omit_faults']
 
     def build_model(self) :
         # print("building model, self._size ", self._size)
@@ -789,7 +790,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
         #     self._grad_aggregate_buffer[i] /= self._num_grad_to_collect
         _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]-1))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            averaged = np.mean(np.array(grads)[_honest], axis=0)
+            if not self._omit_faults:
+                averaged = np.mean(np.array(grads), axis=0)
+            else:
+                averaged = np.mean(np.array(grads)[_honest], axis=0)
             self._grad_aggregate_buffer[g_idx] = averaged
 
     def _geo_median(self):
