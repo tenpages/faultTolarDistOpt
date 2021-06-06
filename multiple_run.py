@@ -49,44 +49,6 @@ total = 10
 # 					print("========================")
 #
 # for batch_size in batch_sizes:
-# 	for fault_type, fault_name in zip(fault_types, fault_names):
-# 		for model_name, model in zip(model_names, models):
-# 			args = ['mpirun', '-n', str(total+1),
-# 					'python', 'distributed_nn.py',
-# 					'--batch-size=' + batch_size,
-# 					'--max-steps', '1000',
-# 					'--epochs', '100',
-# 					'--network', 'LeNet',
-# 					'--mode', model,
-# 					'--dataset', 'MNIST',
-# 					'--approach', 'baseline',
-# 					'--err-mode', fault_type,
-# 					'--lr', '0.01',
-# 					'--train-dir', 'output/models/approx/MNIST/10-3/normal/',
-# 					'--seed', '0',
-# 					'--accumulative', 'False',
-# 					'--worker-fail', '3',
-# 					'--fault-thrshld', '3',
-# 					'--data-distribution', 'same',
-# 					'--calculate-cosine', 'False',
-# 					'--checkpoint-step', '0',
-# 					'--omit-faults', 'True',
-# 					'--eval-freq', '1',
-# 					'--diff-privacy-param', '0']
-# 			print("Now running experiments mpiron "+fault_name+" using "+model_name+" using command:")
-# 			print(' '.join(args))
-# 			results = subprocess.run(args, capture_output=True)
-# 			if results.returncode==0 and results.stdout != None:
-# 				with open('logs-approx-MNIST-LeNet-' + batch_size + '-normal-10-3','w') as f:
-# 					f.write(results.stdout.decode())
-# 				print("finished")
-# 				print("========================")
-# 			else:
-# 				print(results.stderr.decode())
-# 				print("failed")
-# 				print("========================")
-#
-# for batch_size in batch_sizes:
 # 	for i in nums_faults:
 # 		for fault_type, fault_name in zip(fault_types, fault_names):
 # 			for model_name, model in zip(model_names, models):
@@ -215,7 +177,7 @@ for batch_size in batch_sizes:
 		for fault_type, fault_name in zip(fault_types, fault_names):
 			for model_name, model in zip(model_names, models):
 				args = 'python distributed_eval.py --model-dir output/models/approx/Fashion-MNIST/10-'+str(i)+'/'+model_name+'/'+fault_name \
-						+'/ --dataset Fashion-MNIST --network LeNet --eval-freq 1 > "results-approx-fMNIST-LeNet-'+batch_size+'-'+model_name+'-'+fault_name+'-10-'+str(k)+'" 2>&1 &'
+						+'/ --dataset Fashion-MNIST --network LeNet --eval-freq 1 > "results-approx-fMNIST-LeNet-'+batch_size+'-'+model_name+'-'+fault_name+'-10-'+str(i)+'" 2>&1 &'
 				print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 				print(args)
 				results = subprocess.run(args, shell=True)
@@ -225,7 +187,7 @@ for batch_size in batch_sizes:
 		for fault_type, fault_name in zip(fault_types, fault_names):
 			for model_name, model in zip(model_names, models):
 				args = 'python distributed_eval.py --model-dir output/models/approx/MNIST/10-'+str(i)+'/'+model_name+'/'+fault_name \
-						+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-approx-MNIST-LeNet-'+batch_size+'-'+model_name+'-'+fault_name+'-10-'+str(k)+'" 2>&1 &'
+						+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-approx-MNIST-LeNet-'+batch_size+'-'+model_name+'-'+fault_name+'-10-'+str(i)+'" 2>&1 &'
 				print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 				print(args)
 				results = subprocess.run(args, shell=True)
