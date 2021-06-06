@@ -85,82 +85,82 @@ total = 10
 # 					print(results.stderr.decode())
 # 					print("failed")
 # 					print("========================")
-
-batch_size = '128'
-fault_type = 'rev_grad_2'
-fault_name = 'revgrad2'
-model_name = 'normal'
-args = ['mpirun', '-n', str(total+1),
-		'python', 'distributed_nn.py',
-		'--batch-size=' + batch_size,
-		'--max-steps', '1000',
-		'--epochs', '100',
-		'--network', 'LeNet',
-		'--mode', 'normal',
-		'--dataset', 'Fashion-MNIST',
-		'--approach', 'baseline',
-		'--err-mode', fault_type,
-		'--lr', '0.01',
-		'--train-dir', 'output/models/approx/Fashion-MNIST/10-3/normal/',
-		'--seed', '0',
-		'--accumulative', 'False',
-		'--worker-fail', '3',
-		'--fault-thrshld', '3',
-		'--data-distribution', 'same',
-		'--calculate-cosine', 'False',
-		'--checkpoint-step', '0',
-		'--omit-faults', 'True',
-		'--eval-freq', '1',
-		'--diff-privacy-param', '0']
-print("Now running experiments mpiron "+fault_name+" using "+model_name+" using command:")
-print(' '.join(args))
-results = subprocess.run(args, capture_output=True)
-if results.returncode==0 and results.stdout != None:
-	with open('logs-approx-fMNIST-LeNet-' + batch_size + '-normal-10-3','w') as f:
-		f.write(results.stdout.decode())
-	print("finished")
-	print("========================")
-else:
-	print(results.stderr.decode())
-	print("failed")
-	print("========================")
-
-
-args = ['mpirun', '-n', str(total+1),
-		'python', 'distributed_nn.py',
-		'--batch-size=' + batch_size,
-		'--max-steps', '1000',
-		'--epochs', '100',
-		'--network', 'LeNet',
-		'--mode', 'normal',
-		'--dataset', 'MNIST',
-		'--approach', 'baseline',
-		'--err-mode', fault_type,
-		'--lr', '0.01',
-		'--train-dir', 'output/models/approx/MNIST/10-3/normal/',
-		'--seed', '0',
-		'--accumulative', 'False',
-		'--worker-fail', '3',
-		'--fault-thrshld', '3',
-		'--data-distribution', 'same',
-		'--calculate-cosine', 'False',
-		'--checkpoint-step', '0',
-		'--omit-faults', 'True',
-		'--eval-freq', '1',
-		'--diff-privacy-param', '0']
-print("Now running experiments mpiron "+fault_name+" using "+model_name+" using command:")
-print(' '.join(args))
-results = subprocess.run(args, capture_output=True)
-if results.returncode==0 and results.stdout != None:
-	with open('logs-approx-MNIST-LeNet-' + batch_size + '-normal-10-3','w') as f:
-		f.write(results.stdout.decode())
-	print("finished")
-	print("========================")
-else:
-	print(results.stderr.decode())
-	print("failed")
-	print("========================")
-
+#
+# batch_size = '128'
+# fault_type = 'rev_grad_2'
+# fault_name = 'revgrad2'
+# model_name = 'normal'
+# args = ['mpirun', '-n', str(total+1),
+# 		'python', 'distributed_nn.py',
+# 		'--batch-size=' + batch_size,
+# 		'--max-steps', '1000',
+# 		'--epochs', '100',
+# 		'--network', 'LeNet',
+# 		'--mode', 'normal',
+# 		'--dataset', 'Fashion-MNIST',
+# 		'--approach', 'baseline',
+# 		'--err-mode', fault_type,
+# 		'--lr', '0.01',
+# 		'--train-dir', 'output/models/approx/Fashion-MNIST/10-3/normal/',
+# 		'--seed', '0',
+# 		'--accumulative', 'False',
+# 		'--worker-fail', '3',
+# 		'--fault-thrshld', '3',
+# 		'--data-distribution', 'same',
+# 		'--calculate-cosine', 'False',
+# 		'--checkpoint-step', '0',
+# 		'--omit-faults', 'True',
+# 		'--eval-freq', '1',
+# 		'--diff-privacy-param', '0']
+# print("Now running experiments mpiron "+fault_name+" using "+model_name+" using command:")
+# print(' '.join(args))
+# results = subprocess.run(args, capture_output=True)
+# if results.returncode==0 and results.stdout != None:
+# 	with open('logs-approx-fMNIST-LeNet-' + batch_size + '-normal-10-3','w') as f:
+# 		f.write(results.stdout.decode())
+# 	print("finished")
+# 	print("========================")
+# else:
+# 	print(results.stderr.decode())
+# 	print("failed")
+# 	print("========================")
+#
+#
+# args = ['mpirun', '-n', str(total+1),
+# 		'python', 'distributed_nn.py',
+# 		'--batch-size=' + batch_size,
+# 		'--max-steps', '1000',
+# 		'--epochs', '100',
+# 		'--network', 'LeNet',
+# 		'--mode', 'normal',
+# 		'--dataset', 'MNIST',
+# 		'--approach', 'baseline',
+# 		'--err-mode', fault_type,
+# 		'--lr', '0.01',
+# 		'--train-dir', 'output/models/approx/MNIST/10-3/normal/',
+# 		'--seed', '0',
+# 		'--accumulative', 'False',
+# 		'--worker-fail', '3',
+# 		'--fault-thrshld', '3',
+# 		'--data-distribution', 'same',
+# 		'--calculate-cosine', 'False',
+# 		'--checkpoint-step', '0',
+# 		'--omit-faults', 'True',
+# 		'--eval-freq', '1',
+# 		'--diff-privacy-param', '0']
+# print("Now running experiments mpiron "+fault_name+" using "+model_name+" using command:")
+# print(' '.join(args))
+# results = subprocess.run(args, capture_output=True)
+# if results.returncode==0 and results.stdout != None:
+# 	with open('logs-approx-MNIST-LeNet-' + batch_size + '-normal-10-3','w') as f:
+# 		f.write(results.stdout.decode())
+# 	print("finished")
+# 	print("========================")
+# else:
+# 	print(results.stderr.decode())
+# 	print("failed")
+# 	print("========================")
+#
 
 model_names = ['cwtm','normfilter']
 models = ['coor_wise_trimmed_mean','grad_norm']
