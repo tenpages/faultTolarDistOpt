@@ -141,7 +141,7 @@ for batch_size in batch_sizes:
 					'--train-dir', 'output/models/approx/Fashion-MNIST/10-3/normal/',
 					'--seed', '0',
 					'--accumulative', 'False',
-					'--worker-fail', 3,
+					'--worker-fail', '3',
 					'--fault-thrshld', '3',
 					'--data-distribution', 'same',
 					'--calculate-cosine', 'False',
