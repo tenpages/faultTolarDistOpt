@@ -124,7 +124,7 @@ total = 10
 # 					print("failed")
 # 					print("========================")
 
-batch_size = 128
+batch_size = '128'
 fault_type = 'rev_grad_2'
 fault_name = 'revgrad2'
 model_name = 'normal'
@@ -230,7 +230,7 @@ for batch_size in batch_sizes:
 				print(args)
 				results = subprocess.run(args, shell=True)
 
-batch_size = 128
+batch_size = '128'
 fault_name = 'revgrad2'
 model_name = 'normal'
 args = 'python distributed_eval.py --model-dir output/models/approx/Fashion-MNIST/10-3/normal/' \
