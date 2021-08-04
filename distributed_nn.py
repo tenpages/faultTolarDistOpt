@@ -22,7 +22,7 @@ import worker
 
 SEED_ = 428
 TORCH_SEED_ = 761
-
+DATA_ASSIGN_20 = [(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(9,0),(0,3),(3,6),(6,9),(9,2),(2,5),(5,8),(8,1),(1,4),(4,7),(7,0)]
 
 def add_fit_args(parser):
     """
@@ -121,16 +121,34 @@ class MNISTSubLoader(datasets.MNIST):
             self.targets = self.targets[start_from:start_from + group_size]
 
 
+class MNISTDistLoader(datasets.MNIST):
+    def __init__(self, *args, id=0, err_mode="rev_grad", **kwargs):
+        super(MNISTDistLoader, self).__init__(*args, **kwargs)
+        if group_size == 0:
+            return
+        if self.train:
+            self.data = torch.cat((self.data[self.targets == DATA_ASSIGN_20[id][0]], self.data[self.targets == DATA_ASSIGN_20[id][1]]))
+            self.targets = torch.cat((self.targets[self.targets == DATA_ASSIGN_20[id][0]], self.targets[self.targets == DATA_ASSIGN_20[id][1]]))
+
+
 class FashionMNISTSubLoader(datasets.FashionMNIST):
     def __init__(self, *args, group_size=0, start_from=0, err_mode="rev_grad", **kwargs):
         super(FashionMNISTSubLoader, self).__init__(*args, **kwargs)
         if group_size == 0:
             return
         if self.train:
-            #print(self.train_data.shape)
-            #print(self.train_labels.shape)
             self.data = self.data[start_from:start_from + group_size]
             self.targets = self.targets[start_from:start_from + group_size]
+
+
+class FashionMNISTDistLoader(datasets.FashionMNIST):
+    def __init__(self, *args, id=0, err_mode="rev_grad", **kwargs):
+        super(FashionMNISTDistLoader, self).__init__(*args, **kwargs)
+        if group_size == 0:
+            return
+        if self.train:
+            self.data = torch.cat((self.data[self.targets == DATA_ASSIGN_20[id][0]], self.data[self.targets == DATA_ASSIGN_20[id][1]]))
+            self.targets = torch.cat((self.targets[self.targets == DATA_ASSIGN_20[id][0]], self.targets[self.targets == DATA_ASSIGN_20[id][1]]))
 
 
 class CIFAR10SubLoader(datasets.CIFAR10):
@@ -193,6 +211,14 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                 if args.err_mode == 'labelflipping' and rank in adversaries:
                     training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'different-dist':
+                training_set = FashionMNISTDistLoader('./mnist_data/', train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.1307,), (0.3081,))
+                ]), id=rank-1, err_mode=args.err_mode)
+                if args.err_mode == 'labelflipping' and rank in adversaries:
+                    training_set.targets = 9 - training_set.targets
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
         test_loader = None
         return train_loader, training_set, test_loader
 
@@ -219,6 +245,14 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                     transforms.ToTensor(),
                     transforms.Normalize((0.5,), (0.5,))
                 ]))
+                if args.err_mode == 'labelflipping' and rank in adversaries:
+                    training_set.targets = 9 - training_set.targets
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'different-dist':
+                training_set = FashionMNISTDistLoader('./fmnist_data/', train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5,), (0.5,))
+                ]), id=rank-1, err_mode=args.err_mode)
                 if args.err_mode == 'labelflipping' and rank in adversaries:
                     training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
