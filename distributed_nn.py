@@ -208,7 +208,7 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                     training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'different-dist':
-                training_set = FashionMNISTDistLoader('./mnist_data', train=True, download=True, transform=transforms.Compose([
+                training_set = MNISTDistLoader('./mnist_data', train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]), id=rank-1, err_mode=args.err_mode)
