@@ -16,7 +16,8 @@ from numpy.random import randn
 from math import sqrt
 
 from compress_gradient import compress
-from model_ops.fc import Full_Connected
+# from model_ops.fc import Full_Connected
+from model_ops.fc_small import Full_Connected
 from model_ops.lenet import LeNet
 from model_ops.resnet import ResNet18
 from model_ops.resnetn import ResNet18N
@@ -39,6 +40,7 @@ class DistributedWorker(NN_Trainer):
         self.rand_nums = []
         self.redundancy = kwargs['redundancy']
         self._delay = kwargs['delay']
+        self._coordinated = kwargs['coordinated']
 
         self.red_seed = -1
         self._p = kwargs['p']
@@ -249,17 +251,57 @@ class DistributedWorker(NN_Trainer):
 
                         loss = self.criterion(logits,y_batch)
                         send_err = 0
+                        # 
+                        # if Byzantine, decide to attack or not
                         ''' temporary-- Byzantine attack delay for __ steps '''
                         if self.cur_step > fault_delay and self._p > 0.0 and self.rank in self._fail_workers[self.cur_step]: 
                             send_err = self.p_decision(self._p,self.rand_nums.pop(0))
+                            # if coordinating attacks, attack together or not at all
+                            if self._coordinated:
+                                # print("coordinated attacks:", bool(self._coordinated))
+                                coordinated_reqs = []
+                                coordinated_responses = []
+
+                                for rank in self._fail_workers[self.cur_step]:
+                                    if rank != self.rank:
+                                        # send other workers send_err value
+                                        # print(self.rank, "coordinating with ", rank)
+                                        # req_isend = self.comm.isend(np.array(np.float64(1 if send_err else -1)), dest=rank, tag=5)
+                                        req_isend = self.comm.isend(np.float64(send_err), dest=rank, tag=5)
+                                        coordinated_reqs.append(req_isend)
+            
+                                        req_irecv = self.comm.irecv(source=rank, tag=5)
+                                        coordinated_responses.append(req_irecv)
+
+                                for req in coordinated_reqs:
+                                    req_ = req.wait()
+
+                                # ''' only the lowest ranking Byzantine decides '''
+                                # if self.rank != min(self._fail_workers[self.cur_step]):
+                                #     send_err = 0
+
+                                if self.rank == 4: print(self.rank, send_err)
+                                for req in coordinated_responses:
+                                    status = MPI.Status()
+                                    req_ = req.wait(status=status)
+                                    ''' only the lowest ranking Byzantine decides '''
+                                    # if req_ and status.source == min(self._fail_workers[self.cur_step]):
+                                    if self.rank == 4:
+                                        print(status.source, req_)
+                                    if req_:
+                                        send_err = 1
+                                # print('W {} step {} done coordinating'.format(self.rank, self.cur_step))
+                                
+                        # blacklisted worker-- pop error decision
                         else:
                             _ = self.rand_nums.pop(0)
+
                         numlayers = 0
                         for _ in self.network.parameters():
                             numlayers = numlayers + 1
                         send_check_requests=[]
+                        # if not blacklisted, send gradients
                         if not red_flag:
-
                             # send_err = self.p_decision(self._p)       # if send_err == 1 then send error
                             # send_err = self.p_decision(self._p,self.rand_nums.pop(0))
 
@@ -290,6 +332,35 @@ class DistributedWorker(NN_Trainer):
                             for req in send_check_requests:
                                 req.wait()
 
+                        # else, if blacklisted and coordinating attacks,
+                        #       communicate decision to other workers
+                        elif self._coordinated :
+                            for rank in self._fail_workers[self.cur_step]:
+                                if rank != self.rank:
+                                    # send other workers send_err value
+                                    # print("coordinating with rank ", rank)
+                                    req_isend = self.comm.isend(np.float64(send_err), dest=rank, tag=5)
+                                    coordinated_reqs.append(req_isend)
+        
+                                    req_irecv = self.comm.irecv(source=rank, tag=5)
+                                    coordinated_responses.append(req_irecv)
+
+                            for req in coordinated_reqs:
+                                req.wait()
+
+                            # # coordinated_responses = [req.wait() for req in coordinated_responses]
+                            # if self.rank != min(self._fail_workers[self.cur_step]):
+                            #     send_err = 0
+                            for req in coordinated_responses:
+                                status = MPI.Status()
+                                req_ = req.wait(status=status)
+                                ''' only the lowest ranking Byzantine decides '''
+                                # if req_ and status.source == min(self._fail_workers[self.cur_step]):
+                                if req_:
+                                    send_err = 1
+                            # print('W {} (blacklisted) step {} done coordinating'.format(self.rank, self.cur_step))
+
+                        # new data points if step is redundant
                         new_dp_list = torch.LongTensor(self.async_bcast_fetch_datapoints_redundant())
 
                         lf = open(self._train_dir +"logfile.txt", "a")
@@ -378,11 +449,14 @@ class DistributedWorker(NN_Trainer):
                         computation_time, c_duration = self._backward(loss, computation_time=forward_duration)
 
                     # prec1, prec3 = accuracy(logits.data, train_label_batch.long(), topk=(1, 3))
-                    # prec1, prec3 = accuracy(logits.data, y_batch.long(), topk=(1, 3))
+                    if "LinregTest" not in self.network_config: 
+                        prec1, prec3 = accuracy(logits.data, y_batch.long(), topk=(1, 3))
+                        prec1, prec3 = prec1.numpy()[0], prec3.numpy()[0]
+                    else:
+                        prec1, prec3 = "NA","NA"
 
                     with open(self._train_dir+"logs-worker-"+str(self.rank), "a") as f:
                         f.write('{:.8f}\n'.format(time.time()-iter_start_time))
-                    '''
                     print(
                         'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.8f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@3: {}'.format(
                             self.rank,
@@ -390,7 +464,7 @@ class DistributedWorker(NN_Trainer):
                             (100. * (batch_idx * self.batch_size) / len(train_loader.dataset)), loss.item(),
                                                       time.time() - iter_start_time, computation_time,
                                                       c_duration + fetch_weight_duration,
-                            prec1.numpy()[0], prec3.numpy()[0]))
+                            prec1, prec3))
                     '''
                     print(
                         'Worker: {}, Step: {}, Epoch: {} [{}/{} ({:.0f}%)], Loss: {:.8f}, Time Cost: {:.4f}, Comp: {:.4f}, Comm: {:.4f}, Prec@1: {}, Prec@3: {}'.format(
@@ -400,6 +474,7 @@ class DistributedWorker(NN_Trainer):
                                                       time.time() - iter_start_time, computation_time,
                                                       c_duration + fetch_weight_duration,
                             "NA", "NA"))
+                    '''
 
                     # if self.cur_step % self._eval_freq == 0 and self.rank == 1:
                     #     # save snapshots
@@ -655,7 +730,10 @@ class ModelBuffer(object):
 
 def err_simulation(grad, mode, cyclic=False):
     ADVERSARY_ = -100
+    ADVERSARY_ = -50
+    # ADVERSARY_ = -25
     CONST_ = -100
+    CONST_ = -50
     if mode == 'rev_grad':
         if cyclic:
             adv = ADVERSARY_ * grad
@@ -670,6 +748,13 @@ def err_simulation(grad, mode, cyclic=False):
             return np.add(adv,grad)
         else:
             return np.ones(grad.shape, dtype=np.float64)*CONST_
+    elif mode == 'rev_grad2':
+        if cyclic:
+            adv = -1 * grad
+            assert adv.shape == grad.shape
+            return np.add(adv, grad)
+        else:
+            return -1 * grad
     else:
         if cyclic:
             adv = ADVERSARY_ * grad
@@ -692,16 +777,21 @@ def make_decision(p, r) :
         return 0
 
 if __name__ == "__main__":
-    p = .25
-    x=0
-    y=0
+    p = 0.01
+    try :
+        if sys.argv[1]:
+            p = float(sys.argv[1])
+    except:
+        print('No input-- p=',p)
+    x=0.0
+    y=0.0
 
-    test_random_list = [randn() for _ in range(1000)]
+    test_random_list = [randn() for _ in range(10000)]
     for i in test_random_list:
         if make_decision(p, i):
-            x+=1
+            x+=1.0
         else:
-            y+=1
+            y+=1.0
 
-    print("x = {}%".format(x/(x+y)))
-    print("y = {}%".format(y/(x+y)))
+    print("x = {}%".format(x/(10000.0)), x)
+    print("y = {}%".format(y/(10000.0)), y)

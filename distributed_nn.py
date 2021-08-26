@@ -37,8 +37,10 @@ def add_fit_args(parser):
                         help='the maximum number of iterations')
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 10)')
-    parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
+    parser.add_argument('--lr', type=float, default=0.03, metavar='LR',
                         help='learning rate (default: 0.01)')
+    parser.add_argument('--min-lr', type=float,default=.001,
+                        help='minimum learning rate for --diminishing-lr')
     parser.add_argument('--diminishing-lr', type=ast.literal_eval, default=False, metavar='N',
                         help='set diminishing learning rate (default: False)')
     parser.add_argument('--momentum', type=float, default=0, metavar='M',
@@ -108,6 +110,10 @@ def add_fit_args(parser):
     parser.add_argument('--diminishing-lr-freq', type=int, default=10, help='Frequency of LR schedule. Default = 10')
     parser.add_argument('--adapt-q', action='store_true',default=False,
                         help='Use adaptive fault-checking (increase over time)')
+    parser.add_argument('--max-q',type=float,default=1.0,
+                        help='maximum q for adapt-q')
+    parser.add_argument('--adapt-interval', type=int,default=10,
+                        help='Interval of steps to increase the parameter q.')
     parser.add_argument('--roll-freq',type=int,default=0,
                         help='frequency of storing rollback states; no rollback when 0')
     parser.add_argument('--targeted',action='store_true',default=False,
@@ -116,6 +122,8 @@ def add_fit_args(parser):
                         help='distance in std_dev from the mean triggering a targeted fault-check')
     parser.add_argument('--delay',type=int,default=0,
                         help='delay of Byzantine worker attacks (defaults=0)')
+    parser.add_argument('--coordinated',type=int,default=0,
+                        help='coordinated attacks-- if one worker attacks, all of them attack.')
 
     args = parser.parse_args()
     return args
@@ -258,6 +266,7 @@ def prepare(args, rank, world_size):
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
             'diminishing_lr': args.diminishing_lr,
+            'min_lr': args.min_lr,
             'max_epochs': args.epochs,
             'max_steps': args.max_steps,
             'momentum': args.momentum,
@@ -286,6 +295,8 @@ def prepare(args, rank, world_size):
             'dataset_size': len(training_set),
             'q': args.q,
             'adapt_q': args.adapt_q,
+            'max_q': args.max_q,
+            'adapt_interval': args.adapt_interval,
             'roll_freq': args.roll_freq,
             'targeted': args.targeted,
             'dim_lr_freq' : args.diminishing_lr_freq,
@@ -312,7 +323,8 @@ def prepare(args, rank, world_size):
             'channel': training_set[0][0].size()[0],
             '1d_size': training_set[0][0].size()[1],
             'p': args.p,
-            'delay': args.delay
+            'delay': args.delay,
+            'coordinated': args.coordinated
         }
     # print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)
@@ -334,10 +346,12 @@ if __name__ == "__main__":
                                                                            master_fc_nn.cur_step))
             ''' use random subset of training as validation split '''
             if args.dataset=='MNIST':
-                _, val_split = torch.utils.data.random_split(training_set, [55000, 5000])
+                _, val_split = torch.utils.data.random_split(training_set, [59000, 1000])
             val_loader = torch.utils.data.DataLoader(val_split)
+            starttime = time.time()
             master_fc_nn.start(val_loader)
             print("Done sending massage to workers!")
+            print("Master time: {}".format(time.time()-starttime))
         else:
             worker_fc_nn = worker.DistributedWorker(comm=comm, **kwargs_worker)
             worker_fc_nn.build_model()

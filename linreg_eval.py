@@ -103,6 +103,8 @@ class DistributedEvaluator(object):
             if os.path.isfile(model_dir_):
                 self._load_model(model_dir_)
                 print("Evaluator evaluating results on step {}".format(self._next_step_to_fetch))
+                # for param in self.network.parameters():
+                #     print(param.data)
                 test_loss, prec1, prec3 = self._evaluate_model(validation_loader)
                 self.results = np.insert(self.results,len(self.results[0]),[self._next_step_to_fetch, test_loss, prec1, prec3],1)
                 self._next_step_to_fetch += self._eval_freq

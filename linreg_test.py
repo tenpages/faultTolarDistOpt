@@ -38,9 +38,9 @@ def add_fit_args(parser):
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
-                        help='learning rate (default: 0.01)')
-    # parser.add_argument('--diminishing-lr', type=ast.literal_eval, default=False, metavar='N',
-    #                     help='set diminishing learning rate (default: False)')
+                        help='learning rate (default: 0.1)')
+    parser.add_argument('--min-lr', type=float,default=.001,
+                        help='minimum learning rate for --diminishing-lr')
     parser.add_argument('--diminishing-lr', type=int, default=0, 
                         help='set diminishing learning rate type (default: 0)\n\t0 <-- none\n\t1 <-- linear decrease (lr -= dimSize each step)\n\t2 <-- decrease exponentially with time (lr -= dimSize^step)')
     parser.add_argument('--momentum', type=float, default=0, metavar='M',
@@ -111,6 +111,10 @@ def add_fit_args(parser):
     parser.add_argument('--diminishing-lr-freq', type=int, default=10, help='Frequency of LR schedule. Default = 10')
     parser.add_argument('--adapt-q', action='store_true',default=False,
                         help='Use adaptive fault-checking (increase over time)')
+    parser.add_argument('--max-q',type=float,default=1.0,
+                        help='maximum q for adapt-q')
+    parser.add_argument('--adapt-interval', type=int,default=10,
+                        help='Interval of steps to increase the parameter q.')
     parser.add_argument('--roll-freq',type=int,default=0,
                         help='frequency of storing rollback states; no rollback when 0')
     parser.add_argument('--targeted',action='store_true',default=False,
@@ -119,6 +123,8 @@ def add_fit_args(parser):
                         help='distance in std_dev from the mean triggering a targeted fault-check')
     parser.add_argument('--delay',type=int,default=0,
                         help='delay of Byzantine worker attacks (defaults=0)')
+    parser.add_argument('--coordinated',type=int,default=0,
+                        help='coordinated attacks-- if one worker attacks, all of them attack.')
 
     args = parser.parse_args()
     return args
@@ -238,10 +244,12 @@ def prepare(args, rank, world_size):
         data_shape = training_set[0][0].size()[0]
         print("dataset size {}".format(data_shape))
         kwargs_master = {
+            'seed': args.seed,
             'redundancy': args.redundancy,
             'batch_size': args.batch_size,
             'learning_rate': args.lr,
             'diminishing_lr': args.diminishing_lr,
+            'min_lr': args.min_lr,
             'max_epochs': args.epochs,
             'max_steps': args.max_steps,
             'momentum': args.momentum,
@@ -272,6 +280,8 @@ def prepare(args, rank, world_size):
             'dataset_size': len(training_set),
             'q': args.q,
             'adapt_q': args.adapt_q,
+            'adapt_interval': args.adapt_interval,
+            'max_q': args.max_q,
             'roll_freq': args.roll_freq,
             'targeted': args.targeted,
             'dim_lr_freq' : args.diminishing_lr_freq,
@@ -300,7 +310,8 @@ def prepare(args, rank, world_size):
             'channel': 0,
             '1d_size': 0,
             'p': args.p,
-            'delay': args.delay
+            'delay': args.delay,
+            'coordinated': args.coordinated
         }
     # print(train_loader, training_set, test_loader)
     datum = (train_loader, training_set, test_loader)

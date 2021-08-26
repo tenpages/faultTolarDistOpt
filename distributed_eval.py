@@ -1,4 +1,5 @@
 from __future__ import print_function
+import sys
 import os.path
 import time
 import argparse
@@ -8,7 +9,8 @@ import copy
 from mpi4py import MPI
 import numpy as np
 
-from model_ops.fc import Full_Connected
+# from model_ops.fc import Full_Connected
+from model_ops.fc_small import Full_Connected
 from model_ops.lenet import LeNet
 from model_ops.resnet import ResNet18
 from model_ops.resnetn import ResNet18N
@@ -100,6 +102,8 @@ class DistributedEvaluator(object):
             print("loading model from directory ".format(model_dir_))
             if os.path.isfile(model_dir_):
                 self._load_model(model_dir_)
+                # for param in self.network.parameters():
+                #     print(param.data)
                 print("Evaluator evaluating results on step {}".format(self._next_step_to_fetch))
                 test_loss, prec1, prec3 = self._evaluate_model(validation_loader)
                 self.results = np.insert(self.results,len(self.results[0]),[self._next_step_to_fetch, test_loss, prec1, prec3],1)
@@ -123,6 +127,9 @@ class DistributedEvaluator(object):
             # pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
             # correct += pred.eq(target.data.view_as(pred)).cpu().sum()
             prec1_tmp, prec3_tmp = accuracy(output.data, y_batch, topk=(1, 3))
+            # print('output and targets:')
+            # print(torch.argmax(output,dim=1),y_batch)
+            # print(prec1_tmp)
             prec1_counter_ += prec1_tmp.numpy()[0]
             prec3_counter_ += prec3_tmp.numpy()[0]
             batch_counter_ += 1
@@ -150,8 +157,13 @@ if __name__ == "__main__":
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ]))
+        # _size = int(len(testing_set)/2)
+        # _, testing_split = torch.utils.data.random_split(testing_set, [_size, _size])
+        # test_loader = torch.utils.data.DataLoader(testing_split, batch_size=args.eval_batch_size, shuffle=True)
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0]*testing_set[0][0].size()[1]*testing_set[0][0].size()[2]
+        # print("testing set size: ", len(test_loader))
+        # print("DATA SHAPE",data_shape)
     elif args.dataset == "CIFAR10":
         testing_set = datasets.CIFAR10('./cifar10_data', train=False, transform=transforms.Compose([
             transforms.ToTensor(),
@@ -167,4 +179,6 @@ if __name__ == "__main__":
                         '1d_size': testing_set[0][0].size()[1]}
     evaluator_nn = DistributedEvaluator(**kwargs_evaluator)
     print("evaluator initiated.")
+    starttime = time.time()
     evaluator_nn.evaluate(validation_loader=test_loader)
+    print("Done evaluating. {:.4f}".format(time.time()-starttime))

@@ -1,6 +1,6 @@
 import time
 import sys, os
-from sys import getsizeof
+from sys import getsizeof 
 import numpy as np
 import hdmedians as hd
 import torch
@@ -22,7 +22,8 @@ from math import sqrt
 
 from compress_gradient import decompress
 from model_ops.lenet import LeNet_Split
-from model_ops.fc import Full_Connected_Split
+# from model_ops.fc import Full_Connected_Split
+from model_ops.fc_small import Full_Connected_Split
 from model_ops.resnet import ResNet18
 from model_ops.resnetn import ResNet18N
 from model_ops.vgg import VGG13, VGG16, VGG19
@@ -58,10 +59,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
         self._redundancy = kwargs['redundancy']
         self._q = kwargs['q']
-        ''' temporary '''
+        self._min_lr = kwargs['min_lr']
         self._roll_freq = kwargs['roll_freq'] 
         self._rollback = {'loss': None, 'params': None}
         self._adaptive = kwargs['adapt_q']
+        self._adapt_int = kwargs['adapt_interval']
+        self._max_q = kwargs['max_q']
         self._targeted = kwargs['targeted']
         self._target_thresh = kwargs['target_thresh']
 
@@ -96,6 +99,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._err_mode = kwargs['err_mode']
         self.dataset_size = kwargs['dataset_size']
         self.batch_size = kwargs['batch_size']
+
+        # change in q
+        self._delta_q = (self._max_q-self._q)/(self._max_steps/self._adapt_int)
 
         # self.validation_criterion = nn.CrossEntropyLoss()
         if self.network_config == 'LinregTest':
@@ -136,13 +142,14 @@ class SyncReplicaMaster_NN(NN_Trainer):
         if self._diminishing_lr:
             # lr_lambda = lambda epoch: 10/((epoch/1000)+1)
             if self._diminishing_lr == 1:
-                dimin_size = self.lr/(self._max_steps + 1)
+                dimin_size = (self.lr-self._min_lr)/((self._max_steps/self._dim_lr_freq))
+                print('dimin_size = ',dimin_size)
                 lr_lambda = lambda epoch: (1.0 - (dimin_size*epoch)/self.lr)
                 self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda = lr_lambda)
                 # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=15, gamma=.5)
             elif self._diminishing_lr == 2:
                 print("exponential LR schedule with frequency ",self._dim_lr_freq)
-                self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=self._dim_lr_freq, gamma=.9)
+                self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=self._dim_lr_freq, gamma=.7)
             elif self._diminishing_lr ==3:
                 # print('dimin-lr = 3')
                 lr_lambda = lambda epoch: 1.0 if epoch==0 else 1.0/epoch
@@ -168,7 +175,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if self._diminishing_lr:
                 self.scheduler.load_state_dict(torch.load(self._train_dir+"scheduler_"+str(self._checkpoint_step)))
 
-        ''' redundancy metrics '''
+        ''' variables for redundancy logging '''
         total_grads = 0
         used_grads = 0
         comp_eff = [[],[],[]]
@@ -178,16 +185,23 @@ class SyncReplicaMaster_NN(NN_Trainer):
         prev_grad_avg = None
         param_diffs = []
         grad_diffs = []
+        logdict = {'fc': 0, 'fn': 0, 'ugt': 0, 'tgt': 0, 'r': 0, 't': 0}
 
         for i in range(self._checkpoint_step + 1, self._max_steps + 1):
             # exponentially decreasing LR schedule
             if self._diminishing_lr == 2:
-                self.scheduler.step()
-                print("[DEBUG] Master learning rate: ",self.optimizer.param_groups[0]['lr'])
+                if self.optimizer.param_groups[0]['lr'] > self._min_lr:
+                    self.scheduler.step()
+                    if self.optimizer.param_groups[0]['lr'] < self._min_lr:
+                        self.optimizer.param_groups[0]['lr'] = self._min_lr
+            elif self._diminishing_lr == 3:
+                if self.optimizer.param_groups[0]['lr'] > self._min_lr:
+                    if (self.cur_step%self._dim_lr_freq==0): self.scheduler.step()
+                    if self.optimizer.param_groups[0]['lr'] < self._min_lr:
+                        self.optimizer.param_groups[0]['lr'] = self._min_lr
             # linear decreasing LR schedule
-            elif self._diminishing_lr == 1 or self._diminishing_lr == 3:
+            elif self._diminishing_lr == 1 :
                 if (self.cur_step%self._dim_lr_freq==0): self.scheduler.step()
-                print("[DEBUG] Master learning rate: ",self.optimizer.param_groups[0]['lr'])
 
             self.network.train()
             self.optimizer.zero_grad()
@@ -205,9 +219,14 @@ class SyncReplicaMaster_NN(NN_Trainer):
             if self._redundancy:
                 self._num_grad_to_collect = self.batch_size
                 # q_decision 
-                fault_check = self.q_decision(self._q)
+                np.random.seed(random.randint(0,1000))
+                fault_check = self.q_decision(randn(),self._q)
                 if self._s == 0:
                     fault_check = 0
+                    '''
+                    self._diminishing_lr = 0
+                    self.optimizer.param_groups[0]['lr'] = self.lr
+                    '''
                 dp_list, worker_list = (None,None)
                 # print("_q == {} {}".format(self._q,type(self._q)))
                 if (self._q == 1.0 or fault_check): 
@@ -288,7 +307,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                         mu = np.mean(grad_diffs[history_start:-1])
                         std = np.std(grad_diffs[history_start:-1])
-                        std_diff = abs(mu-grad_diffs[-1])/std
+                        std_diff = abs((mu-grad_diffs[-1])/std)
 
                         # print('[DEBUG] grad diff (full):',self.cur_step,abs(mu_-grad_diffs[-1])/std_)
                         if std_diff > self._target_thresh:
@@ -300,6 +319,9 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                             # pop the possibly faulty grad?
                             # grad_diffs.pop(-1)
+                        elif self.cur_step > 50 and self.cur_step < 100:
+                            print('[DEBUG] grad diff std_dev from mean:',std_diff)
+                            print('        no targeted check')
 
                 if faulty_grad_datapoints:
                     # print(f"Master step {self.cur_step} fault caught\ndatapoints with faulty gradients: {faulty_grad_datapoints}") 
@@ -479,10 +501,17 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 # accumulate # of used grads and total calculated grads
                 used_grads = used_grads + used_grads_t
                 total_grads = total_grads + total_grads_t
-        
-                lf = open(self._train_dir +"/logfile.txt", "a")
-                lf.write('M i {} nb {} fc {} fn {} ce {}/{} lr {} q {} r {} t {}\n'.format(self.cur_step, len(self._byzantine_workers), int(fault_check), len(faulty_worker_ranks), used_grads_t,total_grads_t, self.optimizer.param_groups[0]['lr'], self._q, int(roll_flag), int(targeted_flag)))
-                lf.close()
+
+                # logging
+                logdict['ugt'] = used_grads_t
+                logdict['tgt'] = total_grads_t
+                logdict['fn'] = len(faulty_worker_ranks)
+                logdict['r'] = int(roll_flag)
+                logdict['t'] = int(targeted_flag)
+                logdict['fc'] = int(fault_check)
+                # lf = open(self._train_dir +"/logfile.txt", "a")
+                # lf.write('M i {} nb {} fc {} fn {} ce {}/{} lr {} q {} r {} t {}\n'.format(self.cur_step, len(self._byzantine_workers), int(fault_check), len(faulty_worker_ranks), used_grads_t,total_grads_t, self.optimizer.param_groups[0]['lr'], self._q, int(roll_flag), int(targeted_flag)))
+                # lf.close()
 
             # end if self.redundancy
             else:
@@ -735,12 +764,16 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 elif val_loss > self._rollback['loss']:
                     # rollback is strictly better than current state
                     self._load_rollback()
-                    roll_flag = True
+                    logdict['r'] = 1
                     total_rolls += 1
                     print("Master step {} old rollback preserved.".format(self.cur_step))
+
+            lf = open(self._train_dir +"/logfile.txt", "a")
+            lf.write('M i {} nb {} fc {} fn {} ce {}/{} lr {} q {} r {} t {}\n'.format(self.cur_step, len(self._byzantine_workers), logdict['fc'], logdict['fn'], logdict['ugt'],logdict['tgt'], self.optimizer.param_groups[0]['lr'], self._q, logdict['r'], logdict['t']))
+            lf.close()
             
             # if self._adaptive and self.cur_step > 60 and self.cur_step%20==0:
-            if self._adaptive and self.cur_step%10==0:
+            if self._adaptive and (((self.cur_step+1)%self._adapt_int)==0):
                 self._adapt_q()
                 # self._q += .1
                 # print("q ==",self._q)
@@ -766,7 +799,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             print("Master total gradients used: {}/{}".format(used_grads,total_grads))
             print("total rollbacks: {}".format(total_rolls))
             lf = open(self._train_dir +"/logfile.txt", "a")
-            lf.write('rb {}'.format(total_rolls))
+            lf.write('rb {}\n'.format(total_rolls))
             # save .npy of parameter diffs
             # param_diffs <-- array of difference in parameter values between steps
             if self._targeted:
@@ -839,12 +872,12 @@ class SyncReplicaMaster_NN(NN_Trainer):
             for req_worker in req_l:
                 req_worker.wait()
 
-    def q_decision(self, q) :
+    def q_decision(self,r, q) :
         mu = 0.00
         sigma = 1.00
 
-        r = randn()
-
+        # r = randn()
+        # r = random.uniform(0,1)
         quantile = mu + sigma * sqrt(2)*erfinv(2*q-1)
 
         if quantile >= r :
@@ -1240,9 +1273,17 @@ class SyncReplicaMaster_NN(NN_Trainer):
             print("Master loading checkpoint from {}".format(file_path))
 
     def _adapt_q(self):
-        ''' simplest adaptation -- increase q by .1 '''
-        if self._q <= .98:
-            self._q += .02
+        # if self._adapt_int > 10:
+        #     self._q += .05
+        # else:
+        #     self._q += .02
+        # # if q > 1, reset to 1
+        # if self._q > 1.0:
+        #     self._q = 1.0
+        # use self._delta_q
+        if self._q < 1.0:
+            self._q += self._delta_q
+        
         print("[DEBUG] q ==",self._q)
 
     def _evaluate_model(self, validation_loader, verbose=False):
@@ -1845,3 +1886,25 @@ class GradientAccumulator(object):
             for i, tmp_aggregator in enumerate(self.gradient_aggregator):
                 for j, buf in enumerate(tmp_aggregator):
                     self.gradient_aggregator[i][j] = np.zeros(self.gradient_aggregator[i][j].shape)
+
+def decision(r, q) :
+    mu = 0.00
+    sigma = 1.00
+    quantile = mu + sigma * sqrt(2)*erfinv(2*q-1)
+    if quantile >= r :
+        return 1
+    else:
+        return 0
+
+if __name__ == '__main__':
+    q = .35
+    y, x = 0, 0
+    test_random_list = [randn() for _ in range(self._max_steps)]
+    for i in test_random_list:
+        if decision(i, q):
+            x+=1.0
+        else:
+            y+=1.0
+    print("x = {}%".format(x/(10000.0)), x)
+    print("y = {}%".format(y/(10000.0)), y)
+        
