@@ -1095,7 +1095,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         aggregation_finish_time = time.time()
         # print(concatenated_gradients.shape)
         # print(separator)
-        concatenated_gradients = concatenated_gradients[self._received_grads]
+        concatenated_gradients = concatenated_gradients[self._agents_received_list]
         assert (len(concatenated_gradients) == self.num_workers - self._r)
         ranks = np.argsort(np.linalg.norm(np.array(concatenated_gradients), axis=1))
         #print(np.sqrt(np.sum(np.square([np.linalg.norm(self._grad_aggregate_buffer[i], axis=1) for i in range(len(self._grad_aggregate_buffer))]), axis=0)))
@@ -1112,7 +1112,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             sum_gradient = np.mean(concatenated_gradients, axis=0)
         else:
             # print(ranks[:(self.num_workers-self._t)])
-            sum_gradient = np.mean(np.array(concatenated_gradients)[ranks[:(self.num_workers-self._t)]], axis=0)
+            sum_gradient = np.mean(np.array(concatenated_gradients)[ranks[:(self.num_workers-self._r-self._t)]], axis=0)
         filter_finish_time = time.time()
 
         # print(sum_gradient.shape)
