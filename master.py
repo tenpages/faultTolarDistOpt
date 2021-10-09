@@ -59,6 +59,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._checkpoint_step = kwargs['checkpoint_step']
         self._s = kwargs['worker_fail']
         self._t = kwargs['fault-thrshld']
+        self._r = kwargs['async_thrshld']
         self._full_grad = kwargs['full_grad']
         self._total_size = kwargs['total_size']
         self._channel = kwargs['channel']
@@ -193,11 +194,14 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
 
                 agents_received = 0
-                for j in self.grad_accumulator.agent_aggregate_counter:
+                agents_received_list = []
+                for agent_idx, j in enumerate(self.grad_accumulator.agent_aggregate_counter):
                     if j >= self.grad_accumulator.model_size:
                         agents_received += 1
-                if communication_duration == 0 and agents_received == self.num_workers - self._t:
+                        agents_received_list.append(agent_idx)
+                if communication_duration == 0 and agents_received == self.num_workers - self._r:
                     communication_duration = time.time() - communication_start
+                    self._agents_received_list = agents_received_list
 
             # if 'async' not in self._update_mode:
             #     communication_duration = time.time() - communication_start
@@ -271,6 +275,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     self._grad_norm_full_grad()
                 else:
                     self._grad_norm()
+                method_duration = time.time() - method_start
+            elif self._update_mode == 'async_grad_norm':
+                method_start = time.time()
+                self._async_grad_norm_full_grad()
                 method_duration = time.time() - method_start
             elif self._update_mode == 'grad_norm_coor_wise':
                 method_start = time.time()
@@ -1033,7 +1041,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         with open(self._train_dir+"logs-master",'a') as f:
             f.write('{:.8f},'.format(time.time()-cwtm_start))
 
-    def _asynchronous_drop_f(self):
+    def _asynchronous_drop_f_sim(self):
         """
         Randomly drop f gradients according to the asynchronous scheduler, to simulate
         the scenario where f agents respond slower than others
@@ -1045,7 +1053,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
             mean = np.mean(np.array(grads)[_honest], axis=0)
             self._grad_aggregate_buffer[g_idx] = mean
 
-    def _asynchronous_drop_f_sum(self):
+    def _asynchronous_drop_f_sum_sim(self):
         """
         Randomly drop f gradients according to the asynchronous scheduler, to simulate
         the scenario where f agents respond slower than others
@@ -1056,6 +1064,64 @@ class SyncReplicaMaster_NN(NN_Trainer):
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             sum = np.sum(np.array(grads)[_honest], axis=0)
             self._grad_aggregate_buffer[g_idx] = sum
+
+    def _asynchronous_drop_f(self):
+        """
+        Use actual r stragglers
+        """
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            mean = np.mean(np.array(grads)[self._agents_received_list], axis=0)
+            self._grad_aggregate_buffer[g_idx] = mean
+
+    def _asynchronous_drop_f_sum(self):
+        """
+        Use actual r stragglers
+        """
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            sum = np.sum(np.array(grads)[self._agents_received_list], axis=0)
+            self._grad_aggregate_buffer[g_idx] = sum
+
+    def _async_grad_norm_full_grad(self):
+        norm_filter_start = time.time()
+        concatenated_gradients = None
+        separator = []
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            #print(np.array(grads).shape)
+            if g_idx == 0:
+                concatenated_gradients = np.array(grads)
+            else:
+                concatenated_gradients = np.concatenate((concatenated_gradients, np.array(grads)), axis=1)
+            separator.append(len(concatenated_gradients[0]))
+        aggregation_finish_time = time.time()
+        # print(concatenated_gradients.shape)
+        # print(separator)
+        concatenated_gradients = concatenated_gradients[self._received_grads]
+        assert (len(concatenated_gradients) == self.num_workers - self._r)
+        ranks = np.argsort(np.linalg.norm(np.array(concatenated_gradients), axis=1))
+        #print(np.sqrt(np.sum(np.square([np.linalg.norm(self._grad_aggregate_buffer[i], axis=1) for i in range(len(self._grad_aggregate_buffer))]), axis=0)))
+        #print(np.linalg.norm(concatenated_gradients, axis=1))
+        #print(np.mean(np.linalg.norm(concatenated_gradients, axis=1)))
+        #print(np.linalg.norm(np.mean(concatenated_gradients, axis=0)))
+
+        if self._grad_norm_keep_all == True:
+            norm = np.linalg.norm(concatenated_gradients[ranks[self.num_workers-self._t-1]])
+            for i in range(self.num_workers-self._t, self.num_workers):
+                concatenated_gradients[ranks[i]] = concatenated_gradients[ranks[i]]*norm/np.linalg.norm(concatenated_gradients[ranks[i]])
+            #print(np.linalg.norm(concatenated_gradients, axis=1))
+            #print(concatenated_gradients[0].shape)
+            sum_gradient = np.mean(concatenated_gradients, axis=0)
+        else:
+            # print(ranks[:(self.num_workers-self._t)])
+            sum_gradient = np.mean(np.array(concatenated_gradients)[ranks[:(self.num_workers-self._t)]], axis=0)
+        filter_finish_time = time.time()
+
+        # print(sum_gradient.shape)
+        #print(np.linalg.norm(sum_gradient))
+        self._grad_aggregate_buffer=np.split(sum_gradient,separator[:len(separator)-1])
+
+        print("Master Step: {} Concatenation Cost: {:.4f} Filter Cost: {:.4f} Splitting Cost: {:.4f}".format(self.cur_step, aggregation_finish_time-norm_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
+        with open(self._train_dir+"logs-master",'a') as f:
+            f.write('{:.8f},{:.8f},{:.8f},'.format(aggregation_finish_time-norm_filter_start, filter_finish_time-aggregation_finish_time, time.time()-filter_finish_time))
 
     """
     def _median_of_means(self):

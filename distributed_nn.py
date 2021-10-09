@@ -87,6 +87,8 @@ def add_fit_args(parser):
                         help='accumulative SGD weight for historical gradients. If alpha=0, accumulate with equal weight for every gradient in history')
     parser.add_argument('--full-grad', type=ast.literal_eval, default=True, metavar='N',
                         help='to decide if the filter uses concatenated gradients (True) or natural pieces from networks (False)')
+    parser.add_argument('--async-thrshld', type=int, default=0, metavar='N',
+                        help='how many stragglers to tolerate')
     parser.add_argument('--faulty-pattern', type=str, default='fixed', metavar='N',
                         help='decide faulty gradients are send from "fixed" workers or "changing" workers each step')
     parser.add_argument('--data-distribution', type=str, default='same', metavar='N',
@@ -369,6 +371,7 @@ def prepare(args, rank, world_size):
             'calculate_cosine': args.calculate_cosine,
             'accumulative': args.accumulative,
             'accumulative_alpha': args.accumulative_alpha,
+            'async_thrshld': args.async_thrshld,
             # the following information is only used for simulating fault agents and not used by filters.
             'adversaries': adversaries,
             'err_mode': args.err_mode,
