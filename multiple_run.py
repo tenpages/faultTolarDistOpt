@@ -71,8 +71,8 @@ batch_sizes = ['128']
 # 						'--approach', 'baseline',
 # 						'--err-mode', fault_type,
 # 						'--lr', '0.01',
-# 						'--train-dir', 'output/models/async-ft/mnist/20-3/' + fault_name + '/async-' + str(i) + '/',
-# 						'--seed', '0',
+# 						'--train-dir', 'output/models/async-ft/mnist/20-3/' + fault_name + '/async-' + str(i) + '/run'+str(k)+'/',
+# 						'--seed', str(k)',
 # 						'--accumulative', 'False',
 # 						'--worker-fail', '3',
 # 						'--fault-thrshld', '3',
@@ -108,7 +108,7 @@ for k in [1]:#,2,3]:
 		for i in nums_async:
 			for fault_type, fault_name in zip(fault_types, fault_names):
 				for model_name, model in zip(model_names, models):
-					args = 'python distributed_eval.py --model-dir output/models/async-ft/fmnist/20-3/'+fault_name+'/async-'+str(i)+'/run-'+str(k)\
+					args = 'python distributed_eval.py --model-dir output/models/async-ft/fmnist/20-3/'+fault_name+'/async-'+str(i)+'/run'+str(k)\
 							+'/ --dataset Fashion-MNIST --network LeNet --eval-freq 1 > "results-asyncft-fMNIST-LeNet-'+batch_size+'-'+model_name+'-'+fault_type+'-20-3-async-'+str(i)+'-run'+str(k)+'" 2>&1 &'
 					print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 					print(args)
