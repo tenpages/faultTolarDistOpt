@@ -9,8 +9,8 @@ import subprocess
 #models = ['multi_krum','coor_wise_trimmed_mean','median_of_means']
 model_names = ['async-cge']
 models = ['async_grad_norm']
-fault_types = ['labelflipping']
-fault_names = ['labelflipping']
+fault_types = ['rev_grad_2','labelflipping']
+fault_names = ['revgrad2','labelflipping']
 nums_async = [0,1,3,5,10]
 batch_sizes = ['128']
 #acc_alpha = '60'
