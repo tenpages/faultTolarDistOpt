@@ -115,7 +115,7 @@ batch_sizes = ['128']
 # 					print(args)
 # 					results = subprocess.run(args, shell=True)
 
-for k in [1]:
+for k in [3]:
 	for batch_size in batch_sizes:
 		for i in nums_async:
 			for fault_type, fault_name in zip(fault_types, fault_names):
