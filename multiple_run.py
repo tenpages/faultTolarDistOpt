@@ -56,7 +56,47 @@ batch_sizes = ['128']
 # 						print("failed")
 # 						print("========================")
 
-for k in [0]:
+# for k in [0]:
+# 	for batch_size in batch_sizes:
+# 		for i in nums_async:
+# 			for fault_type, fault_name in zip(fault_types, fault_names):
+# 				for model_name, model in zip(model_names, models):
+# 					args = ['mpirun', '-n', '21',
+# 							'python', 'distributed_nn.py',
+# 							'--batch-size=' + batch_size,
+# 							'--max-steps', '1000',
+# 							'--epochs', '100',
+# 							'--network', 'LeNet',
+# 							'--mode', model,
+# 							'--dataset', 'MNIST',
+# 							'--approach', 'baseline',
+# 							'--err-mode', fault_type,
+# 							'--lr', '0.01',
+# 							'--train-dir', 'output/models/async-ft/mnist/20-3/' + fault_name + '/async-' + str(i) + '/run'+str(k)+'/',
+# 							'--seed', str(k),
+# 							'--accumulative', 'False',
+# 							'--worker-fail', '3',
+# 							'--fault-thrshld', '3',
+# 							'--async-thrshld', str(i),
+# 							'--data-distribution', 'different-dist',
+# 							'--calculate-cosine', 'False',
+# 							'--checkpoint-step', '0',
+# 							'--eval-freq', '1',
+# 							'--diff-privacy-param', '0']
+# 					print("Now running experiments mpirun "+fault_name+" using "+model_name+" using command:")
+# 					print(' '.join(args))
+# 					results = subprocess.run(args, capture_output=True)
+# 					if results.returncode==0 and results.stdout != None:
+# 						with open('logs-asyncft-MNIST-LeNet-' + batch_size + '-' + model_name + '-' + fault_type + '-20-3-async-' + str(i) + '-run'+str(k),'w') as f:
+# 							f.write(results.stdout.decode())
+# 						print("finished")
+# 						print("========================")
+# 					else:
+# 						print(results.stderr.decode())
+# 						print("failed")
+# 						print("========================")
+
+for k in [0,1,2,3]:
 	for batch_size in batch_sizes:
 		for i in nums_async:
 			for fault_type, fault_name in zip(fault_types, fault_names):
@@ -67,16 +107,16 @@ for k in [0]:
 							'--max-steps', '1000',
 							'--epochs', '100',
 							'--network', 'LeNet',
-							'--mode', model,
-							'--dataset', 'MNIST',
+							'--mode', 'normal',
+							'--dataset', 'Fashion-MNIST',
 							'--approach', 'baseline',
 							'--err-mode', fault_type,
 							'--lr', '0.01',
-							'--train-dir', 'output/models/async-ft/mnist/20-3/' + fault_name + '/async-' + str(i) + '/run'+str(k)+'/',
+							'--train-dir', 'output/models/async-ft/fmnist/20-0/run'+str(k)+'/',
 							'--seed', str(k),
 							'--accumulative', 'False',
-							'--worker-fail', '3',
-							'--fault-thrshld', '3',
+							'--worker-fail', '0',
+							'--fault-thrshld', '0',
 							'--async-thrshld', str(i),
 							'--data-distribution', 'different-dist',
 							'--calculate-cosine', 'False',
@@ -87,7 +127,7 @@ for k in [0]:
 					print(' '.join(args))
 					results = subprocess.run(args, capture_output=True)
 					if results.returncode==0 and results.stdout != None:
-						with open('logs-asyncft-MNIST-LeNet-' + batch_size + '-' + model_name + '-' + fault_type + '-20-3-async-' + str(i) + '-run'+str(k),'w') as f:
+						with open('logs-asyncft-fMNIST-LeNet-' + batch_size + '-' + model_name + '-' + fault_type + '-20-0-run'+str(k),'w') as f:
 							f.write(results.stdout.decode())
 						print("finished")
 						print("========================")
@@ -95,6 +135,47 @@ for k in [0]:
 						print(results.stderr.decode())
 						print("failed")
 						print("========================")
+
+for k in [0,1,2,3]:
+	for batch_size in batch_sizes:
+		for i in nums_async:
+			for fault_type, fault_name in zip(fault_types, fault_names):
+				for model_name, model in zip(model_names, models):
+					args = ['mpirun', '-n', '21',
+							'python', 'distributed_nn.py',
+							'--batch-size=' + batch_size,
+							'--max-steps', '1000',
+							'--epochs', '100',
+							'--network', 'LeNet',
+							'--mode', 'normal',
+							'--dataset', 'MNIST',
+							'--approach', 'baseline',
+							'--err-mode', fault_type,
+							'--lr', '0.01',
+							'--train-dir', 'output/models/async-ft/mnist/20-0/run'+str(k)+'/',
+							'--seed', str(k),
+							'--accumulative', 'False',
+							'--worker-fail', '0',
+							'--fault-thrshld', '0',
+							'--async-thrshld', str(i),
+							'--data-distribution', 'different-dist',
+							'--calculate-cosine', 'False',
+							'--checkpoint-step', '0',
+							'--eval-freq', '1',
+							'--diff-privacy-param', '0']
+					print("Now running experiments mpirun "+fault_name+" using "+model_name+" using command:")
+					print(' '.join(args))
+					results = subprocess.run(args, capture_output=True)
+					if results.returncode==0 and results.stdout != None:
+						with open('logs-asyncft-MNIST-LeNet-' + batch_size + '-' + model_name + '-' + fault_type + '-20-0-run'+str(k),'w') as f:
+							f.write(results.stdout.decode())
+						print("finished")
+						print("========================")
+					else:
+						print(results.stderr.decode())
+						print("failed")
+						print("========================")
+
 
 # print()
 # model_names = ['async-cge']
@@ -115,13 +196,35 @@ for k in [0]:
 # 					print(args)
 # 					results = subprocess.run(args, shell=True)
 
-for k in [0]:
+# for k in [0]:
+# 	for batch_size in batch_sizes:
+# 		for i in nums_async:
+# 			for fault_type, fault_name in zip(fault_types, fault_names):
+# 				for model_name, model in zip(model_names, models):
+# 					args = 'python distributed_eval.py --model-dir output/models/async-ft/mnist/20-3/'+fault_name+'/async-'+str(i)+'/run'+str(k)\
+# 							+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-asyncft-MNIST-LeNet-'+batch_size+'-'+model_name+'-'+fault_type+'-20-3-async-'+str(i)+'-run'+str(k)+'" 2>&1 &'
+# 					print("Now evaluating "+fault_name+" using "+model_name+" using command:")
+# 					print(args)
+# 					results = subprocess.run(args, shell=True)
+
+for k in [0,1,2,3]:
 	for batch_size in batch_sizes:
 		for i in nums_async:
 			for fault_type, fault_name in zip(fault_types, fault_names):
 				for model_name, model in zip(model_names, models):
-					args = 'python distributed_eval.py --model-dir output/models/async-ft/mnist/20-3/'+fault_name+'/async-'+str(i)+'/run'+str(k)\
-							+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-asyncft-MNIST-LeNet-'+batch_size+'-'+model_name+'-'+fault_type+'-20-3-async-'+str(i)+'-run'+str(k)+'" 2>&1 &'
+					args = 'python distributed_eval.py --model-dir output/models/async-ft/fmnist/20-0/run'+str(k)\
+							+'/ --dataset Fashion-MNIST --network LeNet --eval-freq 1 > "results-asyncft-fMNIST-LeNet-'+batch_size+'-'+model_name+'-'+fault_type+'-20-0-run'+str(k)+'" 2>&1 &'
+					print("Now evaluating "+fault_name+" using "+model_name+" using command:")
+					print(args)
+					results = subprocess.run(args, shell=True)
+
+for k in [0,1,2,3]:
+	for batch_size in batch_sizes:
+		for i in nums_async:
+			for fault_type, fault_name in zip(fault_types, fault_names):
+				for model_name, model in zip(model_names, models):
+					args = 'python distributed_eval.py --model-dir output/models/async-ft/mnist/20-0/run'+str(k)\
+							+'/ --dataset MNIST --network LeNet --eval-freq 1 > "results-asyncft-MNIST-LeNet-'+batch_size+'-'+model_name+'-'+fault_type+'-20-0-run'+str(k)+'" 2>&1 &'
 					print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 					print(args)
 					results = subprocess.run(args, shell=True)
