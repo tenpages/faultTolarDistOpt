@@ -149,6 +149,24 @@ class FashionMNISTDistLoader(datasets.FashionMNIST):
             self.targets = torch.cat((self.targets[self.targets == DATA_ASSIGN_20[id][0]], self.targets[self.targets == DATA_ASSIGN_20[id][1]]))
 
 
+class KMNISTSubLoader(datasets.KMNIST):
+    def __init__(self, *args, group_size=0, start_from=0, err_mode="rev_grad", **kwargs):
+        super(KMNISTSubLoader, self).__init__(*args, **kwargs)
+        if group_size == 0:
+            return
+        if self.train:
+            self.data = self.data[start_from:start_from + group_size]
+            self.targets = self.targets[start_from:start_from + group_size]
+
+
+class KMNISTDistLoader(datasets.KMNIST):
+    def __init__(self, *args, id=0, err_mode="rev_grad", **kwargs):
+        super(KMNISTDistLoader, self).__init__(*args, **kwargs)
+        if self.train:
+            self.data = torch.cat((self.data[self.targets == DATA_ASSIGN_20[id][0]], self.data[self.targets == DATA_ASSIGN_20[id][1]]))
+            self.targets = torch.cat((self.targets[self.targets == DATA_ASSIGN_20[id][0]], self.targets[self.targets == DATA_ASSIGN_20[id][1]]))
+
+
 class CIFAR10SubLoader(datasets.CIFAR10):
     def __init__(self, *args, group_size=0, start_from=0, ovlp=False, **kwargs):
         super(CIFAR10SubLoader, self).__init__(*args, **kwargs)
@@ -210,7 +228,7 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                     training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'different-dist':
-                training_set = MNISTDistLoader('./mnist_data', train=True, download=True, transform=transforms.Compose([
+                training_set = MNISTDistLoader('./mnist_data_sub-diffdist/'+str(rank), train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]), id=rank-1, err_mode=args.err_mode)
@@ -247,7 +265,44 @@ def load_data(dataset, seed, args, rank, world_size, adversaries):
                     training_set.targets = 9 - training_set.targets
                 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
             elif args.data_distribution == 'different-dist':
-                training_set = FashionMNISTDistLoader('./fmnist_data', train=True, download=True, transform=transforms.Compose([
+                training_set = FashionMNISTDistLoader('./fmnist_data_sub-diffdist/'+str(rank), train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5,), (0.5,))
+                ]), id=rank-1, err_mode=args.err_mode)
+                if args.err_mode == 'labelflipping' and rank in adversaries:
+                    training_set.targets = 9 - training_set.targets
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        test_loader = None
+        return train_loader, training_set, test_loader
+
+    elif dataset == "KMNIST":
+        if rank==0:
+            training_set = datasets.KMNIST('./kmnist_data', train=True, download=True, transform=transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,), (0.5,))
+            ]))
+            train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+        else:
+            if args.data_distribution == 'distributed':
+                group_size = int(60000 / (world_size - 1))
+                training_set = KMNISTSubLoader('./kmnist_data_sub/'+str(rank), train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5,), (0.5,))
+                ]), group_size=group_size, start_from=group_size*(rank-1), err_mode=args.err_mode)
+                if args.err_mode == 'labelflipping' and rank in adversaries:
+                    training_set.targets = 9 - training_set.targets
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'same':
+                torch.manual_seed(seed+rank)
+                training_set = datasets.KMNIST('./kmnist_data', train=True, download=True, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5,), (0.5,))
+                ]))
+                if args.err_mode == 'labelflipping' and rank in adversaries:
+                    training_set.targets = 9 - training_set.targets
+                train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+            elif args.data_distribution == 'different-dist':
+                training_set = KMNISTDistLoader('./kmnist_data_sub-diffdist/'+str(rank), train=True, download=True, transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize((0.5,), (0.5,))
                 ]), id=rank-1, err_mode=args.err_mode)
