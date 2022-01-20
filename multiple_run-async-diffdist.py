@@ -16,7 +16,7 @@ batch_sizes = ['128']
 #acc_alpha = '60'
 #acc_alphas = ['20','40','60']
 
-for k in [2,3,4]:
+for k in [0,1,2,3,4]:
 	for batch_size in batch_sizes:
 		for i in nums_faults:
 			for fault_type, fault_name in zip(fault_types, fault_names):
@@ -28,11 +28,11 @@ for k in [2,3,4]:
 							'--epochs', '100',
 							'--network', 'LeNet',
 							'--mode', model,
-							'--dataset', 'Fashion-MNIST',
+							'--dataset', 'KMNIST',
 							'--approach', 'baseline',
 							'--err-mode', fault_type,
 							'--lr', '0.01',
-							'--train-dir', 'output/models/async-diffdist/async-fmnist/run' + str(k) + '/' + fault_name + '-' + str(i) + '/',
+							'--train-dir', 'output/models/async-diffdist/async-kmnist/run' + str(k) + '/' + fault_name + '-' + str(i) + '/',
 							'--seed', str(k),
 							'--accumulative', 'False',
 							'--worker-fail', str(i),
@@ -46,7 +46,7 @@ for k in [2,3,4]:
 					print(' '.join(args))
 					results = subprocess.run(args, capture_output=True)
 					if results.returncode==0 and results.stdout != None:
-						with open('logs-async-fMNIST-LeNet-' + batch_size + '-' + model_name + '-20-' + str(i) + '-run' + str(k),'w') as f:
+						with open('logs-async-kMNIST-LeNet-' + batch_size + '-' + model_name + '-20-' + str(i) + '-run' + str(k),'w') as f:
 							f.write(results.stdout.decode())
 						print("finished")
 						print("========================")
@@ -102,13 +102,13 @@ fault_names = ['async']#,'normfilter','labelflipping']
 nums_faults = [0,1,3,5,10,15]
 batch_sizes = ['128']
 
-for k in [2,3,4]:
+for k in [0,1,2,3,4]:
 	for batch_size in batch_sizes:
 		for i in nums_faults:
 			for fault_type, fault_name in zip(fault_types, fault_names):
 				for model_name, model in zip(model_names, models):
-					args = 'python distributed_eval.py --model-dir output/models/async-diffdist/async-fmnist/run'+str(k)+'/'+fault_name+'-'+str(i)\
-							+'/ --dataset Fashion-MNIST --network LeNet --eval-freq 1 > "results-async-fMNIST-LeNet-'+batch_size+'-'+fault_name+'-20-'+str(i)+'-run'+str(k)+'" 2>&1 &'
+					args = 'python distributed_eval.py --model-dir output/models/async-diffdist/async-kmnist/run'+str(k)+'/'+fault_name+'-'+str(i)\
+							+'/ --dataset KMNIST --network LeNet --eval-freq 1 > "results-async-kMNIST-LeNet-'+batch_size+'-'+fault_name+'-20-'+str(i)+'-run'+str(k)+'" 2>&1 &'
 					print("Now evaluating "+fault_name+" using "+model_name+" using command:")
 					print(args)
 					results = subprocess.run(args, shell=True)
