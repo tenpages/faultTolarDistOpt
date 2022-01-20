@@ -167,7 +167,7 @@ if __name__ == "__main__":
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0] * testing_set[0][0].size()[1] * testing_set[0][0].size()[2]
     elif args.dataset == "KMNIST":
-        testing_set = datasets.KMNIST('./fmnist_data', train=False, transform=transforms.Compose([
+        testing_set = datasets.KMNIST('./kmnist_data', train=False, transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ]))
