@@ -87,7 +87,7 @@ batch_sizes = ['128']
 # 						print("failed")
 # 						print("========================")
 
-fault_type = ""
+fault_type = "normal"
 fault_name = ""
 
 for k in [0,1,2,3]:
