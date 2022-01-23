@@ -202,13 +202,12 @@ batch_sizes = ['128']
 for k in [0,1]:
 	for batch_size in batch_sizes:
 		for i in nums_async:
-			for fault_type, fault_name in zip(fault_types, fault_names):
-				for model_name, model in zip(model_names, models):
-					args = 'python distributed_eval.py --model-dir output/models/async-ft/kmnist/20-0/run'+str(k)\
-							+'/ --dataset KMNIST --network LeNet --eval-freq 1 > "results-asyncft-kMNIST-LeNet-'+batch_size+'-'+model_name+'-'+fault_type+'-20-0-run'+str(k)+'" 2>&1 &'
-					print("Now evaluating "+fault_name+" using "+model_name+" using command:")
-					print(args)
-					results = subprocess.run(args, shell=True)
+			for model_name, model in zip(model_names, models):
+				args = 'python distributed_eval.py --model-dir output/models/async-ft/kmnist/20-0/run'+str(k)\
+						+'/ --dataset KMNIST --network LeNet --eval-freq 1 > "results-asyncft-kMNIST-LeNet-'+batch_size+'-'+model_name+'-20-0-run'+str(k)+'" 2>&1 &'
+				print("Now evaluating "+" using "+model_name+" using command:")
+				print(args)
+				results = subprocess.run(args, shell=True)
 
 # for k in [0,1,2,3]:
 # 	for batch_size in batch_sizes:
