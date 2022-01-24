@@ -545,6 +545,23 @@ class SyncReplicaMaster_NN(NN_Trainer):
             else:
                 self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads)[ranks[:(self.num_workers-self._s)]], axis=0)/(self.num_workers-self._s)
 
+    def _async_grad_norm(self):
+        for g_idx, grads in enumerate(self._grad_aggregate_buffer):
+            print(grads)
+            grads = grads[self.agents_received_list]
+            print(grads)
+            ranks = np.argsort(np.linalg.norm(np.array(grads), axis=1))
+            norm = np.linalg.norm(grads[ranks[self.num_workers-self._r-self._s-1]])
+            for i in range(self.num_workers-self._r-self._s, self.num_workers-self._r+1):
+                grads[ranks[i]]=grads[ranks[i]]*norm/np.linalg.norm(grads[ranks[i]])
+            print(grads)
+            if self._grad_norm_keep_all == True:
+                self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads), axis=0)/(self.num_workers-self._r)
+            else:
+                self._grad_aggregate_buffer[g_idx] = np.sum(np.array(grads)[ranks[:(self.num_workers-self._r-self._s)]], axis=0)/(self.num_workers-self._r-self._s)
+            print(self._grad_aggregate_buffer[g_idx])
+            print("################")
+
     def _grad_norm_coor_wise(self):
         print("size of buffer",len(self._grad_aggregate_buffer))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
