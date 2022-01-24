@@ -552,11 +552,11 @@ class SyncReplicaMaster_NN(NN_Trainer):
     def _async_grad_norm(self):
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
             print(grads)
-            grads = grads[self.agents_received_list]
+            grads = np.array(grads)[self.agents_received_list]
             print(grads)
             ranks = np.argsort(np.linalg.norm(np.array(grads), axis=1))
             norm = np.linalg.norm(grads[ranks[self.num_workers-self._r-self._s-1]])
-            for i in range(self.num_workers-self._r-self._s, self.num_workers-self._r+1):
+            for i in range(self.num_workers-self._r-self._s, self.num_workers-self._r):
                 grads[ranks[i]]=grads[ranks[i]]*norm/np.linalg.norm(grads[ranks[i]])
             print(grads)
             if self._grad_norm_keep_all == True:
