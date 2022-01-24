@@ -47,6 +47,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         self._compress_grad = kwargs['compress_grad']
         self._checkpoint_step = kwargs['checkpoint_step']
         self._s = kwargs['worker_fail']
+        self._r = kwargs['async_thrshld']
         self._size = kwargs['data_size']
         self._multi_krum_m = kwargs['multi_krum_m']
         self._grad_norm_keep_all = kwargs['grad_norm_keep_all']
@@ -164,11 +165,14 @@ class SyncReplicaMaster_NN(NN_Trainer):
                     enough_gradients_received = enough_gradients_received and (j >= self._num_grad_to_collect)
 
                 agents_received = 0
+                agents_received_list = []
                 for j in self.grad_accumulator.agent_aggregate_counter:
                     if j >= self.grad_accumulator.model_size:
                         agents_received += 1
-                if communication_duration == 0 and agents_received == self.num_workers - self._s:
+                        agents_received_list.append(agent_idx)
+                if communication_duration == 0 and agents_received == self.num_workers - self._r:
                     communication_duration = time.time() - communication_start
+                    self.agents_received_list = agents_received_list
 
             # if 'async' not in self._update_mode:
             #     communication_duration = time.time() - communication_start
@@ -436,7 +440,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
         #         self._grad_aggregate_buffer[layer_idx] += gradient
         _honest = list(set(range(0,self.num_workers)) - set(self._adversaries[self.cur_step]-1))
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            if self._omit_agents:
+            if not self._omit_agents:
                 averaged = np.mean(np.array(grads), axis=0)
             else:
                 averaged = np.mean(np.array(grads)[_honest], axis=0)
@@ -510,10 +514,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
         randomly drop f gradients according to the asynchronous scheduler, to simulate
         the scenario where f agents respond slower than others
         """
-        _honest = list(set(range(1,self.num_workers+1)) - set(self._adversaries[self.cur_step]))
-        _honest = (np.array(_honest)-1).tolist()
+        # _honest = list(set(range(1,self.num_workers+1)) - set(self._adversaries[self.cur_step]))
+        # _honest = (np.array(_honest)-1).tolist()
         for g_idx, grads in enumerate(self._grad_aggregate_buffer):
-            mean = np.mean(np.array(grads)[_honest], axis=0)
+            mean = np.mean(np.array(grads)[self.agents_received_list], axis=0)
             self._grad_aggregate_buffer[g_idx] = mean
 
     """
