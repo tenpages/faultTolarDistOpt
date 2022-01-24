@@ -166,7 +166,7 @@ class SyncReplicaMaster_NN(NN_Trainer):
 
                 agents_received = 0
                 agents_received_list = []
-                for j in self.grad_accumulator.agent_aggregate_counter:
+                for agent_idx, j in enumerate(self.grad_accumulator.agent_aggregate_counter):
                     if j >= self.grad_accumulator.model_size:
                         agents_received += 1
                         agents_received_list.append(agent_idx)
