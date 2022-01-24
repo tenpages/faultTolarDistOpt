@@ -384,11 +384,11 @@ def err_simulation(grad, mode, cyclic=False):
             return ADVERSARY_ * grad
     elif mode == 'rev_grad_2':
         if cyclic:
-            adv = grad
+            adv = -1 * grad
             assert adv.shape == grad.shape
             return np.add(adv, grad)
         else:
-            return grad
+            return -1 * grad
     elif mode == 'gaussian':
         adv = np.random.normal(0,200,grad.shape)
         return adv
