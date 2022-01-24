@@ -238,6 +238,10 @@ class SyncReplicaMaster_NN(NN_Trainer):
                 method_start = time.time()
                 self._asynchronous_drop_f()
                 method_duration = time.time() - method_start
+            elif self._update_mode == 'async_grad_norm':
+                method_start = time.time()
+                self._async_grad_norm()
+                method_duration = time.time() - method_start
 
             """
             if self.cur_step >= 8:
