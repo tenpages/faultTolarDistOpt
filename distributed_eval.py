@@ -220,7 +220,7 @@ if __name__ == "__main__":
         testing_set=torch.load("approximationDataset4")
         test_loader = torch.utils.data.DataLoader(testing_set, batch_size=args.eval_batch_size, shuffle=True)
         data_shape = testing_set[0][0].size()[0]
-        if 'async' in args.model_dir:
+        if 'asynchronous_drop_f' in args.mode:
             A = testing_set.tensors[0].numpy().astype('float64')
             B = testing_set.tensors[1].numpy().astype('float64')
             true_minimum = np.matmul(np.linalg.inv(np.matmul(np.transpose(A), A)), np.matmul(np.transpose(A), B)).reshape(-1)
