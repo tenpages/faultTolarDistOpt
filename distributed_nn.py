@@ -95,7 +95,7 @@ def add_fit_args(parser):
                         help='decide whether or not saving the honest agent list')
     parser.add_argument('--omit-agents', type=ast.literal_eval, default=False, metavar='N',
                         help='decide whether to remove data according to corresponding agents')
-    parser.add_argument('--faulty-list', type=ast.literal_eval, default=[], metavar='N',
+    parser.add_argument('--faulty-list', nargs='*', type=int, metavar='N',
                         help='input to specify faulty agent list (range: 1 to number of agents)')
     parser.add_argument('--zero-initial-weights', type=ast.literal_eval, default=True, metavar='N',
                         help='decide if to use 0 vector as inital weights')
