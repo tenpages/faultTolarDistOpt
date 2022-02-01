@@ -409,7 +409,7 @@ def _generate_adversarial_nodes(args, world_size):
         return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False) for _ in
                 range(args.max_steps + 1)]
     elif args.faulty_pattern == 'fixed':
-        if args.faulty_list == []:
+        if args.faulty_list is None:
             return [np.random.choice(np.arange(1, world_size), size=args.worker_fail, replace=False)] * (args.max_steps + 1)
         else:
             if len(args.faulty_list)==args.worker_fail and max(args.faulty_list)<world_size and min(args.faulty_list)>0:
